@@ -112,7 +112,7 @@ input, select, textarea {
 
 	h1, h2, h3, h4, h5, h6 {
 		font-weight: 300;
-		color: #666;
+		color: white;
 		line-height: 1.5em;
 	}
 
@@ -140,6 +140,7 @@ input, select, textarea {
 
 	h3 {
 		font-size: 1.5em;
+
 	}
 
 	header {
@@ -148,6 +149,7 @@ input, select, textarea {
 
 		header > p {
 			margin: 1em 0 0 0;
+
 		}
 
 	footer {
@@ -155,8 +157,8 @@ input, select, textarea {
 	}
 
 	strong, b {
-		font-weight: 300;
-		color: #666;
+		font-weight: 700;
+		color: #da2128;
 	}
 
 	em, i {
@@ -1982,8 +1984,9 @@ input, select, textarea {
 /* Item */
 
 	.item {
-		box-shadow: 0 0.05em 0.15em 0 rgba(0, 0, 0, 0.05);
+		box-shadow: 0.55em 0.55em 0.55em 0 rgba(255,255,255, 0.7);
 		margin-bottom: 40px;
+
 	}
 
 		.item header {
@@ -1996,6 +1999,8 @@ input, select, textarea {
 			.item header h3 {
 				font-size: 1em;
 			}
+
+			
 
 /* Icons */
 
@@ -2014,7 +2019,7 @@ input, select, textarea {
 			line-height: 1;
 			text-transform: none !important;
 			font-family: 'Font Awesome 5 Free';
-			font-weight: 400;
+			font-weight: 900;
 		}
 
 		.icon:before {
