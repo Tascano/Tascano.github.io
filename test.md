@@ -1,3 +1,9 @@
+---
+layout: default
+title: About
+---
+
+
 # Part I: Defining Intelligence and Artificial Intelligence
 
 ## 1.1 What Is Intelligence?
