@@ -4,82 +4,226 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
 		<title>Ambrose Tuscano — Software Engineer</title>
-		<!-- Favicon / tab icon -->
 		<link rel="icon" href="images/avatar.jpg" sizes="32x32" />
 		<link rel="apple-touch-icon" href="images/avatar.jpg" />
-		<link rel="stylesheet" href="assets/css/main.css">
 		<link rel="stylesheet" href="assets/css/fontawesome-all.min.css">
 		<meta name="description" content="Ambrose Tuscano — Software Engineer. Minimal single page resume.">
 		<style>
-			:root{--max-width:900px;--accent:#fdb515}
-			body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;line-height:1.5;color:#111;margin:0;padding:40px;background:#fff}
-			.wrap{max-width:var(--max-width);margin:0 auto}
-			header{display:flex;gap:18px;align-items:center}
-			img.avatar{width:84px;height:84px;border-radius:8px;object-fit:cover}
+			:root{
+				--max-width:900px;
+				--accent:#fdb515;
+				--bg:#fff;
+				--text:#111;
+				--text-secondary:#333;
+				--text-muted:#555;
+				--card-bg:#fafafa;
+				--card-border:#eee;
+				--skill-bg:#f3f3f3;
+			}
+			[data-theme="dark"] {
+				--bg:#0f0f0f;
+				--text:#e8e8e8;
+				--text-secondary:#d0d0d0;
+				--text-muted:#a0a0a0;
+				--card-bg:#1a1a1a;
+				--card-border:#2a2a2a;
+				--skill-bg:#262626;
+			}
+			*{margin:0;padding:0;box-sizing:border-box}
+			body{
+				font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
+				line-height:1.5;
+				color:var(--text);
+				background:var(--bg);
+				transition:background 0.3s ease, color 0.3s ease;
+			}
+			/* Scroll Progress Bar */
+			.scroll-progress {
+				position:fixed;
+				top:0;
+				left:0;
+				width:0;
+				height:4px;
+				background:var(--accent);
+				z-index:1000;
+				transition:width 0.1s ease;
+			}
+			/* Theme Toggle */
+			.theme-toggle {
+				position:fixed;
+				top:20px;
+				right:20px;
+				background:var(--card-bg);
+				border:2px solid var(--card-border);
+				border-radius:50%;
+				width:50px;
+				height:50px;
+				cursor:pointer;
+				display:flex;
+				align-items:center;
+				justify-content:center;
+				font-size:20px;
+				transition:all 0.3s ease;
+				z-index:999;
+			}
+			.theme-toggle:hover {
+				transform:scale(1.1);
+				border-color:var(--accent);
+			}
+			.wrap{max-width:var(--max-width);margin:0 auto;padding:40px}
+			header{display:flex;gap:18px;align-items:center;opacity:0;animation:fadeInUp 0.8s ease forwards}
+			@keyframes fadeInUp {
+				to {opacity:1;transform:translateY(0)}
+				from {opacity:0;transform:translateY(20px)}
+			}
+			img.avatar{
+				width:84px;
+				height:84px;
+				border-radius:8px;
+				object-fit:cover;
+				transition:transform 0.3s ease;
+			}
+			img.avatar:hover {
+				transform:scale(1.05) rotate(2deg);
+			}
 			h1{margin:0;font-size:38px;letter-spacing:0.2px}
-			.name .first{color:#000}
+			.name .first{color:var(--text)}
 			.name .last{color:var(--accent)}
 			.resume-row{margin-top:8px}
-			.resume-link{display:inline-flex;align-items:center;gap:8px;color:var(--accent);text-decoration:none;font-weight:700;font-size:14px}
+			.resume-link{
+				display:inline-flex;
+				align-items:center;
+				gap:8px;
+				color:var(--accent);
+				text-decoration:none;
+				font-weight:700;
+				font-size:14px;
+				transition:transform 0.2s ease;
+			}
+			.resume-link:hover {
+				transform:translateX(5px);
+			}
 			.resume-link .fa-file-pdf{font-size:16px}
-			h2{margin:.4rem 0 0;font-size:18px;color:#333}
-			.muted{color:#555;font-size:14px}
-			.subtitle{font-size:16px;font-weight:600;color:#333;margin-top:6px}
-			.location{font-size:15px;color:#555}
+			h2{margin:.4rem 0 0;font-size:18px;color:var(--text-secondary)}
+			.muted{color:var(--text-muted);font-size:14px}
+			.subtitle{
+				font-size:16px;
+				font-weight:600;
+				color:var(--text-secondary);
+				margin-top:6px;
+				min-height:24px;
+			}
+			.location{font-size:15px;color:var(--text-muted)}
 			.contacts{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:13px}
-			.contact-link{display:inline-flex;align-items:center;gap:8px;color:#333;text-decoration:none}
-			.contact-link .fa, .contact-link .fab{color:var(--accent);font-size:15px}
+			.contact-link{
+				display:inline-flex;
+				align-items:center;
+				gap:8px;
+				color:var(--text-secondary);
+				text-decoration:none;
+				transition:all 0.2s ease;
+			}
+			.contact-link:hover {
+				transform:translateY(-2px);
+				color:var(--accent);
+			}
+			.contact-link:hover .fa, 
+			.contact-link:hover .fab {
+				transform:scale(1.2);
+			}
+			.contact-link .fa, .contact-link .fab{
+				color:var(--accent);
+				font-size:15px;
+				transition:transform 0.2s ease;
+			}
 			.contact-link span{font-size:13px}
-			section{margin-top:28px}
+			section{
+				margin-top:28px;
+				opacity:0;
+				transform:translateY(30px);
+				transition:opacity 0.6s ease, transform 0.6s ease;
+			}
+			section.visible {
+				opacity:1;
+				transform:translateY(0);
+			}
 			.section-title h2{font-size:20px;margin:0}
 			.grid{display:grid;grid-template-columns:1fr;gap:18px}
-			.card{padding:14px;border-radius:8px;border:1px solid #eee;background:#fafafa}
+			.card{
+				padding:14px;
+				border-radius:8px;
+				border:1px solid var(--card-border);
+				background:var(--card-bg);
+				transition:transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+			}
+			.card:hover {
+				transform:translateY(-4px);
+				box-shadow:0 8px 20px rgba(253,181,21,0.15);
+				border-color:var(--accent);
+			}
 			ul.compact{padding-left:1rem;margin:0}
-			.company{font-weight:700}
-			.role{font-weight:600}
-			.meta{font-size:13px;color:#666}
-			.card p{font-size:13px;margin:0 0 8px 0;line-height:1.45;color:#333}
-			.card ul.compact li{font-size:13px;line-height:1.45;color:#333;margin-bottom:6px}
-			/* Larger Core Expertise label and slightly larger description */
-			.muted.core{font-size:16px;color:#111;font-weight:700;margin-bottom:6px}
-			.muted.core + p{font-size:15px;line-height:1.6;color:#333;margin-top:4px}
+			.company{font-weight:700;color:var(--text)}
+			.role{font-weight:600;color:var(--text)}
+			.meta{font-size:13px;color:var(--text-muted)}
+			.card p{font-size:13px;margin:0 0 8px 0;line-height:1.45;color:var(--text-secondary)}
+			.card ul.compact li{font-size:13px;line-height:1.45;color:var(--text-secondary);margin-bottom:6px}
+			.muted.core{font-size:16px;color:var(--text);font-weight:700;margin-bottom:6px}
+			.muted.core + p{font-size:15px;line-height:1.6;color:var(--text-secondary);margin-top:4px}
 			.skills{display:flex;flex-wrap:wrap;gap:8px}
-			.skill{background:#f3f3f3;padding:6px 8px;border-radius:6px;font-size:13px}
+			.skill{
+				background:var(--skill-bg);
+				padding:6px 8px;
+				border-radius:6px;
+				font-size:13px;
+				transition:transform 0.2s ease, background 0.2s ease;
+			}
+			.skill:hover {
+				transform:translateY(-2px);
+				background:var(--accent);
+				color:#000;
+			}
 			.card strong{font-size:13px;color:var(--accent);font-weight:600}
 			a.primary{color:var(--accent);text-decoration:none;font-weight:700}
 			.accent{color:var(--accent)}
-			.section-title{display:flex;align-items:center;gap:10px}
+			.section-title{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+			.section-title h2{flex-shrink:0}
+			.section-line{flex-grow:1;height:1px;background:linear-gradient(to right, var(--accent), transparent)}
+			.dot{display:none}
 			.dot{width:10px;height:10px;background:var(--accent);border-radius:50%}
-			footer{margin-top:28px;color:#666;font-size:13px}
+			footer{margin-top:28px;color:var(--text-muted);font-size:13px}
 			@media (min-width:900px){.wrap{padding-left:60px;padding-right:60px}}
 		</style>
 	</head>
 	<body>
+		<div class="scroll-progress"></div>
+		<button class="theme-toggle" aria-label="Toggle dark mode">🌙</button>
+		
 		<div class="wrap">
 			<header>
 				<img class="avatar" src="images/avatar.jpg" alt="Ambrose Tuscano">
 				<div>
-					  <h1 class="name"><span class="first">Ambrose</span> <span class="last">Tuscano</span></h1>
-					<div class="subtitle">Software Engineer — Backend & Distributed Systems</div>
+					<h1 class="name"><span class="first">Ambrose</span> <span class="last">Tuscano</span></h1>
+					<div class="subtitle" id="typing-text"></div>
 					<div class="location">Amazon Advertising • Arlington, VA</div>
 					<div class="resume-row">
 						<a class="resume-link" href="assets/Ambrose_Tuscano_Resume.pdf" download><i class="fas fa-file-pdf" aria-hidden="true"></i><span>Download Resume</span></a>
 					</div>
 				</div>
 			</header>
+			
 			<section>
-					<div class="contacts" aria-label="contacts">
-						<a class="contact-link" href="mailto:ambrosetuscanojobs@gmail.com"><i class="fa fa-envelope" aria-hidden="true"></i><span>ambrosetuscanojobs@gmail.com</span></a>
-						<a class="contact-link" href="tel:+14436271151"><i class="fa fa-phone" aria-hidden="true"></i><span>+1 (443)-627-1151</span></a>
-						<a class="contact-link" href="https://www.linkedin.com/in/ambrosetuscano/" target="_blank" rel="noopener"><i class="fab fa-linkedin" aria-hidden="true"></i><span>LinkedIn</span></a>
-					</div>
-					<div class="contacts" aria-label="contacts">
-						<a class="contact-link" href="https://github.com/Tascano" target="_blank" rel="noopener"><i class="fab fa-github" aria-hidden="true"></i><span>GitHub</span></a>
-						<a class="contact-link" href="https://www.facebook.com/ambrose.tuscano.5/" target="_blank" rel="noopener"><i class="fab fa-facebook" aria-hidden="true"></i><span>Facebook</span></a>
-						<a class="contact-link" href="https://www.instagram.com/tascano/" target="_blank" rel="noopener"><i class="fab fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>
-						<a class="contact-link" href="https://twitter.com/ambrose_tuscano" target="_blank" rel="noopener"><i class="fab fa-twitter" aria-hidden="true"></i><span>Twitter</span></a>
-						<a class="contact-link" href="https://wa.link/gpc7bd" target="_blank" rel="noopener"><i class="fab fa-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></a>
-					</div>		
+				<div class="contacts" aria-label="contacts">
+					<a class="contact-link" href="mailto:ambrosetuscanojobs@gmail.com"><i class="fa fa-envelope" aria-hidden="true"></i><span>ambrosetuscanojobs@gmail.com</span></a>
+					<a class="contact-link" href="tel:+14436271151"><i class="fa fa-phone" aria-hidden="true"></i><span>+1 (443)-627-1151</span></a>
+					<a class="contact-link" href="https://www.linkedin.com/in/ambrosetuscano/" target="_blank" rel="noopener"><i class="fab fa-linkedin" aria-hidden="true"></i><span>LinkedIn</span></a>
+				</div>
+				<div class="contacts" aria-label="contacts">
+					<a class="contact-link" href="https://github.com/Tascano" target="_blank" rel="noopener"><i class="fab fa-github" aria-hidden="true"></i><span>GitHub</span></a>
+					<a class="contact-link" href="https://www.facebook.com/ambrose.tuscano.5/" target="_blank" rel="noopener"><i class="fab fa-facebook" aria-hidden="true"></i><span>Facebook</span></a>
+					<a class="contact-link" href="https://www.instagram.com/tascano/" target="_blank" rel="noopener"><i class="fab fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>
+					<a class="contact-link" href="https://twitter.com/ambrose_tuscano" target="_blank" rel="noopener"><i class="fab fa-twitter" aria-hidden="true"></i><span>Twitter</span></a>
+					<a class="contact-link" href="https://wa.link/gpc7bd" target="_blank" rel="noopener"><i class="fab fa-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></a>
+				</div>		
 			</section>
 
 			<section>
@@ -89,10 +233,14 @@
 			</section>
 
 			<section>
-				<div class="section-title"><div class="dot"></div><h2 class="accent">Experience</h2></div>
+				<div class="section-title">
+					<div class="dot"></div>
+					<h2 class="accent">Experience</h2>
+					<div class="section-line"></div>
+				</div>
 				<div class="grid">
 					<div class="card">
-						<div class="company">Amazon — Software Engineer</div>
+						<div class="company">Amazon Ads - Publisher Technology — Software Engineer</div>
 						<div class="meta">Arlington, VA | May 2022 – Present</div>
 						<p class="exp">Built high-scale distributed systems and AI-driven advertising infrastructure with focus on reliability, observability, and operational excellence. Designed scalable ad labeling services with multi-fold throughput improvements supporting sync/async workflows, and engineered serverless data lakes using DynamoDB, Apache Iceberg, AWS Glue, and Athena to achieve near real-time analytics SLAs.</p>
 						<p class="exp">Developed ultra-low-latency APIs with ElastiCache, GraphQL, and Step Functions processing thousands of TPS for real-time ad evaluation, pre-bid filtering, and publisher compliance. Optimized BrandSafety pipelines processing millions of products daily and led Ad Relevance API infrastructure that supported million+ TPS and multi-million dollar revenue impact.</p>
@@ -123,7 +271,11 @@
 			</section>
 
 			<section>
-				<div class="section-title"><div class="dot"></div><h2 class="accent">Education</h2></div>
+				<div class="section-title">
+					<div class="dot"></div>
+					<h2 class="accent">Education</h2>
+					<div class="section-line"></div>
+				</div>
 				<div class="grid">
 					<div class="card">
 						<div class="company">University of Maryland, Baltimore County</div>
@@ -138,7 +290,11 @@
 			</section>
 
 			<section>
-				<div class="section-title"><div class="dot"></div><h2 class="accent">Key Projects</h2></div>
+				<div class="section-title">
+					<div class="dot"></div>
+					<h2 class="accent">Key Projects</h2>
+					<div class="section-line"></div>
+				</div>
 				<div class="grid">
 					<div class="card">
 						<div class="role">Diabetes Detection Service</div>
@@ -161,7 +317,11 @@
 			</section>
 
 			<section>
-				<div class="section-title"><div class="dot"></div><h2 class="accent">Technical Skills</h2></div>
+				<div class="section-title">
+					<div class="dot"></div>
+					<h2 class="accent">Technical Skills</h2>
+					<div class="section-line"></div>
+				</div>
 				<div class="card">
 					<div class="muted core">Core Expertise</div>
 					<p>Distributed systems design, high-throughput data pipelines, serverless architecture, API development and modeling, ML/AI integration, infrastructure and performance optimization, real-time event-driven systems, and observability.</p>
@@ -210,6 +370,79 @@
 			<footer>
 			</footer>
 		</div>
+
+		<script>
+			// Typing Effect - Universal function for any element
+			function typeText(element, text, speed = 60, delay = 0) {
+				setTimeout(() => {
+					let i = 0;
+					element.textContent = '';
+					function type() {
+						if (i < text.length) {
+							element.textContent += text.charAt(i);
+							i++;
+							setTimeout(type, speed);
+						}
+					}
+					type();
+				}, delay);
+			}
+
+			// Type header elements only
+			const typingElement = document.getElementById('typing-text');
+			const locationElement = document.querySelector('.location');
+			
+			typeText(typingElement, "Software Engineer — Backend & Distributed Systems", 60, 500);
+			typeText(locationElement, "Amazon Advertising • Arlington, VA", 60, 1500);
+
+			// Scroll Progress Bar
+			window.addEventListener('scroll', () => {
+				const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+				const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+				const scrolled = (winScroll / height) * 100;
+				document.querySelector('.scroll-progress').style.width = scrolled + '%';
+			});
+
+			// Dark/Light Theme Toggle
+			const themeToggle = document.querySelector('.theme-toggle');
+			const html = document.documentElement;
+			const savedTheme = localStorage.getItem('theme') || 'light';
+			
+			html.setAttribute('data-theme', savedTheme);
+			themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+			
+			themeToggle.addEventListener('click', () => {
+				const currentTheme = html.getAttribute('data-theme');
+				const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+				html.setAttribute('data-theme', newTheme);
+				localStorage.setItem('theme', newTheme);
+				themeToggle.textContent = newTheme === 'dark' ? '☀️' : '🌙';
+			});
+
+			// Parallax Scrolling Effect for sections
+			window.addEventListener('scroll', () => {
+				const scrolled = window.pageYOffset;
+				const sections = document.querySelectorAll('section');
+				
+				sections.forEach((section, index) => {
+					const speed = 0.3 + (index * 0.05);
+					const yPos = -(scrolled * speed * 0.1);
+					section.style.transform = `translateY(${yPos}px)`;
+				});
+			});
+
+			// Intersection Observer for fade-in animations
+			const observer = new IntersectionObserver((entries) => {
+				entries.forEach(entry => {
+					if (entry.isIntersecting) {
+						entry.target.classList.add('visible');
+					}
+				});
+			}, { threshold: 0.1 });
+
+			document.querySelectorAll('section').forEach(section => {
+				observer.observe(section);
+			});
+		</script>
 	</body>
 </html>
-
