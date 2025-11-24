@@ -187,7 +187,17 @@
 			.accent{color:var(--accent)}
 			.section-title{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 			.section-title h2{flex-shrink:0}
-			.section-line{flex-grow:1;height:1px;background:linear-gradient(to right, var(--accent), transparent)}
+			.section-line{
+				flex-grow:1;
+				height:1px;
+				background:linear-gradient(to right, var(--accent), transparent);
+				transform-origin:left;
+				transform:scaleX(0);
+				transition:transform 0.8s ease;
+			}
+			.section-line.animate {
+				transform:scaleX(1);
+			}
 			.dot{display:none}
 			.dot{width:10px;height:10px;background:var(--accent);border-radius:50%}
 			footer{margin-top:28px;color:var(--text-muted);font-size:13px}
@@ -393,6 +403,36 @@
 			const locationElement = document.querySelector('.location');
 			
 			typeText(typingElement, "Software Engineer — Backend & Distributed Systems", 60, 500);
+
+			// Typing animation for section headers when they come into view
+			const sectionObserver = new IntersectionObserver((entries) => {
+				entries.forEach(entry => {
+					if (entry.isIntersecting && !entry.target.dataset.typed) {
+						const h2 = entry.target.querySelector('.section-title h2');
+						const line = entry.target.querySelector('.section-line');
+						
+						if (h2) {
+							const originalText = h2.textContent;
+							typeText(h2, originalText, 50, 100);
+							entry.target.dataset.typed = 'true';
+						}
+						
+						// Animate the line after a slight delay
+						if (line) {
+							setTimeout(() => {
+								line.classList.add('animate');
+							}, 100 + (h2.textContent.length * 50));
+						}
+					}
+				});
+			}, { threshold: 0.3 });
+
+			// Observe all sections with section-title
+			document.querySelectorAll('section').forEach(section => {
+				if (section.querySelector('.section-title')) {
+					sectionObserver.observe(section);
+				}
+			});
 
 			// Scroll Progress Bar
 			window.addEventListener('scroll', () => {
