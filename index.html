@@ -3,11 +3,52 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width,initial-scale=1" />
-		<title>Ambrose Tuscano — Software Engineer</title>
-		<link rel="icon" href="images/avatar.jpg" sizes="32x32" />
-		<link rel="apple-touch-icon" href="images/avatar.jpg" />
+		<title>Ambrose Tuscano — Software Engineer II at Microsoft Azure | Distributed Systems</title>
+		<meta name="description" content="Ambrose Tuscano is a Software Engineer II at Microsoft on Azure Resource Graph, building cloud-scale distributed systems that handle 12B+ resources daily.">
+		<link rel="canonical" href="https://tascano.github.io/" />
+		<link rel="icon" href="favicon.ico" sizes="any" />
+		<link rel="icon" href="images/favicon-32.png" type="image/png" sizes="32x32" />
+		<link rel="apple-touch-icon" href="images/apple-touch-icon.png" />
+		<meta name="theme-color" content="#fdb515" />
+		<!-- Social previews -->
+		<meta property="og:type" content="profile" />
+		<meta property="og:site_name" content="Ambrose Tuscano" />
+		<meta property="og:title" content="Ambrose Tuscano — Software Engineer II at Microsoft Azure" />
+		<meta property="og:description" content="Building cloud-scale distributed systems on Azure Resource Graph — 12B+ resources a day and scaling to 20B+." />
+		<meta property="og:url" content="https://tascano.github.io/" />
+		<meta property="og:image" content="https://tascano.github.io/images/og-image.jpg" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:alt" content="Ambrose Tuscano — Software Engineer II, Microsoft Azure Resource Graph" />
+		<meta property="profile:first_name" content="Ambrose" />
+		<meta property="profile:last_name" content="Tuscano" />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:site" content="@ambrose_tuscano" />
+		<meta name="twitter:title" content="Ambrose Tuscano — Software Engineer II at Microsoft Azure" />
+		<meta name="twitter:description" content="Building cloud-scale distributed systems on Azure Resource Graph — 12B+ resources a day and scaling to 20B+." />
+		<meta name="twitter:image" content="https://tascano.github.io/images/og-image.jpg" />
+		<script type="application/ld+json">
+		{
+			"@context": "https://schema.org",
+			"@type": "Person",
+			"name": "Ambrose Tuscano",
+			"url": "https://tascano.github.io/",
+			"image": "https://tascano.github.io/images/og-image.jpg",
+			"jobTitle": "Software Engineer II",
+			"worksFor": {"@type": "Organization", "name": "Microsoft"},
+			"alumniOf": [
+				{"@type": "CollegeOrUniversity", "name": "University of Maryland, Baltimore County"},
+				{"@type": "CollegeOrUniversity", "name": "University of Mumbai"}
+			],
+			"knowsAbout": ["Distributed Systems", "Microsoft Azure", "AWS", "Data Pipelines", "Agentic AI", "Backend Engineering"],
+			"sameAs": [
+				"https://www.linkedin.com/in/ambrosetuscano/",
+				"https://github.com/Tascano",
+				"https://x.com/ambrose_tuscano"
+			]
+		}
+		</script>
 		<link rel="stylesheet" href="assets/css/fontawesome-all.min.css">
-		<meta name="description" content="Ambrose Tuscano — Software Engineer. Minimal single page resume.">
 		<style>
 			:root{
 				--max-width:900px;
@@ -113,7 +154,6 @@
 				margin-top:6px;
 				min-height:24px;
 			}
-			.location{font-size:15px;color:var(--text-muted)}
 			.contacts{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:13px}
 			.contact-link{
 				display:inline-flex;
@@ -130,6 +170,15 @@
 			.contact-link:hover .fa, 
 			.contact-link:hover .fab {
 				transform:scale(1.2);
+			}
+			.contact-link:hover .icon-x {
+				transform:scale(1.2);
+			}
+			.contact-link .icon-x{
+				width:15px;
+				height:15px;
+				fill:var(--accent);
+				transition:transform 0.2s ease;
 			}
 			.contact-link .fa, .contact-link .fab{
 				color:var(--accent);
@@ -161,6 +210,8 @@
 				box-shadow:0 8px 20px rgba(253,181,21,0.15);
 				border-color:var(--accent);
 			}
+			a.card-link{display:block;text-decoration:none;color:inherit}
+			a.card-link .role{color:var(--accent)}
 			ul.compact{padding-left:1rem;margin:0}
 			.company{font-weight:700;color:var(--text)}
 			.role{font-weight:600;color:var(--text)}
@@ -200,7 +251,6 @@
 			}
 			.dot{display:none}
 			.dot{width:10px;height:10px;background:var(--accent);border-radius:50%}
-			footer{margin-top:28px;color:var(--text-muted);font-size:13px}
 			@media (min-width:900px){.wrap{padding-left:60px;padding-right:60px}}
 		</style>
 	</head>
@@ -210,11 +260,10 @@
 		
 		<div class="wrap">
 			<header>
-				<img class="avatar" src="images/avatar.png" alt="Ambrose Tuscano">
+				<img class="avatar" src="images/avatar.webp" alt="Ambrose Tuscano" width="84" height="84">
 				<div>
 					<h1 class="name"><span class="first">Ambrose</span> <span class="last">Tuscano</span></h1>
-					<div class="subtitle" id="typing-text"></div>
-					<!-- <div class="location">Microsoft - Azure Resource Graph  • Redmond, WA</div> -->
+					<div class="subtitle" id="typing-text">Software Engineer II — Backend &amp; Distributed Systems</div>
 					<div class="resume-row">
 						<a class="resume-link" href="assets/Ambrose_Tuscano_Resume.pdf" download><i class="fas fa-file-pdf" aria-hidden="true"></i><span>Download Resume</span></a>
 					</div>
@@ -231,14 +280,14 @@
 					<a class="contact-link" href="https://github.com/Tascano" target="_blank" rel="noopener"><i class="fab fa-github" aria-hidden="true"></i><span>GitHub</span></a>
 					<a class="contact-link" href="https://www.facebook.com/ambrose.tuscano.5/" target="_blank" rel="noopener"><i class="fab fa-facebook" aria-hidden="true"></i><span>Facebook</span></a>
 					<a class="contact-link" href="https://www.instagram.com/tascano/" target="_blank" rel="noopener"><i class="fab fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>
-					<a class="contact-link" href="https://twitter.com/ambrose_tuscano" target="_blank" rel="noopener"><i class="fab fa-twitter" aria-hidden="true"></i><span>Twitter</span></a>
+					<a class="contact-link" href="https://x.com/ambrose_tuscano" target="_blank" rel="noopener"><svg class="icon-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg><span>X</span></a>
 					<a class="contact-link" href="https://wa.link/gpc7bd" target="_blank" rel="noopener"><i class="fab fa-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></a>
 				</div>		
 			</section>
 
 			<section>
 				<p style="margin-bottom: 12px; line-height: 1.6;">
-					I design and build high-throughput, low-latency distributed systems, serverless data pipelines, and production ML integrations. My work focuses on scalable APIs, operational excellence, and data-driven systems for advertising and analytics.
+					Software Engineer II at <strong>Microsoft</strong> on <strong>Azure Resource Graph</strong>, building the distributed systems behind 12B+ unique Azure resources every day — and scaling to 20B+. Before that, I shipped production multi-agent AI at Nissan and high-throughput ad-tech data pipelines at Amazon. I build cloud-scale backends, distributed systems, and data pipelines that stay fast, reliable, and correct at massive scale.
 				</p>
 
 
@@ -365,14 +414,14 @@
 					<div style="margin-top:12px">
 						<strong>Languages:</strong>
 						<div class="skills" style="margin-top:8px">
-							<span class="skill">Java</span><span class="skill">Python</span><span class="skill">SQL</span><span class="skill">TypeScript</span>
+							<span class="skill">Java</span><span class="skill">C#</span><span class="skill">Python</span><span class="skill">SQL</span><span class="skill">TypeScript</span>
 						</div>
 					</div>
 
 					<div style="margin-top:12px">
 					    <strong>AI & GenAI:</strong>
 					    <div class="skills" style="margin-top:8px">
-					        <span class="skill">Multi-Agent Systems</span><span class="skill">Agentic AI</span><span class="skill">Prompt Engineering</span><span class="skill">RAG</span><span class="skill">LLMs</span>
+					        <span class="skill">Multi-Agent Systems</span><span class="skill">Agentic AI</span><span class="skill">Prompt Engineering</span><span class="skill">RAG</span><span class="skill">LLMs</span><span class="skill">GitHub Copilot</span>
 					    </div>
 					</div>
 
@@ -400,6 +449,13 @@
 					</div>
 
 					<div style="margin-top:12px">
+						<strong>Cloud Platforms:</strong>
+						<div class="skills" style="margin-top:8px">
+							<span class="skill">Microsoft Azure</span><span class="skill">AWS</span>
+						</div>
+					</div>
+
+					<div style="margin-top:12px">
 						<strong>AWS Services:</strong>
 						<div class="skills" style="margin-top:8px">
 							<span class="skill">API Gateway</span><span class="skill">Lambda</span><span class="skill">Step Functions</span><span class="skill">DynamoDB</span>
@@ -410,8 +466,20 @@
 				</div>
 			</section>
 
-			<footer>
-			</footer>
+			<section>
+				<div class="section-title">
+					<div class="dot"></div>
+					<h2 class="accent">Notes</h2>
+					<div class="section-line"></div>
+				</div>
+				<div class="grid">
+					<a class="card card-link" href="notes/the-terminal-was-always-a-log.html">
+						<div class="role">The Terminal Was Always a Log</div>
+						<div class="meta">Sep 2026</div>
+						<p>A field guide to terminal internals, PTYs, and what it means to make a terminal a distributed system.</p>
+					</a>
+				</div>
+			</section>
 		</div>
 
 		<script>
@@ -433,9 +501,7 @@
 
 			// Type header elements only
 			const typingElement = document.getElementById('typing-text');
-			const locationElement = document.querySelector('.location');
-			
-			typeText(typingElement, "Software Engineer II — Backend & Distributed Systems", 60, 500);
+			typeText(typingElement, typingElement.textContent, 60, 500);
 
 			// Typing animation for section headers when they come into view
 			const sectionObserver = new IntersectionObserver((entries) => {

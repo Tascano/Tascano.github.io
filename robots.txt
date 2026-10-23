@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tascano.github.io/sitemap.xml
