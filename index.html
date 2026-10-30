@@ -48,7 +48,6 @@
 			]
 		}
 		</script>
-		<link rel="stylesheet" href="assets/css/fontawesome-all.min.css">
 		<style>
 			:root{
 				--max-width:900px;
@@ -144,7 +143,9 @@
 			.resume-link:hover {
 				transform:translateX(5px);
 			}
-			.resume-link .fa-file-pdf{font-size:16px}
+			.ico{width:1em;height:1em;display:inline-block;vertical-align:-0.125em;flex-shrink:0}
+			.ico-file-pdf{width:.75em}.ico-github{width:.969em}.ico-instagram,.ico-linkedin,.ico-whatsapp{width:.875em}  /* each glyph's own width, as the icon font had */
+			.resume-link .ico{font-size:16px}
 			h2{margin:.4rem 0 0;font-size:18px;color:var(--text-secondary)}
 			.muted{color:var(--text-muted);font-size:14px}
 			.subtitle{
@@ -167,8 +168,7 @@
 				transform:translateY(-2px);
 				color:var(--accent);
 			}
-			.contact-link:hover .fa, 
-			.contact-link:hover .fab {
+			.contact-link:hover .ico {
 				transform:scale(1.2);
 			}
 			.contact-link:hover .icon-x {
@@ -180,7 +180,7 @@
 				fill:var(--accent);
 				transition:transform 0.2s ease;
 			}
-			.contact-link .fa, .contact-link .fab{
+			.contact-link .ico{
 				color:var(--accent);
 				font-size:15px;
 				transition:transform 0.2s ease;
@@ -264,12 +264,33 @@
 				transition:border-color 0.3s ease, box-shadow 0.3s ease;
 			}
 			.intro-video:hover{border-color:var(--accent);box-shadow:0 10px 30px rgba(253,181,21,0.2)}
-			.intro-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#000}
+			.intro-video video,.intro-video iframe{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000}
+			.play-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;cursor:pointer;background:#000}
+			.play-facade img{display:block;width:100%;height:100%;object-fit:cover}
+			.play-btn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+			.play-btn svg{width:76px;height:76px;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.35));transition:transform 0.2s ease}
+			.play-btn circle{fill:var(--accent)}
+			.play-btn path{fill:#111}
+			.play-facade:hover .play-btn svg,.play-facade:focus-visible .play-btn svg{transform:scale(1.08)}
+			.play-facade:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+			.play-len{position:absolute;right:10px;bottom:10px;padding:2px 7px;border-radius:4px;font-size:13px;font-weight:600;color:#fff;background:rgba(0,0,0,0.7)}
 			.intro-note{font-size:14px;color:var(--text-muted);margin-top:10px}
 			@media (min-width:900px){.wrap{padding-left:60px;padding-right:60px}}
 		</style>
 	</head>
 	<body>
+		<!-- Icons: Font Awesome Free 5.9.0 by @fontawesome (CC BY 4.0, https://fontawesome.com/license/free), inlined as SVG -->
+		<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+		<symbol id="i-envelope" viewBox="0 0 512 512"><path fill="currentColor" d="M502 191Q505 188 508.5 190.0Q512 192 512 196V400Q512 420 498.0 434.0Q484 448 464 448H48Q28 448 14.0 434.0Q0 420 0 400V196Q0 192 3.5 190.5Q7 189 10 191Q43 216 164 304Q166 306 177.5 315.0Q189 324 196.0 328.5Q203 333 214.0 339.5Q225 346 235.5 349.0Q246 352 256 352Q265 352 274.0 349.5Q283 347 291.0 343.5Q299 340 308.0 334.0Q317 328 323.0 323.5Q329 319 337.0 313.0Q345 307 348 304Q466 219 502 191ZM256 320Q248 320 236.5 314.5Q225 309 218.0 304.5Q211 300 197.5 289.5Q184 279 183 279Q61 190 9 150Q0 143 0 131V112Q0 92 14.0 78.0Q28 64 48 64H464Q484 64 498.0 78.0Q512 92 512 112V131Q512 143 503 150Q454 188 329 279Q328 279 314.5 289.5Q301 300 294.0 304.5Q287 309 275.5 314.5Q264 320 256 320Z"/></symbol>
+		<symbol id="i-phone" viewBox="0 0 512 512"><path fill="currentColor" d="M494 25Q513 29 513 48Q513 240 377.0 376.0Q241 512 49 512Q30 512 26 493L2 389Q-3 370 16 362L128 314Q144 307 156 321L205 381Q264 354 309.5 308.0Q355 262 382 204L322 154Q308 143 315 126L363 14Q371 -4 390 1Z"/></symbol>
+		<symbol id="i-file-pdf" viewBox="0 0 384 512"><path fill="currentColor" d="M182 256Q180 249 179.0 237.5Q178 226 178.0 217.5Q178 209 180 209Q186 209 186.0 229.0Q186 249 182 256ZM180 303Q194 329 215 344Q203 346 152 366Q165 342 180 303ZM86 428Q90 417 121 388Q115 398 109.0 405.5Q103 413 99.0 417.5Q95 422 92.0 424.5Q89 427 87.5 427.5Q86 428 86 428ZM248 160H384V488Q384 498 377.0 505.0Q370 512 360 512H24Q14 512 7.0 505.0Q0 498 0 488V24Q0 14 7.0 7.0Q14 0 24 0H224V136Q224 146 231.0 153.0Q238 160 248 160ZM240 332Q211 314 197 278Q209 231 204 214Q201 200 190.5 194.5Q180 189 169.0 193.0Q158 197 156 207Q150 229 164 284Q141 338 123 370Q94 384 75.0 403.0Q56 422 68 438Q76 448 90 448Q115 448 151 386Q213 366 230 363Q266 382 294 382Q314 382 319.0 365.0Q324 348 314 339Q298 324 240 332ZM377 105Q384 112 384 122V128H256V0H262Q272 0 279 7ZM303 360Q297 367 260 351Q303 350 303 360Z"/></symbol>
+		<symbol id="i-play-circle" viewBox="0 0 512 512"><path fill="currentColor" d="M80.5 80.5Q153 8 256.0 8.0Q359 8 431.5 80.5Q504 153 504.0 256.0Q504 359 431.5 431.5Q359 504 256.0 504.0Q153 504 80.5 431.5Q8 359 8.0 256.0Q8 153 80.5 80.5ZM372 280Q378 277 381.0 271.0Q384 265 384.0 259.0Q384 253 381.0 247.0Q378 241 372 238L196 131Q184 124 172.0 131.0Q160 138 160 152V360Q160 374 172.0 381.0Q184 388 196 381Z"/></symbol>
+		<symbol id="i-facebook" viewBox="0 0 512 512"><path fill="currentColor" d="M504 256Q504 348 444.0 417.5Q384 487 295 501V328H353L364 256H295V209Q295 171 335 171H366V110Q338 105 311 105Q282 105 261.5 116.0Q241 127 229.0 149.0Q217 171 217 201V256H154V328H217V501Q128 487 68.0 417.5Q8 348 8 256Q8 153 80.5 80.5Q153 8 256.0 8.0Q359 8 431.5 80.5Q504 153 504 256Z"/></symbol>
+		<symbol id="i-github" viewBox="0 0 496 512"><path fill="currentColor" d="M166 397Q166 401 161 401Q155 402 155 397Q155 394 160 394Q166 393 166 397ZM141 391Q146 392 145 396Q144 400 139 398Q133 397 134.5 393.0Q136 389 141 391ZM179 391Q184 391 184.5 394.0Q185 397 180 399Q175 400 174.5 396.0Q174 392 179 391ZM245 8Q313 8 371.0 40.0Q429 72 462.5 128.0Q496 184 496 252Q496 335 449.5 400.5Q403 466 328 491Q320 493 315.5 489.0Q311 485 311 479Q311 478 311.0 446.5Q311 415 311 395Q311 363 294 349Q316 346 328.0 344.0Q340 342 358.0 335.0Q376 328 385.5 317.0Q395 306 402.0 286.0Q409 266 409 238Q409 219 403.0 207.0Q397 195 383 180Q395 149 381 112Q371 109 354.0 115.5Q337 122 324 130L312 139Q281 130 248.5 130.0Q216 130 186 139Q181 135 172.0 129.5Q163 124 144.5 116.5Q126 109 117 112Q102 149 114 180Q91 205 91 238Q91 266 98.0 286.0Q105 306 114.0 317.0Q123 328 140.0 335.0Q157 342 169.5 344.5Q182 347 203 349Q190 361 187 383Q177 387 166.5 389.0Q156 391 140.0 385.0Q124 379 114 362Q108 351 98.5 344.5Q89 338 82 337L76 336Q54 336 74 351Q81 355 88.0 364.0Q95 373 98 380L102 388Q106 400 116.0 408.0Q126 416 138.0 418.0Q150 420 161.0 420.0Q172 420 179 419L186 418Q186 430 186.5 454.0Q187 478 187 479Q187 485 182.5 489.0Q178 493 170 491Q94 466 47.0 400.5Q0 335 0 252Q0 148 70.5 78.0Q141 8 245 8ZM97 353Q99 351 102 354Q105 357 103 359Q101 361 98 358Q95 355 97 353ZM86 345Q88 343 91 344Q94 346 93 348Q92 351 89 349Q85 347 86 345ZM119 380Q121 377 125 381Q129 385 127 388Q124 391 120 387Q116 383 119 380ZM107 366Q110 363 113 368Q116 372 113 374Q110 376 107.5 371.5Q105 367 107 366Z"/></symbol>
+		<symbol id="i-instagram" viewBox="0 0 448 512"><path fill="currentColor" d="M143.5 174.5Q177 141 225.0 141.0Q273 141 306.5 174.5Q340 208 340.0 256.0Q340 304 306.5 337.5Q273 371 225.0 371.0Q177 371 143.5 337.5Q110 304 110.0 256.0Q110 208 143.5 174.5ZM172.0 309.0Q194 331 225.0 331.0Q256 331 278.0 309.0Q300 287 300.0 256.0Q300 225 278.0 203.0Q256 181 225.0 181.0Q194 181 172.0 203.0Q150 225 150.0 256.0Q150 287 172.0 309.0ZM363.5 117.5Q371 125 371.0 136.0Q371 147 363.5 155.0Q356 163 345.0 163.0Q334 163 326.0 155.0Q318 147 318.0 136.0Q318 125 326.0 117.5Q334 110 345.0 110.0Q356 110 363.5 117.5ZM448 164Q449 191 449.0 256.0Q449 321 448 348Q445 409 411.5 442.5Q378 476 317 478Q290 480 225.0 480.0Q160 480 133 478Q72 475 39 442Q26 430 18.0 414.0Q10 398 6.5 383.0Q3 368 3 348Q1 321 1.0 256.0Q1 191 3 163Q6 103 39 70Q72 36 133 33Q160 32 225.0 32.0Q290 32 317 33Q378 36 411.5 69.5Q445 103 448 164ZM400 388Q403 380 405.0 367.5Q407 355 408.0 337.5Q409 320 409.0 309.0Q409 298 409.0 278.0Q409 258 409.0 255.5Q409 253 409.0 233.5Q409 214 409.0 203.0Q409 192 408.0 174.5Q407 157 405.0 144.5Q403 132 400 124Q388 93 357 81Q349 78 336.5 76.0Q324 74 306.5 73.0Q289 72 278.5 72.0Q268 72 247.5 72.0Q227 72 225 72Q223 72 203.0 72.0Q183 72 172.0 72.0Q161 72 143.5 73.0Q126 74 113.5 76.0Q101 78 93 81Q62 93 50 124Q47 132 45.0 144.5Q43 157 42.0 174.5Q41 192 41.0 202.5Q41 213 41.0 233.5Q41 254 41 256Q41 260 41.0 274.5Q41 289 41.0 298.5Q41 308 41.5 323.0Q42 338 43.0 348.5Q44 359 46.0 370.0Q48 381 50 388Q63 419 93 431Q101 434 113.5 436.0Q126 438 143.5 439.0Q161 440 171.5 440.0Q182 440 202.5 440.0Q223 440 225 440Q228 440 247.5 440.0Q267 440 278.0 440.0Q289 440 306.5 439.0Q324 438 336.5 436.0Q349 434 357 431Q388 418 400 388Z"/></symbol>
+		<symbol id="i-linkedin" viewBox="0 0 448 512"><path fill="currentColor" d="M416 32Q429 32 438.5 41.5Q448 51 448 64V448Q448 461 438.5 470.5Q429 480 416 480H32Q19 480 9.5 470.5Q0 461 0 448V64Q0 51 9.5 41.5Q19 32 32 32ZM135 416H136V202H69V416ZM75.0 161.5Q86 173 102.0 173.0Q118 173 129.5 161.5Q141 150 141.0 134.5Q141 119 129.5 107.5Q118 96 102.0 96.0Q86 96 75.0 107.5Q64 119 64.0 134.5Q64 150 75.0 161.5ZM384 416V299Q384 275 381.0 258.0Q378 241 370.0 226.5Q362 212 345.5 204.5Q329 197 305 197Q282 197 265.5 207.0Q249 217 242 231H241V202H177V416H244V310Q244 285 252.0 270.0Q260 255 283 255Q295 255 303.0 260.0Q311 265 313.5 275.0Q316 285 317.0 292.5Q318 300 318 312V416Z"/></symbol>
+		<symbol id="i-whatsapp" viewBox="0 0 448 512"><path fill="currentColor" d="M381 97Q448 164 448 254Q448 346 382.0 411.0Q316 476 224 476Q167 476 118 449L0 480L32 365Q2 314 2 254Q2 162 67.0 97.0Q132 32 224 32Q316 32 381 97ZM224 439Q300 439 355.0 384.5Q410 330 410 254Q411 180 354 124Q300 70 224.0 70.0Q148 70 93.5 124.0Q39 178 39 254Q39 307 68 352L72 359L53 427L123 409L130 413Q173 439 224 439ZM325 300Q335 305 336 307Q339 313 332 334Q329 342 316.5 350.5Q304 359 295 360Q269 364 228 346Q179 325 134 262Q111 231 111 205Q111 180 130 158Q137 152 145 152Q153 152 156 152Q165 152 168 161Q185 202 185 202Q188 208 186 212Q182 221 176.0 227.5Q170 234 169.0 235.0Q168 236 170 242Q184 268 200.5 281.0Q217 294 245 308Q253 312 257 307Q270 292 275 285Q279 279 287 282Q295 285 325 300Z"/></symbol>
+		</svg>
 		<div class="scroll-progress"></div>
 		<button class="theme-toggle" aria-label="Toggle dark mode">🌙</button>
 		
@@ -280,24 +301,24 @@
 					<h1 class="name"><span class="first">Ambrose</span> <span class="last">Tuscano</span></h1>
 					<div class="subtitle" id="typing-text">Software Engineer II — Backend &amp; Distributed Systems</div>
 					<div class="resume-row">
-						<a class="resume-link" href="#intro"><i class="fas fa-play-circle" aria-hidden="true"></i><span>Watch my 3-min intro</span></a>
-						<a class="resume-link" href="assets/Ambrose_Tuscano_Resume.pdf" download><i class="fas fa-file-pdf" aria-hidden="true"></i><span>Download Resume</span></a>
+						<a class="resume-link" href="#intro"><svg class="ico ico-play-circle" aria-hidden="true"><use href="#i-play-circle"/></svg><span>Watch my 3-min intro</span></a>
+						<a class="resume-link" href="assets/Ambrose_Tuscano_Resume.pdf" download><svg class="ico ico-file-pdf" aria-hidden="true"><use href="#i-file-pdf"/></svg><span>Download Resume</span></a>
 					</div>
 				</div>
 			</header>
 			
 			<section>
 				<div class="contacts" aria-label="contacts">
-					<a class="contact-link" href="mailto:ambrosetuscanojobs@gmail.com"><i class="fa fa-envelope" aria-hidden="true"></i><span>ambrosetuscanojobs@gmail.com</span></a>
-					<a class="contact-link" href="tel:+14436271151"><i class="fa fa-phone" aria-hidden="true"></i><span>+1 (443)-627-1151</span></a>
-					<a class="contact-link" href="https://www.linkedin.com/in/ambrosetuscano/" target="_blank" rel="noopener"><i class="fab fa-linkedin" aria-hidden="true"></i><span>LinkedIn</span></a>
+					<a class="contact-link" href="mailto:ambrosetuscanojobs@gmail.com"><svg class="ico ico-envelope" aria-hidden="true"><use href="#i-envelope"/></svg><span>ambrosetuscanojobs@gmail.com</span></a>
+					<a class="contact-link" href="tel:+14436271151"><svg class="ico ico-phone" aria-hidden="true"><use href="#i-phone"/></svg><span>+1 (443)-627-1151</span></a>
+					<a class="contact-link" href="https://www.linkedin.com/in/ambrosetuscano/" target="_blank" rel="noopener"><svg class="ico ico-linkedin" aria-hidden="true"><use href="#i-linkedin"/></svg><span>LinkedIn</span></a>
 				</div>
 				<div class="contacts" aria-label="contacts">
-					<a class="contact-link" href="https://github.com/Tascano" target="_blank" rel="noopener"><i class="fab fa-github" aria-hidden="true"></i><span>GitHub</span></a>
-					<a class="contact-link" href="https://www.facebook.com/ambrose.tuscano.5/" target="_blank" rel="noopener"><i class="fab fa-facebook" aria-hidden="true"></i><span>Facebook</span></a>
-					<a class="contact-link" href="https://www.instagram.com/tascano/" target="_blank" rel="noopener"><i class="fab fa-instagram" aria-hidden="true"></i><span>Instagram</span></a>
+					<a class="contact-link" href="https://github.com/Tascano" target="_blank" rel="noopener"><svg class="ico ico-github" aria-hidden="true"><use href="#i-github"/></svg><span>GitHub</span></a>
+					<a class="contact-link" href="https://www.facebook.com/ambrose.tuscano.5/" target="_blank" rel="noopener"><svg class="ico ico-facebook" aria-hidden="true"><use href="#i-facebook"/></svg><span>Facebook</span></a>
+					<a class="contact-link" href="https://www.instagram.com/tascano/" target="_blank" rel="noopener"><svg class="ico ico-instagram" aria-hidden="true"><use href="#i-instagram"/></svg><span>Instagram</span></a>
 					<a class="contact-link" href="https://x.com/ambrose_tuscano" target="_blank" rel="noopener"><svg class="icon-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg><span>X</span></a>
-					<a class="contact-link" href="https://wa.link/gpc7bd" target="_blank" rel="noopener"><i class="fab fa-whatsapp" aria-hidden="true"></i><span>WhatsApp</span></a>
+					<a class="contact-link" href="https://wa.link/gpc7bd" target="_blank" rel="noopener"><svg class="ico ico-whatsapp" aria-hidden="true"><use href="#i-whatsapp"/></svg><span>WhatsApp</span></a>
 				</div>		
 			</section>
 
@@ -319,10 +340,17 @@
 					<div class="section-line"></div>
 				</div>
 				<div class="intro-video">
-					<video controls playsinline preload="metadata" poster="images/intro-poster.jpg" aria-label="Ambrose Tuscano: a 3-minute intro to who I am and what I build">
-						<source src="videos/ambrose-intro.mp4" type="video/mp4">
-						Your browser can't play this video. <a href="videos/ambrose-intro.mp4" class="primary">Download it here</a>.
-					</video>
+					<!-- Click-to-load: only the poster downloads with the page. Set data-youtube to a video ID to play it from
+					     YouTube (youtube-nocookie) instead of the file in data-src. -->
+					<button class="play-facade" type="button" data-src="videos/ambrose-intro.mp4" data-youtube=""
+						aria-label="Play the 3-minute intro video: Ambrose Tuscano, who I am and what I build">
+						<img src="images/intro-poster-960.webp"
+							srcset="images/intro-poster-640.webp 640w, images/intro-poster-960.webp 960w, images/intro-poster-1280.webp 1280w"
+							sizes="(max-width: 900px) 100vw, 780px" width="1280" height="720" loading="lazy" decoding="async"
+							alt="Ambrose in a leather jacket overlooking the sea at sunset">
+						<span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
+						<span class="play-len" aria-hidden="true">3:10</span>
+					</button>
 				</div>
 				<p class="intro-note">A 3-minute intro to who I am and what I build, with captions built in. Then dive into the details below.</p>
 			</section>
@@ -562,6 +590,31 @@
 				if (section.querySelector('.section-title')) {
 					sectionObserver.observe(section);
 				}
+			});
+
+			// Intro video: load the player only when someone presses play
+			document.querySelectorAll('.play-facade').forEach(facade => {
+				facade.addEventListener('click', () => {
+					const id = facade.dataset.youtube;
+					let player;
+					if (id) {
+						player = document.createElement('iframe');
+						player.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0&modestbranding=1&playsinline=1`;
+						player.title = 'Ambrose Tuscano: a 3-minute intro';
+						player.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+						player.allowFullscreen = true;
+					} else {
+						player = document.createElement('video');
+						player.src = facade.dataset.src;
+						player.controls = true;
+						player.playsInline = true;
+						player.autoplay = true;
+						player.setAttribute('aria-label', facade.getAttribute('aria-label'));
+					}
+					facade.replaceWith(player);
+					if (player.play) player.play().catch(() => {});
+					player.focus();
+				}, { once: true });
 			});
 
 			// Scroll Progress Bar
