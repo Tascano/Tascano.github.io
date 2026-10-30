@@ -251,6 +251,21 @@
 			}
 			.dot{display:none}
 			.dot{width:10px;height:10px;background:var(--accent);border-radius:50%}
+			.resume-row{display:flex;flex-wrap:wrap;gap:6px 18px}
+			html{scroll-behavior:smooth}
+			#intro{scroll-margin-top:32px}
+			@media (max-width:700px){#intro{scroll-margin-top:96px}}  /* the parallax shifts sections further on long scrolls */
+			.intro-video{
+				border-radius:10px;
+				overflow:hidden;
+				border:1px solid var(--card-border);
+				background:#000;
+				box-shadow:0 10px 30px rgba(0,0,0,0.12);
+				transition:border-color 0.3s ease, box-shadow 0.3s ease;
+			}
+			.intro-video:hover{border-color:var(--accent);box-shadow:0 10px 30px rgba(253,181,21,0.2)}
+			.intro-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;background:#000}
+			.intro-note{font-size:14px;color:var(--text-muted);margin-top:10px}
 			@media (min-width:900px){.wrap{padding-left:60px;padding-right:60px}}
 		</style>
 	</head>
@@ -265,6 +280,7 @@
 					<h1 class="name"><span class="first">Ambrose</span> <span class="last">Tuscano</span></h1>
 					<div class="subtitle" id="typing-text">Software Engineer II — Backend &amp; Distributed Systems</div>
 					<div class="resume-row">
+						<a class="resume-link" href="#intro"><i class="fas fa-play-circle" aria-hidden="true"></i><span>Watch my 3-min intro</span></a>
 						<a class="resume-link" href="assets/Ambrose_Tuscano_Resume.pdf" download><i class="fas fa-file-pdf" aria-hidden="true"></i><span>Download Resume</span></a>
 					</div>
 				</div>
@@ -294,6 +310,21 @@
 				<p>
        				Also, while you are here, do you want to make your job search faster? Use the <a href="https://jobsfinder.streamlit.app/" target="_blank" rel="noopener noreferrer" style="text-decoration: underline;" class="primary">Job Search Tool</a> I created to query and filter opportunities quicker and more efficiently.
                 </p>
+			</section>
+
+			<section id="intro">
+				<div class="section-title">
+					<div class="dot"></div>
+					<h2 class="accent">Watch First</h2>
+					<div class="section-line"></div>
+				</div>
+				<div class="intro-video">
+					<video controls playsinline preload="metadata" poster="images/intro-poster.jpg" aria-label="Ambrose Tuscano: a 3-minute intro to who I am and what I build">
+						<source src="videos/ambrose-intro.mp4" type="video/mp4">
+						Your browser can't play this video. <a href="videos/ambrose-intro.mp4" class="primary">Download it here</a>.
+					</video>
+				</div>
+				<p class="intro-note">A 3-minute intro to who I am and what I build, with captions built in. Then dive into the details below.</p>
 			</section>
 
 			<section>
