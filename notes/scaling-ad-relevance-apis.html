@@ -103,7 +103,10 @@ ul.plain li,ol.plain li{margin-bottom:9px;}
 .tldr details.log{margin:0;}
 
 /* decision records */
-.decision,.whatidid,.runit{border-left:4px solid var(--accent);}
+.decision,.whatidid,.runit,.reading{border-left:4px solid var(--accent);}
+.reading .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:8px;}
+.reading ul{margin:0;}
+.reading li{font-size:15.5px;}
 .runit .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:8px;}
 .cta{display:inline-block;font-weight:700;text-decoration:none;background:var(--accent);color:#111;padding:9px 16px;border-radius:999px;}
 .cta:hover{color:#111;filter:brightness(1.05);}
@@ -278,8 +281,8 @@ footer p{font-size:15px;color:var(--text-muted);}
   <span class="kicker">Field notes · Amazon Ads</span>
   <h1>A Million Questions a Second</h1>
   <p class="alt">or: how I learned to stop fetching and love the Bloom filter</p>
-  <p class="dek">On Amazon's supply side, every ad that every DSP wanted to show on Amazon.com went through one question first: does this creative belong next to this product? Here's how we answered it over a million times a second, every option we weighed and why we stuck with the one we did, and the garbage collector that started pausing requests right when traffic peaked.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>30 min read</span></div>
+  <p class="dek">On Amazon's supply side, every ad that any demand source wanted to show on Amazon.com went through one question first: does this creative belong next to this product? Here's how we answered it over a million times a second, every option we weighed and why we stuck with the one we did, and the garbage collector that started pausing requests right when traffic peaked.</p>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>32 min read</span></div>
 </header>
 
 <div class="code" aria-label="An example call to the relevance API">
@@ -296,7 +299,7 @@ footer p{font-size:15px;color:var(--text-muted);}
 <section class="card tldr" aria-labelledby="tldr">
 <h2 id="tldr">The short version (for anyone reading between meetings)</h2>
 <ol>
-  <li><strong>The question was simple, the volume wasn't.</strong> "Which of these creatives fit the product on this page?", for every DSP buying ads on Amazon's own sites: over a million times a second at launch, billions of times a day, more on Prime Day.</li>
+  <li><strong>The question was simple, the volume wasn't.</strong> "Which of these creatives fit the product on this page?", for every demand source buying ads on Amazon's own sites: over a million times a second at launch, billions of times a day, more on Prime Day.</li>
   <li><strong>Do the expensive part early.</strong> ASIN-to-ASIN and creative-to-creative similarities were computed in a daily batch, and the ad server sent the page's ASIN <em>with</em> its candidate creatives, so every answer was a lookup.</li>
   <li><strong>Make "no" free.</strong> A Bloom filter answers "not in the dataset" from memory, with certainty.</li>
   <li><strong>Cache on both sides of the wire.</strong> The ad servers kept their own copy of the data; our hosts kept the hot keys.</li>
@@ -334,12 +337,20 @@ footer p{font-size:15px;color:var(--text-muted);}
 
 <h3>Ad tech in thirty seconds</h3>
 
-<p>Advertisers buy ads through <strong>demand-side platforms</strong> (DSPs). Publishers sell space on their pages on the <strong>supply side</strong>. Amazon is both: its DSPs, like Amazon DSP and Sponsored Display, buy, and Amazon.com and Amazon's own first-party sites are the supply. We sat on that supply side. Every DSP buying on Amazon's own sites went through Amazon's ad server, and the ad server asked us which of its candidate ads were relevant to the page. Our answers decided which ads were marked relevant on Amazon.com and Amazon's first-party sites.</p>
+<p>Advertisers buy ads through <strong>demand-side platforms</strong> (DSPs); publishers sell space on their pages on the <strong>supply side</strong>. Amazon's own guide puts it neatly: "<a href="https://advertising.amazon.com/library/guides/demand-side-platform" target="_blank" rel="noopener">DSPs are the shoppers at the auction, and SSPs are the sellers</a>." Amazon is both:</p>
+
+<ul class="plain">
+  <li><strong>Demand:</strong> <a href="https://advertising.amazon.com/solutions/products/amazon-dsp" target="_blank" rel="noopener">Amazon DSP</a> buys across Amazon's own properties (Amazon.com, Prime Video, Twitch, Fire TV, Thursday Night Football) and thousands of third-party sites and apps, and self-serve products like Sponsored Display bring more advertisers.</li>
+  <li><strong>Supply, for other publishers:</strong> Amazon Publisher Services runs server-side header bidding, through the <a href="https://aps.amazon.com/aps/transparent-ad-marketplace/" target="_blank" rel="noopener">Transparent Ad Marketplace</a> and the <a href="https://aps.amazon.com/aps/unified-ad-marketplace/" target="_blank" rel="noopener">Unified Ad Marketplace</a>.</li>
+  <li><strong>Supply, for Amazon itself:</strong> Amazon Ads' Publisher Technology organization (PubTech, where I worked) builds supply-side technology for Amazon's own properties, <a href="https://www.admonsters.com/eletters/amazon-pub-tech-what-does-this-mean/" target="_blank" rel="noopener">as reported publicly in 2023</a>.</li>
+</ul>
+
+<p>We sat on that supply side. Every demand source buying on Amazon's own sites went through Amazon's ad server, and the ad server asked us which of its candidate ads were relevant to the page. Our answers decided which ads were marked relevant on Amazon.com and Amazon's first-party sites.</p>
 
 <figure>
 <div class="fig-frame">
 <svg class="arch" viewBox="0 0 420 300" role="img" aria-labelledby="sup-t">
-<title id="sup-t">Where the API sat. Demand: Amazon DSP, Sponsored Display and other DSPs send creatives. Supply side: Amazon's ad server sends the page's ASIN plus candidate creatives to the Relevance API and gets relevance back, then shows the relevant ads on Amazon.com and Amazon's first-party sites.</title>
+<title id="sup-t">Where the API sat. Demand: Amazon DSP, Sponsored Display and other demand sources send creatives. Supply side: Amazon's ad server sends the page's ASIN plus candidate creatives to the Relevance API and gets relevance back, then shows the relevant ads on Amazon.com and Amazon's first-party sites.</title>
 <defs>
   <marker id="sg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker>
   <marker id="sa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mka" d="M0,0 L10,5 L0,10 z"/></marker>
@@ -347,7 +358,7 @@ footer p{font-size:15px;color:var(--text-muted);}
 <text x="4" y="12" font-size="11" class="tm">DEMAND · advertisers' creatives</text>
 <rect class="bx" x="10" y="22" width="124" height="38" rx="6"/><text x="72" y="46" text-anchor="middle" font-size="12.5" class="t">Amazon DSP</text>
 <rect class="bx" x="148" y="22" width="124" height="38" rx="6"/><text x="210" y="46" text-anchor="middle" font-size="12" class="t">Sponsored Display</text>
-<rect class="bx" x="286" y="22" width="124" height="38" rx="6"/><text x="348" y="46" text-anchor="middle" font-size="12.5" class="t">other DSPs</text>
+<rect class="bx" x="286" y="22" width="124" height="38" rx="6"/><text x="348" y="46" text-anchor="middle" font-size="12.5" class="t">other demand</text>
 <line class="ln" x1="72" y1="60" x2="84" y2="104" marker-end="url(#sg)"/><line class="ln" x1="210" y1="60" x2="114" y2="104" marker-end="url(#sg)"/><line class="ln" x1="348" y1="60" x2="144" y2="104" marker-end="url(#sg)"/>
 <line class="rule" x1="4" y1="88" x2="416" y2="88"/>
 <text x="4" y="102" font-size="11" class="tm">SUPPLY SIDE</text>
@@ -369,7 +380,7 @@ footer p{font-size:15px;color:var(--text-muted);}
 <text x="210" y="267" text-anchor="middle" font-size="11" class="tm">the product page (its ASIN) is the context</text>
 </svg>
 </div>
-<figcaption>Every DSP's creatives flowed through Amazon's ad server; the ad server asked us which ones fit the product on the page.</figcaption>
+<figcaption>Every demand source's creatives flowed through Amazon's ad server; the ad server asked us which ones fit the product on the page.</figcaption>
 </figure>
 
 <p>If you've watched The Brew Miles, think of it as a beer-pairing chart. The ad server brings the dish (the product on the page) and a tray of beers (the candidate creatives), and we say which ones go with it. A million pairings a second, no tasting allowed.</p>
@@ -383,7 +394,7 @@ footer p{font-size:15px;color:var(--text-muted);}
 </ul>
 </div>
 
-<p class="note"> Amazon's internal frameworks are swapped for public equivalents, the numbers are the ones already on my résumé, and anything labelled <em>toy</em> or <em>illustrative</em> shows the shape of an idea, not a production measurement. Production was Java on AWS; the code here is Python because it reads like pseudocode that actually runs, and every output shown came from running it.</p>
+<p class="note"> Amazon's internal frameworks are swapped for public equivalents, the numbers about this API are the ones already on my résumé, numbers about Amazon's wider ad stack are linked to Amazon's and AWS's public write-ups, and anything labelled <em>toy</em> or <em>illustrative</em> shows the shape of an idea, not a production measurement. Production was Java on AWS; the code here is Python because it reads like pseudocode that actually runs, and every output shown came from running it.</p>
 
 <div class="section-title"><span class="dot"></span><span class="n">02</span><span class="section-line"></span></div>
 <h2>Do the math before the code</h2>
@@ -416,6 +427,8 @@ on the wire at 1M/s, 2 KB each = 16 Gbit/s</pre></div>
 <p>A billion a day sounds enormous and is only about 11,600 a second on average. A million a second, held for a day, would be 86 billion. Traffic is never flat, so <strong>you size for the peak</strong> and the average tells you very little.</p>
 
 <p>The third line is <a href="https://en.wikipedia.org/wiki/Little%27s_law" target="_blank" rel="noopener">Little's law</a>: in flight = arrival rate × time each request takes. At a million a second, every extra millisecond is another thousand requests holding threads, sockets and memory. Latency isn't a nicety at this scale. It's capacity, and as section 10 shows, it's also garbage.</p>
+
+<p>For a sense of the neighbourhood: AWS's <a href="https://aws.amazon.com/blogs/aws/reinvent-session-preview-under-the-hood-at-amazon-ads" target="_blank" rel="noopener">preview of the 2021 re:Invent session "Under the Hood at Amazon Ads"</a> describes an ad server handling "hundreds of millions of ad requests per second (trillions of ads per day) within a latency budget of 120 ms", aiming for more than 99.9999% availability, and scoring "thousands of ads per request within a 20 ms window". Every service an ad server calls gets a <em>slice</em> of a budget like that, never the whole thing. A <a href="https://aws.amazon.com/blogs/aws/real-time-ad-impression-bids-using-dynamodb" target="_blank" rel="noopener">classic AWS worked example</a> for real-time bidding makes it concrete: 100 ms end to end, minus 40 ms of network round trip and a 20 ms jitter buffer, leaves 40 ms to decide, so each data fetch gets "single-digit milliseconds".</p>
 
 <p>The last line is bytes. Even an illustrative 2 KB per request and response is 16 gigabits a second on the wire. That's why requests carried <em>IDs</em> (an ASIN and a few creative IDs), never the data behind them.</p>
 
@@ -470,6 +483,8 @@ creative_tags = {<span class="s">&quot;cr-17&quot;</span>: {<span class="s">&quo
 <div class="out"><span class="out-label">output</span><pre>ASIN-ASIN   trail shoe ~ run watch   0.98
 ASIN-ASIN   trail shoe ~ cat litter  0.15
 creative-creative   cr-18 ~ cr-17    0.75</pre></div>
+
+<p>Relevance isn't a nice-to-have at Amazon. In its <a href="https://aboutamazon.com/company-news/amazon-ftc-sponsored-ads-lawsuit-response" target="_blank" rel="noopener">public response to the FTC about Sponsored Ads</a>, Amazon says it began testing machine-learning relevance models in 2014 and had them across all its store advertising by 2019. It cuts the "hundreds of thousands of ads" that could compete for one search to "less than a thousand candidates by removing less relevant ads", and ranks what's left on "a combination of which ad is most relevant to the customer and the price an advertiser is willing to pay". In 2024, "approximately 92% of selected Sponsored Products ads were not the highest bid". That's Sponsored Products on search, not our API, but it's the same principle: relevance decides who gets to compete.</p>
 
 <h3>Precompute, and let the request carry its own address</h3>
 
@@ -602,6 +617,8 @@ request = {<span class="s">&quot;asin&quot;</span>: <span class="s">&quot;B0TRAI
 </table>
 </div>
 
+<p>A key-value store is the natural home for "look up this exact pair". It's also proven at Amazon Ads' scale: the <a href="https://aws.amazon.com/dynamodb/customers" target="_blank" rel="noopener">DynamoDB customer page</a> says Amazon Ads' measurement team moved from hundreds of HBase instances to DynamoDB global tables, reaching up to 99.999% availability, with peaks "during events like Thursday Night Football and Prime Day reaching 90 million reads and 5 million writes per second".</p>
+
 <div class="section-title"><span class="dot"></span><span class="n">05</span><span class="section-line"></span></div>
 <h2>One request, four possible journeys</h2>
 
@@ -733,7 +750,7 @@ bloom = BloomFilter(<span class="b">len</span>(rows), <span class="n">0.01</span
   <div class="q">Decision 3 · Where do the answers live?</div>
   <ul>
     <li><b>The database, on every request</b>One source of truth, nothing to sync. And a network hop plus a read for every one of a million requests a second.</li>
-    <li><b>A central cache cluster (Redis, ElastiCache)</b>Shared and fast. Still a network hop per lookup, and one more fleet to scale to the same rate.</li>
+    <li><b>A central cache cluster (Redis, ElastiCache, Valkey)</b>Shared, fast and proven at Amazon scale (see section 07). Still a network hop per lookup, and one more fleet to scale to the same rate.</li>
     <li><b>Memory on each API host</b>No hop at all. Only helps requests that already reached us.</li>
     <li class="won"><b>All of them, in layers: the ad server's copy, then host memory, then the database</b>Each layer is cheaper than the next. More moving parts to keep in agreement.</li>
   </ul>
@@ -931,6 +948,8 @@ cache the hottest   10% of keys -&gt; 84% hits</pre></div>
     hit = zipf_hit_rate(<span class="n">1_000_000</span>, <span class="b">int</span>(<span class="n">1_000_000</span> * pct / <span class="n">100</span>))
     <span class="b">print</span>(<span class="s">f&quot;</span><span class="s">cache the hottest </span>{pct:<span class="s">&gt;4</span>}<span class="s">% of keys -&gt; </span>{hit:<span class="s">.0%</span>}<span class="s"> hits</span><span class="s">&quot;</span>)</code></pre></div>
 </details>
+
+<p>You'll find the same layering in Amazon's public write-ups. An <a href="https://aws.amazon.com/solutions/case-studies/amazon-ads/" target="_blank" rel="noopener">AWS case study on Amazon Ads</a> keeps "the most popular products … in a local cache and the less popular products in a remote cache", because hundreds of millions of embedding lookups a second would otherwise eat "several terabits per second of bandwidth". And the <a href="https://aws.amazon.com/blogs/database/amazon-ads-upgrades-to-amazon-elasticache-for-valkey-to-achieve-12-higher-throughput-and-save-over-45-in-infrastructure-costs" target="_blank" rel="noopener">Sponsored Products retrieval team reports</a> "p99 latencies under 5ms with 99.99% availability—even during traffic surges like Prime Day", at "tens of millions of read requests per second across terabytes of data" on ElastiCache.</p>
 
 <p>With an illustrative 90% hit rate on the ad server and 80% on our hosts, a million requests a second at the edge becomes twenty thousand at the database. That's the difference between a database you can run and one you can't.</p>
 
@@ -1131,7 +1150,7 @@ ms = (time.perf_counter() - t) * <span class="n">1000</span>
     <span class="b">print</span>(<span class="s">f&quot;</span>{n_asins:<span class="s">&gt;13,</span>}<span class="s"> ASINs x </span>{n_creatives:<span class="s">&gt;9,</span>}<span class="s"> creatives </span><span class="s">&quot;</span>
           <span class="s">f&quot;</span><span class="s">= </span>{words(n_asins * n_creatives)}<span class="s"> pairs</span><span class="s">&quot;</span>)</code></pre></div>
 </details>
-<div class="out"><span class="out-label">output</span><pre>100,000,000 cosines + top 10 per ASIN: 5,577 ms
+<div class="out"><span class="out-label">output</span><pre>100,000,000 cosines + top 10 per ASIN: 4,430 ms
     1,000,000 ASINs x   100,000 creatives = 100 billion pairs
   100,000,000 ASINs x 1,000,000 creatives = 100 trillion pairs</pre></div>
 
@@ -1285,8 +1304,8 @@ as_objects = [[i, i * <span class="n">0.5</span>] <span class="k">for</span> i <
 
 as_array = array(<span class="s">&quot;d&quot;</span>, (i * <span class="n">0.5</span> <span class="k">for</span> i <span class="k">in</span> <span class="b">range</span>(<span class="n">2_000_000</span>)))  <span class="c"># one object</span>
 <span class="b">print</span>(<span class="s">f&quot;</span><span class="s">one flat array:    full collection </span>{full_gc_ms():<span class="s">6.1f</span>}<span class="s"> ms</span><span class="s">&quot;</span>)</code></pre></div>
-<div class="out"><span class="out-label">output</span><pre>2M small objects:  full collection  176.6 ms
-one flat array:    full collection    0.8 ms</pre></div>
+<div class="out"><span class="out-label">output</span><pre>2M small objects:  full collection  188.3 ms
+one flat array:    full collection    0.7 ms</pre></div>
 
 <p>That's Python's collector, not the JVM's, but the principle carries over: collection work scales with the number of objects, not the number of bytes.</p>
 
@@ -1409,6 +1428,7 @@ answers = [breaker.call(tracked, fallback=<span class="k">lambda</span>: <span c
 <ul class="plain">
   <li><strong>Shed load early.</strong> When a host's queue is already longer than the caller's deadline, say no immediately. A fast "no" beats a slow "yes" that arrives too late.</li>
   <li><strong>Deploy like it's Prime Day.</strong> One host first, then small waves, with automatic rollback when alarms fire.</li>
+  <li><strong>Migrate like it's live, because it is.</strong> When Sponsored Products moved its retrieval caches from Redis to Valkey, <a href="https://aws.amazon.com/blogs/database/amazon-ads-upgrades-to-amazon-elasticache-for-valkey-to-achieve-12-higher-throughput-and-save-over-45-in-infrastructure-costs" target="_blank" rel="noopener">they dual-wrote to both</a>, shifted reads over gradually with a rollback ready, and reported no impact on availability or performance, plus over 45% lower infrastructure cost.</li>
   <li><strong>Data publishes are deploys too.</strong> Validation gates, the last good version kept on hand, and a one-command rollback for data, not just code.</li>
   <li><strong>Spread across Availability Zones, with N+1 headroom,</strong> so losing a zone is a bad afternoon, not an outage.</li>
 </ul>
@@ -1518,6 +1538,22 @@ sticky: True</pre></div>
 
 <div class="interrupt"><span class="tag">Sorry to interrupt, again</span>
 <p>I just really like those numbers. Okay. Carry on.</p>
+</div>
+
+<div class="card reading"><div class="q">Further reading: Amazon's ad stack, in public</div>
+<details class="more flat"><summary>Show the 9 public sources this post cites</summary>
+<ul class="plain" style="padding:0 18px 6px 34px">
+  <li><a href="https://aws.amazon.com/blogs/aws/reinvent-session-preview-under-the-hood-at-amazon-ads" target="_blank" rel="noopener">re:Invent session preview: Under the Hood at Amazon Ads</a> (AWS News Blog, Nov 2021): 120 ms budgets, &gt;99.9999% availability, ML scoring at scale.</li>
+  <li><a href="https://aws.amazon.com/blogs/database/amazon-ads-upgrades-to-amazon-elasticache-for-valkey-to-achieve-12-higher-throughput-and-save-over-45-in-infrastructure-costs" target="_blank" rel="noopener">Amazon Ads upgrades to ElastiCache for Valkey</a> (AWS Database Blog, Nov 2025): Sponsored Products retrieval caches, multi-cluster design, a zero-downtime migration.</li>
+  <li><a href="https://aws.amazon.com/solutions/case-studies/amazon-ads/" target="_blank" rel="noopener">Delivering Ultralow Latency Machine Learning for Amazon Ads</a> (AWS case study): local plus remote caching for product embeddings.</li>
+  <li><a href="https://aws.amazon.com/dynamodb/customers" target="_blank" rel="noopener">Amazon DynamoDB customers: Amazon Ads</a> (AWS): HBase to DynamoDB global tables, 90M reads/s at peak.</li>
+  <li><a href="https://aboutamazon.com/company-news/amazon-ftc-sponsored-ads-lawsuit-response" target="_blank" rel="noopener">Amazon's response to the FTC lawsuit regarding Sponsored Ads</a> (Amazon): how relevance and bid combine in ranking.</li>
+  <li><a href="https://advertising.amazon.com/library/guides/demand-side-platform" target="_blank" rel="noopener">What is a demand-side platform?</a> and <a href="https://advertising.amazon.com/solutions/products/amazon-dsp" target="_blank" rel="noopener">Amazon DSP</a> (Amazon Ads): the demand side.</li>
+  <li><a href="https://aps.amazon.com/aps/transparent-ad-marketplace/" target="_blank" rel="noopener">Transparent Ad Marketplace</a> and <a href="https://aps.amazon.com/aps/unified-ad-marketplace/" target="_blank" rel="noopener">Unified Ad Marketplace</a> (Amazon Publisher Services): the supply side for other publishers.</li>
+  <li><a href="https://www.admonsters.com/eletters/amazon-pub-tech-what-does-this-mean/" target="_blank" rel="noopener">Amazon PubTech… What Does This Mean?</a> (AdMonsters, Aug 2023): Amazon's supply side for its own properties.</li>
+  <li><a href="https://aws.amazon.com/blogs/aws/real-time-ad-impression-bids-using-dynamodb" target="_blank" rel="noopener">Real-Time Ad Impression Bids Using DynamoDB</a> (AWS News Blog, 2013): the classic latency-budget arithmetic.</li>
+</ul>
+</details>
 </div>
 
 <div class="card runit"><div class="q">Run it yourself</div>
