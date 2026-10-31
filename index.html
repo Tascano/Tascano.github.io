@@ -123,8 +123,17 @@
 				object-fit:cover;
 				transition:transform 0.3s ease;
 			}
-			img.avatar:hover {
-				transform:scale(1.05) rotate(2deg);
+			/* Header photo is a card: a click flips it to a second photo */
+			.avatar-flip{position:relative;flex-shrink:0;width:84px;height:84px;padding:0;border:0;border-radius:8px;background:none;cursor:pointer;perspective:600px;transition:transform 0.3s ease}
+			.avatar-flip:hover{transform:scale(1.05) rotate(2deg)}
+			.avatar-flip:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+			.avatar-flip .avatar{position:absolute;inset:0;-webkit-backface-visibility:hidden;backface-visibility:hidden;transition:transform 0.6s ease}
+			.avatar-flip .avatar-back,.avatar-flip.flipped .avatar-front{transform:rotateY(180deg)}
+			.avatar-flip.flipped .avatar-back{transform:rotateY(0)}
+			@media (prefers-reduced-motion:reduce){
+				.avatar-flip .avatar{transform:none!important;transition:opacity 0.2s ease}
+				.avatar-flip .avatar-back,.avatar-flip.flipped .avatar-front{opacity:0}
+				.avatar-flip.flipped .avatar-back{opacity:1}
 			}
 			h1{margin:0;font-size:38px;letter-spacing:0.2px}
 			.name .first{color:var(--text)}
@@ -296,7 +305,10 @@
 		
 		<div class="wrap">
 			<header>
-				<img class="avatar" src="images/avatar.webp?v=3" alt="Ambrose Tuscano" width="84" height="84">
+				<button class="avatar-flip" type="button" aria-pressed="false" aria-label="Photo of Ambrose Tuscano: flip to another photo" title="Flip me">
+					<img class="avatar avatar-front" src="images/avatar.webp?v=3" alt="" width="84" height="84">
+					<img class="avatar avatar-back" data-src="images/avatar-beach.webp" alt="" width="84" height="84">
+				</button>
 				<div>
 					<h1 class="name"><span class="first">Ambrose</span> <span class="last">Tuscano</span></h1>
 					<div class="subtitle" id="typing-text">Software Engineer II — Backend &amp; Distributed Systems</div>
@@ -620,6 +632,25 @@
 					if (player.play) player.play().catch(() => {});
 					player.focus();
 				}, { once: true });
+			});
+
+			// Header photo flip: the second photo loads on first hover, focus or tap, so the first page load stays the same
+			const avatarFlip = document.querySelector('.avatar-flip');
+			const avatarBack = avatarFlip.querySelector('.avatar-back');
+			const loadAvatarBack = () => { if (!avatarBack.getAttribute('src')) avatarBack.src = avatarBack.dataset.src; };
+			['pointerenter', 'focus', 'touchstart'].forEach(type =>
+				avatarFlip.addEventListener(type, loadAvatarBack, { once: true, passive: true }));
+			let avatarPending = false;
+			avatarFlip.addEventListener('click', () => {
+				if (avatarPending) return;
+				loadAvatarBack();
+				const flip = () => {
+					avatarPending = false;
+					avatarFlip.setAttribute('aria-pressed', avatarFlip.classList.toggle('flipped'));
+				};
+				if (avatarBack.complete) return flip();
+				avatarPending = true;
+				avatarBack.addEventListener('load', flip, { once: true });
 			});
 
 			// Scroll Progress Bar
