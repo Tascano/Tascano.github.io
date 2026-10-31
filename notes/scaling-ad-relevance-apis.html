@@ -410,6 +410,22 @@ html{scroll-padding-top:16px;}
 /* numbered safeguards */
 .arch .badge{fill:var(--accent);}
 .arch .badge-n{fill:#111;font-weight:700;font-family:var(--mono);}
+
+/* the video version, same player as the main page's intro */
+.watch{margin:0 0 26px;}
+.intro-video{border-radius:12px;overflow:hidden;border:1px solid var(--card-border);background:#000;box-shadow:0 10px 30px rgba(0,0,0,.12);transition:border-color .3s ease,box-shadow .3s ease;}
+.intro-video:hover{border-color:var(--accent);box-shadow:0 10px 30px rgba(253,181,21,.2);}
+.intro-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000;}
+.play-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;cursor:pointer;background:#000;}
+.play-facade img{display:block;width:100%;height:100%;object-fit:cover;}
+.play-btn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.play-btn svg{width:76px;height:76px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.35));transition:transform .2s ease;}
+.play-btn circle{fill:var(--accent);}
+.play-btn path{fill:#111;}
+.play-facade:hover .play-btn svg,.play-facade:focus-visible .play-btn svg{transform:scale(1.08);}
+.play-facade:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+.play-len{position:absolute;right:10px;bottom:10px;padding:2px 7px;border-radius:4px;font-size:13px;font-weight:600;color:#fff;background:rgba(0,0,0,.7);}
+.intro-note{font-size:14px;color:var(--text-muted);margin:10px 0 0;}
 </style>
 </head>
 <body>
@@ -427,6 +443,18 @@ html{scroll-padding-top:16px;}
   <span class="kicker">Field notes · Amazon Ads</span>
   <h1>A Million Questions a Second</h1>
   <p class="alt">or: how I learned to stop fetching and love the Bloom filter</p>
+  <section class="watch" id="watch" aria-label="The video version of this post">
+    <div class="intro-video">
+      <button class="play-facade" type="button" data-src="../videos/ad-relevance-explainer.mp4" data-src-small="../videos/ad-relevance-explainer-720p.mp4"
+        aria-label="Play the video version of this post (about four and a half minutes)">
+        <img src="../images/explainer-poster-960.webp" srcset="../images/explainer-poster-640.webp 640w, ../images/explainer-poster-960.webp 960w, ../images/explainer-poster-1280.webp 1280w" sizes="(max-width: 760px) 100vw, 716px" width="1280" height="720" loading="lazy" decoding="async"
+          alt="A Million Questions a Second, written on a dark canvas: 1,000,000 questions a second, 20 ms for every answer">
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
+        <span class="play-len" aria-hidden="true">4:26</span>
+      </button>
+    </div>
+    <p class="intro-note">Prefer to watch? Every animation in this post, narrated in about four and a half minutes, with captions built in. The narration is a local AI clone of my voice.</p>
+  </section>
   <p class="dek">On Amazon's supply side, every ad that any demand source wanted to show on Amazon.com went through one question first: which ads belong next to this product? Here's how we answered it over a million times a second, inside 20 milliseconds, told mostly in pictures.</p>
   <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>14 min read</span></div>
 </header>
@@ -1347,6 +1375,23 @@ ad_map = asin_to_creatives()                          <span class="c"># the ad s
     hit.addEventListener('pointermove', e => show(e.clientX));
     hit.addEventListener('pointerdown', e => show(e.clientX));
     hit.addEventListener('pointerleave', e => { if (e.pointerType !== 'mouse') return; tip.hidden = true; xh.setAttribute('visibility', 'hidden'); });  // touch: the tooltip stays until the next tap
+  });
+
+  // The video version: load the player only when someone presses play (phones and slow connections get 720p).
+  document.querySelectorAll('.play-facade').forEach(facade => {
+    facade.addEventListener('click', () => {
+      const player = document.createElement('video');
+      const conn = navigator.connection || {};
+      const small = window.matchMedia('(max-width: 900px)').matches || conn.saveData || /(^|-)(2g|3g)$/.test(conn.effectiveType || '');
+      player.src = (small && facade.dataset.srcSmall) || facade.dataset.src;
+      player.controls = true;
+      player.playsInline = true;
+      player.autoplay = true;
+      player.setAttribute('aria-label', facade.getAttribute('aria-label'));
+      facade.replaceWith(player);
+      player.play().catch(() => {});
+      player.focus();
+    }, {once: true});
   });
 
   const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
