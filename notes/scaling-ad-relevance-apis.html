@@ -239,7 +239,8 @@ figcaption{font:13px/1.5 var(--mono);color:var(--text-muted);margin-top:10px;}
 
 footer{border-top:1px solid var(--card-border);margin-top:30px;padding:30px 0 70px;}
 footer p{font-size:15px;color:var(--text-muted);}
-.bye{font-size:22px;font-weight:800;color:var(--text) !important;}
+.bye-fig{margin:0 0 22px;}
+.bye-photo{display:block;width:100%;max-width:420px;height:auto;border-radius:16px;border:1px solid var(--card-border);background:#fff;}
 
 @media (max-width:640px){
   body{font-size:16.5px;}
@@ -556,6 +557,7 @@ html{scroll-padding-top:16px;}
   <div class="stat"><div class="v">20 ms</div><div class="l">per call, end to end</div></div>
   <div class="stat"><div class="v">1M+</div><div class="l">calls a second at launch, more on Prime Day</div></div>
 </div>
+<p class="stats-cap">Illustrative: deliberately inflated or deflated, like every number about this system.</p>
 
 <p>Think beer-pairing chart, Brew Miles style: the ad server brings the dish (the product) and one beer it likes (a creative), and we name the others that go with both. A million pairings a second, no tasting allowed.</p>
 
@@ -566,7 +568,7 @@ html{scroll-padding-top:16px;}
 </ul>
 </div>
 
-<p class="note">Internal tools become public equivalents. This API's numbers come from my résumé and my own notes, Amazon's wider numbers link to public write-ups, and <em>toy</em> or <em>simulation</em> means a model I ran, not production data.</p>
+<p class="note">To keep Amazon's internal work internal, names, tools and teams are swapped for public equivalents, the design is simplified and changed in places, and <strong>every number about this system is deliberately inflated or deflated, so none of them are the real figures</strong>. Numbers linked to Amazon or AWS posts are quoted as published, and <em>toy</em> or <em>simulation</em> means a model I ran.</p>
 
 <div class="section-title" id="s-system"><span class="dot"></span><span class="n">02</span><span class="section-line"></span></div>
 <h2>The whole system, in one animation</h2>
@@ -1152,6 +1154,7 @@ ad_map = asin_to_creatives()                          <span class="c"># the ad s
   <div class="stat"><div class="v">1M+</div><div class="l">requests a second at launch, for Amazon Retail</div></div>
   <div class="stat"><div class="v">$10M</div><div class="l">a year in projected ad revenue for Amazon DSP</div></div>
 </div>
+<p class="stats-cap">Adjusted figures, not the real ones.</p>
 
 <div class="interrupt"><span class="tag">Sorry to interrupt, again</span>
 <p>I just really like those numbers. Okay. Carry on.</p>
@@ -1195,8 +1198,8 @@ ad_map = asin_to_creatives()                          <span class="c"># the ad s
 
 <footer>
 <div class="wrap">
-<p class="bye">Okay. No more interruptions. Bye!</p>
-<p>Written from my time on Amazon Ads (2022–2026). Internal systems are described through public equivalents; the numbers about this API come from my résumé and my own notes. Production was Java; the code here is short pseudocode, and every chart comes from a small simulation I ran, labelled as such.</p>
+<figure class="bye-fig"><img class="bye-photo" src="../images/bye-wave.webp" width="960" height="587" alt="Ambrose, sitting on the floor in a black hoodie, waving goodbye" loading="lazy" decoding="async"></figure>
+<p>Written from my time on Amazon Ads (2022–2026), in my own words; the views are mine, not Amazon's. Nothing here is confidential: internal names, tools and teams are replaced with public equivalents, the architecture is simplified and altered in places, and the numbers about this system are deliberately inflated or deflated, so none of them are the real figures. Numbers linked to Amazon or AWS public posts are quoted as published. The code is pseudocode, and every chart comes from a small simulation I ran.</p>
 <p>Further watching: <a href="https://youtu.be/W4EwfEU8CGA" target="_blank" rel="noopener">Cododev, "Let's Handle 1 Million Requests per Second, It's Scarier Than You Think!"</a>, which builds toward the same number from scratch.</p>
 <p>If your team is building at scale, let's talk: <a href="../">tascano.github.io</a> · <a href="../#intro">watch my 3-minute intro</a></p>
 </div>
