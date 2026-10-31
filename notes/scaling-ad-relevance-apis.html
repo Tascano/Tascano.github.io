@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>A Million Questions a Second</title>
-<meta name="description" content="How the ad-relevance API on Amazon's supply side answered over a million requests a second, mostly in diagrams and animations: precomputed ASIN-to-creative scores, a Bloom filter that says no for free, caches on both sides of the wire, a fleet scaled before Prime Day, and the garbage collector that got in the way.">
+<meta name="description" content="How the ad-relevance API on Amazon's supply side answered over a million requests a second inside 20 ms, mostly in diagrams and animations: weekly precompute, a Bloom filter, 17-way fan-out, an SNS and SQS pipeline that never loses data, failover across zones and regions, and the garbage collector that got in the way.">
 <meta property="og:type" content="article">
 <meta property="og:title" content="A Million Questions a Second">
-<meta property="og:description" content="Scaling ad-relevance APIs at Amazon Ads, in pictures: Bloom filters, caches, host scaling, GC pauses, and nine decisions with their trade-offs.">
+<meta property="og:description" content="Scaling ad-relevance APIs at Amazon Ads, in pictures: precompute, Bloom filters, fan-out, pipelines, failover, GC pauses, and twelve decisions with their trade-offs.">
 <meta property="og:image" content="https://tascano.github.io/images/og-image.jpg">
 <meta name="theme-color" content="#fdb515">
 <link rel="icon" href="../favicon.ico?v=3" sizes="any">
@@ -353,6 +353,31 @@ footer p{font-size:15px;color:var(--text-muted);}
 .dec-list .why{font-size:15.5px;margin:0;line-height:1.5;}
 .dec-list .cost{font-size:14px;color:var(--text-muted);margin-left:4px;}
 .dec-list .cost b{color:var(--text-secondary);}
+
+/* the principles map */
+html{scroll-padding-top:16px;}
+.pmap{border-left:4px solid var(--accent);}
+.pmap .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:12px;}
+.pgroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:14px 18px;}
+.pgroups div{display:flex;flex-direction:column;gap:5px;}
+.pgroups b{font-size:14.5px;}
+.pgroups a{font:13px/1.35 var(--mono);text-decoration:none;color:var(--text-secondary);}
+.pgroups a::before{content:"→ ";color:var(--accent-ink);}
+.pgroups a:hover{color:var(--accent-ink);}
+
+/* fan-out */
+.calls{display:flex;flex-wrap:wrap;gap:4px;margin:14px 0 10px;}
+.calls i{width:14px;height:14px;border-radius:3px;background:var(--capacity);}
+.meter{height:10px;border-radius:5px;background:var(--track);overflow:hidden;margin:0 0 10px;max-width:440px;}
+.meter span{display:block;height:100%;width:0;background:var(--demand);border-radius:5px;transition:width .3s;}
+
+/* pipeline and failover diagrams */
+.journey .wire{stroke:var(--card-border);stroke-width:1.5;}
+.journey .hosts rect{fill:var(--mute);}
+.journey .node.host rect{fill:var(--mute);stroke:none;}
+.journey .node.host.bad rect{fill:var(--demand);stroke:none;}
+.arch .hotk{stroke:var(--demand);stroke-width:1.8;}
+.arch .hotp{fill:var(--demand-wash);stroke:var(--demand);stroke-width:2;stroke-dasharray:5 3;}
 </style>
 </head>
 <body>
@@ -370,16 +395,17 @@ footer p{font-size:15px;color:var(--text-muted);}
   <span class="kicker">Field notes · Amazon Ads</span>
   <h1>A Million Questions a Second</h1>
   <p class="alt">or: how I learned to stop fetching and love the Bloom filter</p>
-  <p class="dek">On Amazon's supply side, every ad that any demand source wanted to show on Amazon.com first had to pass one question: does this creative belong next to this product? Here's how we answered it over a million times a second, told mostly in pictures.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>10 min read</span></div>
+  <p class="dek">On Amazon's supply side, every ad that any demand source wanted to show on Amazon.com went through one question first: which ads belong next to this product? Here's how we answered it over a million times a second, inside 20 milliseconds, told mostly in pictures.</p>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>14 min read</span></div>
 </header>
 
-<div class="code" aria-label="An example call to the relevance API">
+<div class="code" aria-label="Two example calls to the relevance API">
   <div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the question</span></div>
   <div class="term-body">
-    <div><span class="p">$</span> relevance --asin B0TRAILSHOE --creatives cr-03,cr-10</div>
-    <div class="dim">→ cr-03: 0.91 · computed last night, a lookup today</div>
-    <div class="dim">→ cr-10: not relevant · a Bloom filter said no; the database never heard about it</div>
+    <div><span class="p">$</span> relevance --asin B0TRAILSHOE --creative cr-03</div>
+    <div class="dim">→ similar: cr-08, cr-11 · built last week, a lookup today</div>
+    <div><span class="p">$</span> relevance --asin B0TRAILSHOE --creative cr-10</div>
+    <div class="dim">→ none · a Bloom filter said no; DynamoDB never heard about it</div>
     <div><span class="p">$</span> <span class="cursor"></span></div>
   </div>
 </div>
@@ -397,57 +423,68 @@ footer p{font-size:15px;color:var(--text-muted);}
 </div>
 <div class="hat" data-for="all">
 <ul>
-  <li><strong>Precompute every answer once a day,</strong> so each request is a lookup, not a search.</li>
-  <li><strong>Make "no" free</strong> with a Bloom filter, and cache on both sides of the wire.</li>
-  <li><strong>Scale a Java fleet on EC2 before the peak,</strong> and don't let the garbage collector stop the world.</li>
+  <li><strong>Precompute every answer once a week,</strong> so each of the ad server's 17 calls is one lookup.</li>
+  <li><strong>Make "no" free</strong> with a Bloom filter, keep hot keys in memory, and answer inside 20 ms.</li>
+  <li><strong>Fail small</strong>, per host, per zone, per region, and never lose a byte in the pipeline.</li>
 </ul>
 </div>
 <div class="hat" data-for="eng" hidden>
 <ul>
-  <li><strong>Bloom filter:</strong> about 9.6 bits per key for 1% false positives and zero false negatives, but only for the version it was built from.</li>
-  <li><strong>Negative-cache empty reads,</strong> so a false positive costs one database read, once.</li>
-  <li><strong>Tail latency is mostly garbage:</strong> fewer objects, flat arrays, and a collector picked for pauses.</li>
+  <li><strong>Bloom filter:</strong> about 9.6 bits per key for 1% false positives and zero false negatives, for the version it was built from.</li>
+  <li><strong>Fan-out of 17 turns a rare slow call into a common slow request.</strong> Engineer the tail, not the average.</li>
+  <li><strong>Tail latency is mostly garbage:</strong> fewer objects, flat arrays, a collector picked for pauses.</li>
 </ul>
 </div>
 <div class="hat" data-for="arch" hidden>
 <ul>
-  <li><strong>Two loops,</strong> a daily batch and a request path, joined only by one versioned dataset.</li>
-  <li><strong>Layers, cheapest first:</strong> the ad server's copy, then host memory, then a key-value database.</li>
-  <li><strong>Fail open:</strong> a late answer is no answer, so the page serves without the relevance boost.</li>
+  <li><strong>Two loops,</strong> a weekly pipeline and a call path, joined only by one versioned dataset.</li>
+  <li><strong>Regions are islands:</strong> on a 20 ms path no call crosses a region, so a region fails as a unit.</li>
+  <li><strong>Fail open:</strong> a late answer is no answer, so the page serves without the expansion.</li>
 </ul>
 </div>
 <div class="hat" data-for="pe" hidden>
 <ul>
   <li><strong>Move work out of the request.</strong> The math is cheap; moving data is not.</li>
-  <li><strong>Rebuild instead of patching</strong> when inputs are messy. An idempotent daily backfill heals itself.</li>
-  <li><strong>Version everything that travels together.</strong> Skew between copies is the quiet killer.</li>
+  <li><strong>At-least-once delivery plus idempotent writes</strong> gives exactly-once results.</li>
+  <li><strong>Version everything that travels together,</strong> and publish it like a deploy.</li>
 </ul>
 </div>
 <div class="hat" data-for="em" hidden>
 <ul>
-  <li><strong>The calendar is the capacity plan:</strong> load-test and pre-scale before Prime Day, not during it.</li>
-  <li><strong>Alarm on symptoms per host</strong> (p99, errors), with the causes one click away.</li>
-  <li><strong>Ship behind end-to-end tests and an A/B test,</strong> and keep a rollback for data, not just code.</li>
+  <li><strong>The calendar is the capacity plan:</strong> load-test and pre-scale before Prime Day.</li>
+  <li><strong>Page on symptoms per host,</strong> and on dead-letter queue depth; redrive is a runbook.</li>
+  <li><strong>Ship behind end-to-end tests and an A/B test,</strong> with a rollback for data, not just code.</li>
 </ul>
 </div>
 <div class="hat" data-for="pm" hidden>
 <ul>
   <li><strong>Relevance decides which ads get to compete.</strong> At Amazon, the highest bid doesn't win on its own.</li>
-  <li><strong>The API contract was a product decision:</strong> sending the candidates with the request is what made the scale affordable.</li>
+  <li><strong>The API contract was a product decision:</strong> sending the ad server a ready map is what made the scale affordable.</li>
   <li><strong>The outcome:</strong> over a million requests a second at launch, proven by an A/B test, projected at $10 million a year for Amazon DSP.</li>
 </ul>
 </div>
 </section>
 
-<div class="section-title"><span class="dot"></span><span class="n">01</span><span class="section-line"></span></div>
+<nav class="card pmap" aria-labelledby="pmap-t">
+<div class="q" id="pmap-t">The computer science inside, by section</div>
+<div class="pgroups">
+  <div><b>Speed</b><a href="#s-math">Little's law</a><a href="#s-precompute">precomputation</a><a href="#s-loops">caching</a><a href="#s-bloom">Bloom filters</a></div>
+  <div><b>Scale</b><a href="#s-fanout">fan-out &amp; tail latency</a><a href="#s-fanout">hash partitioning</a><a href="#s-scale">autoscaling</a><a href="#s-gc">queueing &amp; GC</a></div>
+  <div><b>Reliability</b><a href="#s-failover">redundancy</a><a href="#s-failover">static stability</a><a href="#s-failover">region isolation</a><a href="#s-visible">backoff &amp; breakers</a></div>
+  <div><b>Data</b><a href="#s-pipeline">idempotency</a><a href="#s-pipeline">queues &amp; DLQs</a><a href="#s-publish">versioning</a><a href="#s-publish">atomic swap</a></div>
+  <div><b>Proof</b><a href="#s-visible">percentiles</a><a href="#s-prove">A/B testing</a></div>
+</div>
+</nav>
+
+<div class="section-title" id="s-where"><span class="dot"></span><span class="n">01</span><span class="section-line"></span></div>
 <h2>Where we sat</h2>
 
-<p class="lede">Open a product page on Amazon.com and an ad server has milliseconds to fill its slots. Its candidates come from every demand source buying on Amazon's sites, and for each one it asks: <em>does this creative belong next to this product?</em></p>
+<p class="lede">Open a product page on Amazon.com and an ad server has milliseconds to fill its slots. Its candidates come from every demand source buying on Amazon's sites, and it asks us: <em>which ads belong next to this product?</em></p>
 
 <figure>
 <div class="fig-frame">
 <svg class="arch" viewBox="0 0 420 300" role="img" aria-labelledby="sup-t">
-<title id="sup-t">Where the API sat. Demand: Amazon DSP, Sponsored Display and other demand sources send creatives. Supply side: Amazon's ad server sends the page's ASIN plus candidate creatives to the Relevance API and gets relevance back, then shows the relevant ads on Amazon.com and Amazon's first-party sites.</title>
+<title id="sup-t">Where the API sat. Demand: Amazon DSP, Sponsored Display and other demand sources send creatives. Supply side: Amazon's ad server sends the page's ASIN plus one creative to the Relevance API, 17 times per ad request, and gets similar creatives back, then shows the relevant ads on Amazon.com and Amazon's first-party sites.</title>
 <defs>
   <marker id="sg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker>
   <marker id="sa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mka" d="M0,0 L10,5 L0,10 z"/></marker>
@@ -461,15 +498,15 @@ footer p{font-size:15px;color:var(--text-muted);}
 <text x="4" y="102" font-size="11" class="tm">SUPPLY SIDE</text>
 <rect class="bx-main" x="20" y="108" width="180" height="62" rx="8"/>
 <text x="110" y="134" text-anchor="middle" font-size="14" font-weight="700" class="t">Amazon ad server</text>
-<text x="110" y="154" text-anchor="middle" font-size="11" class="tm">fills every ad slot</text>
+<text x="110" y="154" text-anchor="middle" font-size="11" class="tm">sharded · 17 calls each</text>
 <rect class="chip-teal" x="290" y="108" width="120" height="62" rx="8"/>
 <text x="350" y="134" text-anchor="middle" font-size="14" font-weight="700" class="t">Relevance API</text>
 <text x="350" y="154" text-anchor="middle" font-size="11" class="tm">us</text>
 <text x="245" y="110" text-anchor="middle" font-size="10" class="ta">ASIN +</text>
-<text x="245" y="121" text-anchor="middle" font-size="10" class="ta">creative IDs</text>
+<text x="245" y="121" text-anchor="middle" font-size="10" class="ta">one creative</text>
 <line class="la" x1="200" y1="128" x2="286" y2="128" marker-end="url(#sa)"/>
 <line class="la" x1="290" y1="152" x2="204" y2="152" marker-end="url(#sa)"/>
-<text x="245" y="168" text-anchor="middle" font-size="10" class="ta">scores</text>
+<text x="245" y="168" text-anchor="middle" font-size="10" class="ta">similar ads</text>
 <line class="ln" x1="110" y1="170" x2="110" y2="220" marker-end="url(#sg)"/>
 <text x="118" y="200" font-size="11" class="tm">relevant ads only</text>
 <rect class="bx" x="10" y="224" width="400" height="56" rx="8"/>
@@ -477,12 +514,14 @@ footer p{font-size:15px;color:var(--text-muted);}
 <text x="210" y="267" text-anchor="middle" font-size="11" class="tm">the product page (its ASIN) is the context</text>
 </svg>
 </div>
-<figcaption>Amazon's ad server sent us the page's ASIN plus its candidate creatives; our answer decided which ads were marked relevant.</figcaption>
+<figcaption>The ad server sends a page's ASIN with one of its creatives; we answer with similar creatives, the ads that fit.</figcaption>
 </figure>
 
 <p>"<a href="https://advertising.amazon.com/library/guides/demand-side-platform" target="_blank" rel="noopener">DSPs are the shoppers at the auction, and SSPs are the sellers</a>." Amazon is both: <a href="https://advertising.amazon.com/solutions/products/amazon-dsp" target="_blank" rel="noopener">Amazon DSP</a> buys, Amazon Publisher Services sells for other publishers (<a href="https://aps.amazon.com/aps/transparent-ad-marketplace/" target="_blank" rel="noopener">TAM</a>, <a href="https://aps.amazon.com/aps/unified-ad-marketplace/" target="_blank" rel="noopener">UAM</a>), and Publisher Technology, where I worked, <a href="https://www.admonsters.com/eletters/amazon-pub-tech-what-does-this-mean/" target="_blank" rel="noopener">builds the supply side for Amazon's own properties</a>.</p>
 
-<p>Think beer-pairing chart, Brew Miles style: the ad server brings the dish (the product) and a tray of beers (the creatives), and we say which ones go. A million pairings a second, no tasting allowed.</p>
+<p>Two numbers set the rules. The ad server is sharded, so <strong>every ad request it handles becomes 17 calls to us</strong>, and <strong>each call gets 20 milliseconds</strong>. That's over a million calls a second at launch, billions a day, more on Prime Day.</p>
+
+<p>Think beer-pairing chart, Brew Miles style: the ad server brings the dish (the product) and one beer it likes (a creative), and we name the others that go with both. A million pairings a second, no tasting allowed.</p>
 
 <div class="card whatidid"><div class="q">What I did</div>
 <ul class="plain">
@@ -491,9 +530,9 @@ footer p{font-size:15px;color:var(--text-muted);}
 </ul>
 </div>
 
-<p class="note">Internal tools become public equivalents. This API's numbers are from my résumé, Amazon's wider numbers link to public write-ups, and <em>toy</em> or <em>simulation</em> means a model I ran, not production data.</p>
+<p class="note">Internal tools become public equivalents. This API's numbers come from my résumé and my own notes, Amazon's wider numbers link to public write-ups, and <em>toy</em> or <em>simulation</em> means a model I ran, not production data.</p>
 
-<div class="section-title"><span class="dot"></span><span class="n">02</span><span class="section-line"></span></div>
+<div class="section-title" id="s-math"><span class="dot"></span><span class="n">02</span><span class="section-line"></span></div>
 <h2>Do the math first</h2>
 
 <p>Two numbers shape the design: how much time you get, and how many requests are in flight while you spend it. A <a href="https://aws.amazon.com/blogs/aws/real-time-ad-impression-bids-using-dynamodb" target="_blank" rel="noopener">classic AWS example</a> slices a real-time bid like this:</p>
@@ -504,7 +543,7 @@ footer p{font-size:15px;color:var(--text-muted);}
     <span class="net" style="flex:40">40 ms</span><span class="dec" style="flex:40">40 ms</span><span class="buf" style="flex:20">20 ms</span>
   </div>
   <div class="legend tight"><span><i class="sw sw-net"></i>network round trip</span><span><i class="sw sw-dec"></i>deciding</span><span><i class="sw sw-buf"></i>jitter buffer</span></div>
-  <p class="viz-cap">Each data fetch inside "deciding" gets single-digit milliseconds. A relevance call is one slice of one slice.</p>
+  <p class="viz-cap">Every service the ad server calls lives inside "deciding". Our 20 ms per call is one slice of one slice.</p>
 </div>
 
 <p>Then <a href="https://en.wikipedia.org/wiki/Little%27s_law" target="_blank" rel="noopener">Little's law</a>: requests in flight = arrival rate × latency. Drag it:</p>
@@ -517,7 +556,7 @@ footer p{font-size:15px;color:var(--text-muted);}
   <div class="bf-stats">each dot = 100 requests in flight, at 1,000,000 requests a second</div>
 </div>
 
-<p>Every extra millisecond is another thousand requests in flight. Latency isn't a nicety at this scale; it's capacity. Hold that thought for section 08. Meanwhile, the neighbourhood, in Amazon's own public numbers:</p>
+<p>Every extra millisecond is another thousand requests in flight. Latency isn't a nicety at this scale; it's capacity. Meanwhile, the neighbourhood, in Amazon's own public numbers:</p>
 
 <div class="stats">
   <div class="stat"><div class="v">120 ms</div><div class="l">latency budget for hundreds of millions of ad requests a second</div><a class="src" href="https://aws.amazon.com/blogs/aws/reinvent-session-preview-under-the-hood-at-amazon-ads" target="_blank" rel="noopener">re:Invent 2021 preview →</a></div>
@@ -527,184 +566,172 @@ footer p{font-size:15px;color:var(--text-muted);}
 </div>
 <p class="stats-cap">Context from Amazon and AWS, not our API's numbers.</p>
 
-<div class="section-title"><span class="dot"></span><span class="n">03</span><span class="section-line"></span></div>
-<h2>Turn a search into a lookup</h2>
+<div class="section-title" id="s-precompute"><span class="dot"></span><span class="n">03</span><span class="section-line"></span></div>
+<h2>Four mappings in, two products out</h2>
 
-<p>An <strong>ASIN</strong> is a product, like the trail shoe on the page. A <strong>creative</strong> is an ad that advertises one or more ASINs. Three datasets tie them together:</p>
+<p>Every week, four mappings arrived from different teams: <strong>creative ↔ creative</strong> and <strong>ASIN ↔ ASIN</strong> similarities, and <strong>creative → ASIN</strong> and <strong>ASIN → creative</strong> mappings. From them we built two things. <strong>Our answers:</strong> one DynamoDB item per (ASIN, creative), holding its ranked similar creatives. <strong>The ad server's map:</strong> ASIN → creatives, so it knows exactly which keys to ask about. One answer, built:</p>
 
 <figure>
 <div class="fig-frame">
-<svg class="arch" viewBox="0 0 420 250" role="img" aria-labelledby="score-t">
-<title id="score-t">How a score is made. Creative cr-03 advertises B0RUNWATCH; B0RUNWATCH is 0.91 similar to the page's B0TRAILSHOE, so score(B0TRAILSHOE, cr-03) is 0.91. A new creative, cr-08, is 0.88 similar to cr-03, so in this toy rule it starts at 0.88 × 0.91, about 0.80.</title>
-<defs>
-  <marker id="cg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker>
-  <marker id="ca" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mka" d="M0,0 L10,5 L0,10 z"/></marker>
-</defs>
-<rect class="bx-main" x="10" y="14" width="150" height="46" rx="8"/>
-<text x="85" y="34" text-anchor="middle" font-size="12.5" font-weight="700" class="t">B0TRAILSHOE</text>
-<text x="85" y="50" text-anchor="middle" font-size="11" class="tm">the page</text>
-<rect class="bx" x="260" y="14" width="150" height="46" rx="8"/>
-<text x="335" y="34" text-anchor="middle" font-size="12.5" class="t">B0RUNWATCH</text>
-<text x="335" y="50" text-anchor="middle" font-size="11" class="tm">another product</text>
-<line class="ln" x1="164" y1="37" x2="256" y2="37" marker-start="url(#cg)" marker-end="url(#cg)"/>
-<text x="210" y="30" text-anchor="middle" font-size="11" class="ta">0.91</text>
-<text x="210" y="52" text-anchor="middle" font-size="10" class="tm">ASIN↔ASIN</text>
-<rect class="chip" x="260" y="104" width="150" height="46" rx="8"/>
-<text x="335" y="124" text-anchor="middle" font-size="12.5" class="t">cr-03</text>
-<text x="335" y="140" text-anchor="middle" font-size="11" class="tm">a DSP's creative</text>
-<line class="ln" x1="335" y1="104" x2="335" y2="64" marker-end="url(#cg)"/>
-<text x="341" y="88" font-size="10" class="tm">advertises</text>
-<rect class="chip" x="260" y="194" width="150" height="46" rx="8"/>
-<text x="335" y="214" text-anchor="middle" font-size="12.5" class="t">cr-08</text>
-<text x="335" y="230" text-anchor="middle" font-size="11" class="tm">new, no history</text>
-<line class="ln" x1="335" y1="194" x2="335" y2="154" marker-end="url(#cg)"/>
-<text x="341" y="172" font-size="10" class="ta">0.88</text>
-<text x="341" y="184" font-size="10" class="tm">looks like</text>
-<rect class="chip-teal" x="10" y="104" width="218" height="46" rx="8"/>
-<text x="119" y="124" text-anchor="middle" font-size="11.5" font-weight="700" class="t">score(B0TRAILSHOE, cr-03)</text>
-<text x="119" y="140" text-anchor="middle" font-size="11" class="t">= 0.91</text>
-<line class="la" x1="258" y1="127" x2="232" y2="127" marker-end="url(#ca)"/>
-<rect class="chip-teal" x="10" y="194" width="218" height="46" rx="8"/>
-<text x="119" y="214" text-anchor="middle" font-size="11.5" font-weight="700" class="t">score(B0TRAILSHOE, cr-08)</text>
-<text x="119" y="230" text-anchor="middle" font-size="11" class="t">≈ 0.88 × 0.91 = 0.80 (toy)</text>
-<line class="la" x1="258" y1="217" x2="232" y2="217" marker-end="url(#ca)"/>
-<text x="10" y="86" font-size="11" class="tm">computed in the daily batch, stored as one row</text>
+<svg class="arch" viewBox="0 0 420 250" role="img" aria-labelledby="answer-t">
+<title id="answer-t">How one stored answer is built, with toy numbers. The key is (B0TRAILSHOE, cr-03). Creatives similar to cr-03 are cr-08 (0.88), cr-11 (0.80) and cr-05 (0.62). They advertise B0TRAILSOCK, B0RUNWATCH and B0KETTLE, whose fit with B0TRAILSHOE is 0.93, 0.91 and 0.08. Similarity times fit keeps cr-08 at 0.82 and cr-11 at 0.73 and drops cr-05.</title>
+<defs><marker id="wg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bx-main" x="110" y="6" width="200" height="30" rx="8"/>
+<text x="210" y="26" text-anchor="middle" font-size="12.5" font-weight="700" class="t">(B0TRAILSHOE, cr-03)</text>
+<text x="102" y="25" text-anchor="end" font-size="10.5" class="tm">key</text>
+<text x="318" y="25" font-size="10" class="ta">from ASIN → cr</text>
+<text x="10" y="58" font-size="10.5" class="tm">similar to cr-03</text><text x="10" y="70" font-size="10" class="ta">cr ↔ cr</text>
+<text x="150" y="58" font-size="10.5" class="tm">advertises</text><text x="150" y="70" font-size="10" class="ta">cr → ASIN</text>
+<text x="290" y="58" font-size="10.5" class="tm">fits B0TRAILSHOE?</text><text x="290" y="70" font-size="10" class="ta">ASIN ↔ ASIN</text>
+<rect class="chip" x="10" y="78" width="124" height="28" rx="6"/><text x="72" y="97" text-anchor="middle" font-size="12" class="t">cr-08 · 0.88</text>
+<rect class="chip" x="10" y="114" width="124" height="28" rx="6"/><text x="72" y="133" text-anchor="middle" font-size="12" class="t">cr-11 · 0.80</text>
+<rect class="chip" x="10" y="150" width="124" height="28" rx="6"/><text x="72" y="169" text-anchor="middle" font-size="12" class="t">cr-05 · 0.62</text>
+<rect class="bx" x="150" y="78" width="124" height="28" rx="6"/><text x="212" y="97" text-anchor="middle" font-size="12" class="t">B0TRAILSOCK</text>
+<rect class="bx" x="150" y="114" width="124" height="28" rx="6"/><text x="212" y="133" text-anchor="middle" font-size="12" class="t">B0RUNWATCH</text>
+<rect class="bx" x="150" y="150" width="124" height="28" rx="6"/><text x="212" y="169" text-anchor="middle" font-size="12" class="t">B0KETTLE</text>
+<rect class="chip-teal" x="290" y="78" width="120" height="28" rx="6"/><text x="350" y="97" text-anchor="middle" font-size="12" class="t">0.93 ✓</text>
+<rect class="chip-teal" x="290" y="114" width="120" height="28" rx="6"/><text x="350" y="133" text-anchor="middle" font-size="12" class="t">0.91 ✓</text>
+<rect class="bx" x="290" y="150" width="120" height="28" rx="6"/><text x="350" y="169" text-anchor="middle" font-size="12" class="tm">0.08 ✕ dropped</text>
+<line class="ln" x1="134" y1="92" x2="148" y2="92" marker-end="url(#wg)"/><line class="ln" x1="134" y1="128" x2="148" y2="128" marker-end="url(#wg)"/><line class="ln" x1="134" y1="164" x2="148" y2="164" marker-end="url(#wg)"/>
+<line class="ln" x1="274" y1="92" x2="288" y2="92" marker-end="url(#wg)"/><line class="ln" x1="274" y1="128" x2="288" y2="128" marker-end="url(#wg)"/><line class="ln" x1="274" y1="164" x2="288" y2="164" marker-end="url(#wg)"/>
+<line class="ln" x1="210" y1="182" x2="210" y2="198" marker-end="url(#wg)"/>
+<rect class="chip-teal" x="10" y="202" width="400" height="40" rx="8"/>
+<text x="210" y="227" text-anchor="middle" font-size="12" font-weight="700" class="t">stored: (B0TRAILSHOE, cr-03) → cr-08 0.82, cr-11 0.73</text>
 </svg>
 </div>
-<figcaption>Creative → ASIN mapping, ASIN↔ASIN similarity, creative↔creative similarity. Our real features and weights stay internal; the shape is the point.</figcaption>
+<figcaption>Toy numbers: similarity × fit, kept above a threshold. Our real features and weights stay internal; the shape is the point.</figcaption>
 </figure>
 
-<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">precompute · pseudocode</span></div><pre><code><span class="c"># once a day: score every (ASIN, creative) pair worth keeping</span>
-<span class="k">for</span> creative <span class="k">in</span> creatives_from_every_dsp():
-    <span class="k">for</span> product <span class="k">in</span> advertises(creative):                  <span class="c"># creative -&gt; ASIN</span>
-        <span class="k">for</span> page, sim <span class="k">in</span> similar_asins(product):          <span class="c"># ASIN -&gt; ASIN</span>
-            score[page, creative] = <span class="b">max</span>(score[page, creative], sim)
-<span class="k">for</span> new <span class="k">in</span> creatives_without_history():                   <span class="c"># creative -&gt; creative</span>
-    <span class="k">for</span> page, s <span class="k">in</span> scores_of(lookalike(new)):
-        score[page, new] = s * similarity(new, lookalike(new))   <span class="c"># toy rule</span>
-keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span class="k">if</span> score[pair] &gt;= threshold)  <span class="c"># most pairs: not stored</span></code></pre></div>
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">precompute · pseudocode</span></div><pre><code><span class="c"># once a week: build every answer the ad server can ask for</span>
+<span class="k">for</span> asin, creatives <span class="k">in</span> asin_to_creatives():           <span class="c"># ASIN -&gt; creative</span>
+    <span class="k">for</span> c <span class="k">in</span> creatives:
+        ranked = []
+        <span class="k">for</span> other, sim <span class="k">in</span> similar_creatives(c):       <span class="c"># creative &lt;-&gt; creative</span>
+            fit = <span class="b">max</span>(asin_sim(asin, a)               <span class="c"># ASIN &lt;-&gt; ASIN</span>
+                      <span class="k">for</span> a <span class="k">in</span> advertises(other))     <span class="c"># creative -&gt; ASIN</span>
+            <span class="k">if</span> sim * fit &gt;= threshold:                <span class="c"># toy rule</span>
+                ranked.append((other, sim * fit))
+        <span class="k">if</span> ranked:
+            items[asin, c] = top_k(ranked)            <span class="c"># one DynamoDB item per key</span>
+ad_map = asin_to_creatives()                          <span class="c"># the ad server&#x27;s prefill</span></code></pre></div>
 
-<p>The move the whole system rests on is the API contract. The ad server already knew its candidates, so it sent the page's ASIN <em>with</em> their IDs, and a search became a few lookups:</p>
+<p>That's the move the whole system rests on: the ad server never searches and never resolves a similarity. It reads its map, sends one (ASIN, creative) per call, and gets a finished list back:</p>
 
 <div class="widget" id="rgrid">
   <div class="widget-title">Animation · one search versus three lookups</div>
   <div class="btns" role="group" aria-label="Pick a request">
     <button class="btn" type="button" data-mode="search">Send only the ASIN</button>
-    <button class="btn" type="button" data-mode="lookup">Send the ASIN + 3 candidates</button>
+    <button class="btn" type="button" data-mode="lookup">Send 3 keys from the map</button>
   </div>
   <div class="rgrid" aria-hidden="true"></div>
-  <div class="key"><span><i class="s"></i>stored score (darker = higher)</span><span><i></i>not stored</span></div>
+  <div class="key"><span><i class="s"></i>stored answer</span><span><i></i>nothing stored</span></div>
   <p class="readout" aria-live="polite">Each row is a product, each column a creative. Pick a request.</p>
   <div class="meters"><span>cells read: <b id="rg-m">–</b></span></div>
 </div>
 
-<div class="section-title"><span class="dot"></span><span class="n">04</span><span class="section-line"></span></div>
+<div class="section-title" id="s-loops"><span class="dot"></span><span class="n">04</span><span class="section-line"></span></div>
 <h2>Two loops, one version</h2>
 
-<p>Once a day, a pipeline publishes one version of every answer, everywhere. On every request, each layer tries to answer before the next, pricier one.</p>
+<p>Once a week, a pipeline publishes one version of everything, everywhere. On every call, each layer tries to answer before the next, pricier one.</p>
 
 <figure>
 <div class="fig-frame">
-<svg class="arch" viewBox="0 0 420 392" role="img" aria-labelledby="arch-t">
-<title id="arch-t">Architecture. Once a day, creatives from the DSPs, the creative-to-ASIN mapping and the ASIN catalog feed a backfill pipeline that computes ASIN and creative similarities, joins them into (ASIN, creative) pairs, validates and publishes one version to three places: the ad servers' local copies, the relevance API hosts and the key-value database. On every request, the ad server checks its local copy, calls the relevance API only on a local miss, and the API reads the database only when its Bloom filter says maybe.</title>
+<svg class="arch" viewBox="0 0 420 400" role="img" aria-labelledby="arch-t">
+<title id="arch-t">Architecture. Once a week, four mappings (creative to creative, ASIN to ASIN, creative to ASIN, ASIN to creative) feed an event-driven pipeline on SNS and SQS that builds, validates and publishes one version to three places: the ad servers' ASIN-to-creative map, the relevance API hosts' Bloom filter, and DynamoDB items mapping (ASIN, creative) to similar creatives. On every call, one of the ad server's 17 shards sends an ASIN and a creative; the API answers from its Bloom filter or cache, and reads DynamoDB only on a maybe and a cache miss.</title>
 <defs>
   <marker id="ag" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker>
   <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mka" d="M0,0 L10,5 L0,10 z"/></marker>
 </defs>
-<text x="4" y="12" font-size="11" class="tm">ONCE A DAY</text>
-<rect class="bx" x="34" y="24" width="104" height="34" rx="6"/><text x="86" y="45" text-anchor="middle" font-size="12" class="t">DSP creatives</text>
-<rect class="bx" x="158" y="24" width="104" height="34" rx="6"/><text x="210" y="45" text-anchor="middle" font-size="12" class="t">creative→ASIN</text>
-<rect class="bx" x="282" y="24" width="104" height="34" rx="6"/><text x="334" y="45" text-anchor="middle" font-size="12" class="t">ASIN catalog</text>
-<line class="ln" x1="86" y1="58" x2="86" y2="84" marker-end="url(#ag)"/><line class="ln" x1="210" y1="58" x2="210" y2="84" marker-end="url(#ag)"/><line class="ln" x1="334" y1="58" x2="334" y2="84" marker-end="url(#ag)"/>
-<rect class="pipe" x="10" y="88" width="400" height="66" rx="8"/>
-<text x="210" y="113" text-anchor="middle" font-size="15" class="pipe-t">Daily backfill pipeline</text>
-<text x="210" y="138" text-anchor="middle" font-size="12" class="pipe-a">similarities → join pairs → validate → publish v(day)</text>
-<line class="ln" x1="70" y1="154" x2="70" y2="226" stroke-dasharray="4 3" marker-end="url(#ag)"/>
-<line class="ln" x1="210" y1="154" x2="210" y2="226" stroke-dasharray="4 3" marker-end="url(#ag)"/>
-<line class="ln" x1="350" y1="154" x2="350" y2="226" stroke-dasharray="4 3" marker-end="url(#ag)"/>
-<text x="218" y="176" font-size="11" class="tm">same version</text>
-<text x="218" y="190" font-size="11" class="tm">to all three</text>
-<line class="rule" x1="4" y1="206" x2="416" y2="206"/>
-<text x="84" y="222" font-size="11" class="tm">EVERY REQUEST</text>
-<rect class="bx-main" x="10" y="230" width="120" height="112" rx="8"/>
-<text x="70" y="254" text-anchor="middle" font-size="14" font-weight="700" class="t">Ad servers</text>
-<rect class="chip-teal" x="18" y="268" width="104" height="58" rx="6"/>
-<text x="70" y="290" text-anchor="middle" font-size="12" class="t">local copy</text>
-<text x="70" y="308" text-anchor="middle" font-size="11" class="tm">refreshed daily</text>
-<rect class="bx-main" x="150" y="230" width="120" height="112" rx="8"/>
-<text x="210" y="250" text-anchor="middle" font-size="14" font-weight="700" class="t">Relevance API</text>
-<text x="210" y="266" text-anchor="middle" font-size="11" class="tm">Java · EC2 fleet</text>
-<rect class="chip" x="158" y="276" width="104" height="26" rx="6"/><text x="210" y="293" text-anchor="middle" font-size="12" class="t">Bloom filter</text>
-<rect class="chip" x="158" y="308" width="104" height="26" rx="6"/><text x="210" y="325" text-anchor="middle" font-size="11.5" class="t">hot-key cache</text>
-<rect class="bx-main" x="290" y="230" width="120" height="112" rx="8"/>
-<text x="350" y="254" text-anchor="middle" font-size="14" font-weight="700" class="t">Key-value DB</text>
-<text x="350" y="290" text-anchor="middle" font-size="12" class="t">every pair</text>
-<text x="350" y="308" text-anchor="middle" font-size="11" class="tm">one read per</text>
-<text x="350" y="323" text-anchor="middle" font-size="11" class="tm">"maybe"</text>
-<line class="la" x1="130" y1="286" x2="146" y2="286" marker-end="url(#ar)"/>
-<line class="la" x1="270" y1="286" x2="286" y2="286" marker-end="url(#ar)"/>
-<line class="la" x1="140" y1="292" x2="140" y2="350" stroke-width="1"/>
-<line class="la" x1="280" y1="292" x2="280" y2="350" stroke-width="1"/>
-<text x="140" y="362" text-anchor="middle" font-size="11" class="ta">local miss</text>
-<text x="280" y="362" text-anchor="middle" font-size="11" class="ta">filter: maybe</text>
-<text x="210" y="384" text-anchor="middle" font-size="11" class="tm">each layer stops most requests before the next</text>
+<text x="4" y="12" font-size="11" class="tm">ONCE A WEEK · cr = creative</text>
+<rect class="bx" x="10" y="22" width="94" height="32" rx="6"/><text x="57" y="42" text-anchor="middle" font-size="11.5" class="t">cr ↔ cr</text>
+<rect class="bx" x="112" y="22" width="94" height="32" rx="6"/><text x="159" y="42" text-anchor="middle" font-size="11.5" class="t">ASIN ↔ ASIN</text>
+<rect class="bx" x="214" y="22" width="94" height="32" rx="6"/><text x="261" y="42" text-anchor="middle" font-size="11.5" class="t">cr → ASIN</text>
+<rect class="bx" x="316" y="22" width="94" height="32" rx="6"/><text x="363" y="42" text-anchor="middle" font-size="11.5" class="t">ASIN → cr</text>
+<line class="ln" x1="57" y1="54" x2="57" y2="80" marker-end="url(#ag)"/><line class="ln" x1="159" y1="54" x2="159" y2="80" marker-end="url(#ag)"/><line class="ln" x1="261" y1="54" x2="261" y2="80" marker-end="url(#ag)"/><line class="ln" x1="363" y1="54" x2="363" y2="80" marker-end="url(#ag)"/>
+<rect class="pipe" x="10" y="84" width="400" height="62" rx="8"/>
+<text x="210" y="108" text-anchor="middle" font-size="15" class="pipe-t">Weekly pipeline</text>
+<text x="210" y="132" text-anchor="middle" font-size="11.5" class="pipe-a">SNS → SQS stages → validate → publish v(week)</text>
+<line class="ln" x1="70" y1="146" x2="70" y2="222" stroke-dasharray="4 3" marker-end="url(#ag)"/>
+<line class="ln" x1="210" y1="146" x2="210" y2="222" stroke-dasharray="4 3" marker-end="url(#ag)"/>
+<line class="ln" x1="350" y1="146" x2="350" y2="222" stroke-dasharray="4 3" marker-end="url(#ag)"/>
+<text x="218" y="170" font-size="11" class="tm">same version</text>
+<text x="218" y="184" font-size="11" class="tm">to all three</text>
+<line class="rule" x1="4" y1="200" x2="416" y2="200"/>
+<text x="84" y="216" font-size="11" class="tm">EVERY CALL</text>
+<rect class="bx-main" x="10" y="226" width="120" height="118" rx="8"/>
+<text x="70" y="248" text-anchor="middle" font-size="14" font-weight="700" class="t">Ad servers</text>
+<rect class="chip-teal" x="18" y="260" width="104" height="28" rx="6"/><text x="70" y="279" text-anchor="middle" font-size="12" class="t">ASIN→cr map</text>
+<rect class="chip" x="18" y="298" width="104" height="28" rx="6"/><text x="70" y="317" text-anchor="middle" font-size="12" class="t">17 shards</text>
+<rect class="bx-main" x="150" y="226" width="120" height="118" rx="8"/>
+<text x="210" y="246" text-anchor="middle" font-size="14" font-weight="700" class="t">Relevance API</text>
+<text x="210" y="262" text-anchor="middle" font-size="11" class="tm">Java · EC2 fleet</text>
+<rect class="chip" x="158" y="272" width="104" height="26" rx="6"/><text x="210" y="289" text-anchor="middle" font-size="12" class="t">Bloom filter</text>
+<rect class="chip" x="158" y="306" width="104" height="26" rx="6"/><text x="210" y="323" text-anchor="middle" font-size="11.5" class="t">hot-key cache</text>
+<rect class="bx-main" x="290" y="226" width="120" height="118" rx="8"/>
+<text x="350" y="248" text-anchor="middle" font-size="14" font-weight="700" class="t">DynamoDB</text>
+<text x="350" y="282" text-anchor="middle" font-size="12" class="t">(ASIN, cr) →</text>
+<text x="350" y="300" text-anchor="middle" font-size="12" class="t">similar</text>
+<text x="350" y="318" text-anchor="middle" font-size="12" class="t">creatives</text>
+<line class="la" x1="130" y1="284" x2="146" y2="284" marker-end="url(#ar)"/>
+<line class="la" x1="270" y1="284" x2="286" y2="284" marker-end="url(#ar)"/>
+<line class="la" x1="140" y1="290" x2="140" y2="352" stroke-width="1"/>
+<line class="la" x1="280" y1="290" x2="280" y2="352" stroke-width="1"/>
+<text x="140" y="364" text-anchor="middle" font-size="11" class="ta">ASIN + cr, ×17</text>
+<text x="280" y="364" text-anchor="middle" font-size="11" class="ta">maybe + miss</text>
+<text x="210" y="390" text-anchor="middle" font-size="11" class="tm">each layer stops most calls before the next</text>
 </svg>
 </div>
-<figcaption>Public equivalents: a Java RPC service (Smithy- or gRPC-style) on EC2 Auto Scaling behind a load balancer, a DynamoDB-style key-value store, and a Spark or Glue batch.</figcaption>
+<figcaption>The service framework is internal; think a Java RPC service (Smithy- or gRPC-style) on EC2 Auto Scaling behind a load balancer.</figcaption>
 </figure>
 
+<p>Follow one of the 17 calls:</p>
 
 <div class="widget" id="journey">
-  <div class="widget-title">Animation · where a request stops</div>
-  <div class="btns" role="group" aria-label="Pick a request">
-    <button class="btn" type="button" data-route="local">Hot on the ad server</button>
-    <button class="btn" type="button" data-route="bloom">Not in the dataset</button>
-    <button class="btn" type="button" data-route="host">Hot on our host</button>
+  <div class="widget-title">Animation · where one call stops</div>
+  <div class="btns" role="group" aria-label="Pick a call">
+    <button class="btn" type="button" data-route="local">ASIN not in the map</button>
+    <button class="btn" type="button" data-route="bloom">Key not stored</button>
+    <button class="btn" type="button" data-route="host">Hot key</button>
     <button class="btn" type="button" data-route="db">Full lookup</button>
   </div>
   <div class="journey">
     <svg viewBox="0 0 300 380" aria-hidden="true">
-      <g class="node" data-node="ad"><rect x="10" y="10" width="280" height="96" rx="10"/><text x="24" y="36" font-size="15" font-weight="700">Ad server</text><text x="24" y="56" font-size="11.5" class="sub">needs: ASIN × creative score</text></g>
-      <g class="node" data-node="local"><rect x="150" y="66" width="128" height="30" rx="6"/><text x="214" y="86" font-size="12" text-anchor="middle">local copy</text></g>
-      <text x="150" y="132" font-size="11" text-anchor="middle" class="sub">network call</text>
+      <g class="node" data-node="ad"><rect x="10" y="10" width="280" height="96" rx="10"/><text x="24" y="36" font-size="15" font-weight="700">Ad-server shard</text><text x="24" y="56" font-size="11.5" class="sub">1 of 17 for this ad request</text></g>
+      <g class="node" data-node="local"><rect x="150" y="66" width="128" height="30" rx="6"/><text x="214" y="86" font-size="12" text-anchor="middle">ASIN→cr map</text></g>
+      <text x="150" y="132" font-size="11" text-anchor="middle" class="sub">one call · 20 ms budget</text>
       <g class="node" data-node="svc"><rect x="10" y="146" width="280" height="132" rx="10"/><text x="24" y="172" font-size="15" font-weight="700">Relevance API host</text></g>
-      <g class="node" data-node="bloom"><rect x="24" y="186" width="252" height="34" rx="6"/><text x="150" y="208" font-size="12" text-anchor="middle">Bloom filter: in the dataset?</text></g>
+      <g class="node" data-node="bloom"><rect x="24" y="186" width="252" height="34" rx="6"/><text x="150" y="208" font-size="12" text-anchor="middle">Bloom filter: key stored?</text></g>
       <g class="node" data-node="cache"><rect x="24" y="230" width="252" height="34" rx="6"/><text x="150" y="252" font-size="12" text-anchor="middle">hot-key cache</text></g>
-      <text x="150" y="304" font-size="11" text-anchor="middle" class="sub">one database read</text>
-      <g class="node" data-node="db"><rect x="10" y="318" width="280" height="52" rx="10"/><text x="150" y="350" font-size="15" font-weight="700" text-anchor="middle">Key-value DB</text></g>
-      <circle id="dot" cx="150" cy="40" r="7" stroke-width="2" opacity="0"/>
+      <text x="150" y="304" font-size="11" text-anchor="middle" class="sub">one DynamoDB read</text>
+      <g class="node" data-node="db"><rect x="10" y="318" width="280" height="52" rx="10"/><text x="150" y="350" font-size="15" font-weight="700" text-anchor="middle">DynamoDB</text></g>
+      <circle id="dot" cx="262" cy="32" r="7" stroke-width="2" opacity="0"/>
     </svg>
     <div>
-      <ol class="log" aria-live="polite"><li>Pick a journey above to send a request.</li></ol>
-      <div class="meters"><span>network calls: <b id="m-net">–</b></span><span>database reads: <b id="m-db">–</b></span></div>
+      <ol class="log" aria-live="polite"><li>Pick a call above to send it.</li></ol>
+      <div class="meters"><span>calls to us: <b id="m-net">–</b></span><span>DynamoDB reads: <b id="m-db">–</b></span></div>
     </div>
   </div>
 </div>
 
-<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">hot path · pseudocode</span></div><pre><code><span class="k">def</span> <span class="f">relevance</span>(asin, creatives):
-    snap = live_snapshot()                    <span class="c"># one data version for the whole request</span>
-    scores, misses = {}, []
-    <span class="k">for</span> c <span class="k">in</span> creatives:
-        key = (asin, c)
-        <span class="k">if</span> <span class="k">not</span> snap.bloom.might_contain(key):
-            scores[c] = <span class="n">0</span>                     <span class="c"># definitely not stored: no I/O at all</span>
-        <span class="k">elif</span> (hit := snap.cache.get(key)) <span class="k">is</span> <span class="k">not</span> <span class="k">None</span>:
-            scores[c] = hit                   <span class="c"># hot key: host memory</span>
-        <span class="k">else</span>:
-            misses.append(key)
-    <span class="k">for</span> key, s <span class="k">in</span> snap.db.batch_get(misses):  <span class="c"># one batched read for the rest</span>
-        snap.cache.put(key, s <span class="k">or</span> <span class="n">0</span>)           <span class="c"># cache empty answers too</span>
-        scores[key[<span class="n">1</span>]] = s <span class="k">or</span> <span class="n">0</span>
-    <span class="k">return</span> scores</code></pre></div>
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">hot path · pseudocode</span></div><pre><code><span class="k">def</span> <span class="f">similar_creatives</span>(asin, creative, deadline):
+    snap = live_snapshot()                    <span class="c"># one data version for the whole call</span>
+    key = (asin, creative)
+    <span class="k">if</span> <span class="k">not</span> snap.bloom.might_contain(key):
+        <span class="k">return</span> []                             <span class="c"># definitely nothing stored: no I/O</span>
+    hit = snap.cache.get(key)
+    <span class="k">if</span> hit <span class="k">is</span> <span class="k">None</span>:
+        hit = snap.ddb.get_item(key, deadline) <span class="k">or</span> []   <span class="c"># one read, inside 20 ms</span>
+        snap.cache.put(key, hit)              <span class="c"># cache empty answers too</span>
+    <span class="k">return</span> hit                                <span class="c"># ranked similar creatives</span></code></pre></div>
 
-<div class="viz "><div class="viz-title">Database reads for the same 60,000 requests (toy run)</div><div class="hb"><div class="hb-row" tabindex="0" data-tip="every lookup goes to the database: 300,000"><div class="hb-label">every lookup goes to the database</div><div class="hb-track"><span class="hb-bar " style="--f:1.0000"></span><b class="hb-val">300,000</b></div></div><div class="hb-row" tabindex="0" data-tip="+ the Bloom filter answers “no”: 72,154"><div class="hb-label">+ the Bloom filter answers “no”</div><div class="hb-track"><span class="hb-bar " style="--f:0.2405"></span><b class="hb-val">72,154</b></div></div><div class="hb-row" tabindex="0" data-tip="+ the host cache answers hot keys: 20,565"><div class="hb-label">+ the host cache answers hot keys</div><div class="hb-track"><span class="hb-bar " style="--f:0.0685"></span><b class="hb-val">20,565</b></div></div></div><p class="viz-cap">Toy world: 2,000 ASINs × 100 creatives, 50,000 stored pairs, skewed popularity. The ad servers’ own copy sits upstream: every hit there is a call we never see.</p></div>
+<div class="viz "><div class="viz-title">DynamoDB reads for the same 300,000 lookups (toy run)</div><div class="hb"><div class="hb-row" tabindex="0" data-tip="every lookup goes to DynamoDB: 300,000"><div class="hb-label">every lookup goes to DynamoDB</div><div class="hb-track"><span class="hb-bar " style="--f:1.0000"></span><b class="hb-val">300,000</b></div></div><div class="hb-row" tabindex="0" data-tip="+ the Bloom filter answers “no”: 72,154"><div class="hb-label">+ the Bloom filter answers “no”</div><div class="hb-track"><span class="hb-bar " style="--f:0.2405"></span><b class="hb-val">72,154</b></div></div><div class="hb-row" tabindex="0" data-tip="+ the host cache answers hot keys: 20,565"><div class="hb-label">+ the host cache answers hot keys</div><div class="hb-track"><span class="hb-bar " style="--f:0.0685"></span><b class="hb-val">20,565</b></div></div></div><p class="viz-cap">Toy world: 2,000 ASINs × 100 creatives, 50,000 stored keys, skewed popularity. The ad server’s map sits upstream: an ASIN with nothing in it never calls us at all.</p></div>
 
 <p>Same shape in public: Amazon Ads' ML serving keeps popular items in a local cache and the rest in ElastiCache (<a href="https://aws.amazon.com/solutions/case-studies/amazon-ads/" target="_blank" rel="noopener">AWS case study</a>).</p>
 
-<div class="section-title"><span class="dot"></span><span class="n">05</span><span class="section-line"></span></div>
+<div class="section-title" id="s-bloom"><span class="dot"></span><span class="n">05</span><span class="section-line"></span></div>
 <h2>Make "no" free: the Bloom filter</h2>
 
-<p>Most pairs aren't stored, and learning that from the database is an empty read: at a million a second, a whole fleet spent learning nothing. A <strong>Bloom filter</strong> is a bouncer with a compressed guest list, a bit array and <em>k</em> hashes:</p>
+<p>Not every pair in the map has an answer: only pairs with similar creatives above the threshold get an item, and a creative that arrives mid-week has none yet. Learning that from DynamoDB is an empty read: at a million a second, a fleet spent learning nothing. A <strong>Bloom filter</strong> is a bouncer with a compressed guest list, a bit array and <em>k</em> hashes:</p>
 
 <div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">bloom · pseudocode</span></div><pre><code><span class="k">def</span> <span class="f">add</span>(key):
     <span class="k">for</span> i <span class="k">in</span> <span class="b">range</span>(k):
@@ -737,49 +764,131 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
 
 <div class="viz "><div class="viz-title">Memory for 100 million keys</div><div class="hb"><div class="hb-row" tabindex="0" data-tip="Bloom filter, 1% false positives: 114 MiB"><div class="hb-label">Bloom filter, 1% false positives</div><div class="hb-track"><span class="hb-bar teal" style="--f:0.1494"></span><b class="hb-val">114 MiB</b></div></div><div class="hb-row" tabindex="0" data-tip="Bloom filter, 0.1% false positives: 171 MiB"><div class="hb-label">Bloom filter, 0.1% false positives</div><div class="hb-track"><span class="hb-bar teal" style="--f:0.2241"></span><b class="hb-val">171 MiB</b></div></div><div class="hb-row" tabindex="0" data-tip="exact set, even as 8-byte hashes: 763 MiB"><div class="hb-label">exact set, even as 8-byte hashes</div><div class="hb-track"><span class="hb-bar mute" style="--f:1.0000"></span><b class="hb-val">763 MiB</b></div></div></div><p class="viz-cap">About 9.6 bits a key buys 1%, however long the key. A worked example, not our dataset.</p></div>
 
-<p><strong>The catch is versions.</strong> Pair tomorrow's rows with yesterday's filter and it says "definitely not" about pairs that now exist. So the filter and the rows ship together, as one version.</p>
+<p><strong>The catch is versions.</strong> Pair next week's items with this week's filter and it says "definitely not" about pairs that now exist. So the filter and the items ship together, as one version.</p>
 
-<div class="section-title"><span class="dot"></span><span class="n">06</span><span class="section-line"></span></div>
-<h2>Rebuild everything, every day</h2>
+<div class="section-title" id="s-fanout"><span class="dot"></span><span class="n">06</span><span class="section-line"></span></div>
+<h2>Seventeen calls, one answer</h2>
 
-<p>Creatives, mappings and catalog data came from several DSPs and teams, on their own schedules, sometimes late or corrected. So every day the pipeline rebuilt everything from scratch: run it twice, get the same answer, and a bad day heals itself tomorrow. Press play:</p>
+<p>An ad request is only as fast as the slowest of its 17 calls. That's "<a href="https://research.google/pubs/the-tail-at-scale/" target="_blank" rel="noopener">The Tail at Scale</a>": fan-out turns a rare slow call into a common slow request. Drag it:</p>
+
+<div class="widget" id="tail">
+  <div class="widget-title">Interactive · the slowest call sets the pace</div>
+  <div class="range"><label for="tl-n">calls per ad request: <b id="tl-v">17</b></label><input id="tl-n" type="range" min="1" max="40" step="1" value="17"></div>
+  <div class="calls" aria-hidden="true"></div>
+  <div class="meter" aria-hidden="true"><span></span></div>
+  <p class="readout" id="tl-out" aria-live="polite"></p>
+</div>
+
+<p>Fan-out multiplies load too: every ad request costs 17 calls, so capacity plans start from the fan-out, not from page views. What keeps it fast is a tiny tail per call (memory, not disk; few GC pauses) and a <strong>hard 20 ms deadline</strong>, so one slow answer is dropped rather than waited for. Partial results beat late results.</p>
+
+<p>Our side is sharded too, by DynamoDB, which spreads items across partitions by a hash of the key:</p>
+
+<figure>
+<div class="fig-frame">
+<svg class="arch" viewBox="0 0 420 186" role="img" aria-labelledby="part-t">
+<title id="part-t">Hash partitioning. Three keys hash to partitions P1, P3 and P5. A viral product's key always lands on P5, making it hot; the host cache in front absorbs its repeats.</title>
+<defs><marker id="pg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bx" x="10" y="8" width="128" height="30" rx="6"/><text x="74" y="27" text-anchor="middle" font-size="11" class="t">B0TRAILSHOE, cr-03</text>
+<rect class="bx" x="146" y="8" width="128" height="30" rx="6"/><text x="210" y="27" text-anchor="middle" font-size="11" class="t">B0TENT, cr-04</text>
+<rect class="bx hotk" x="282" y="8" width="128" height="30" rx="6"/><text x="346" y="27" text-anchor="middle" font-size="11" class="t">B0VIRAL, cr-42</text>
+<line class="ln" x1="74" y1="38" x2="44" y2="106" marker-end="url(#pg)"/>
+<line class="ln" x1="210" y1="38" x2="180" y2="106" marker-end="url(#pg)"/>
+<line class="ln" x1="346" y1="38" x2="345" y2="56" marker-end="url(#pg)"/>
+<rect class="chip-teal" x="294" y="58" width="112" height="36" rx="6"/><text x="350" y="73" text-anchor="middle" font-size="11" class="t">host cache</text>
+<text x="350" y="88" text-anchor="middle" font-size="10" class="tm">absorbs repeats</text>
+<line class="ln" x1="326" y1="94" x2="316" y2="106" stroke-dasharray="4 3" marker-end="url(#pg)"/>
+<text x="120" y="70" text-anchor="middle" font-size="11" class="ta">hash(key)</text>
+<rect class="bx" x="10" y="110" width="62" height="40" rx="6"/><text x="41" y="135" text-anchor="middle" font-size="12" class="t">P1</text>
+<rect class="bx" x="78" y="110" width="62" height="40" rx="6"/><text x="109" y="135" text-anchor="middle" font-size="12" class="t">P2</text>
+<rect class="bx" x="146" y="110" width="62" height="40" rx="6"/><text x="177" y="135" text-anchor="middle" font-size="12" class="t">P3</text>
+<rect class="bx" x="214" y="110" width="62" height="40" rx="6"/><text x="245" y="135" text-anchor="middle" font-size="12" class="t">P4</text>
+<rect class="bx hotp" x="282" y="110" width="62" height="40" rx="6"/><text x="313" y="135" text-anchor="middle" font-size="12" font-weight="700" class="t">P5 hot</text>
+<rect class="bx" x="350" y="110" width="62" height="40" rx="6"/><text x="381" y="135" text-anchor="middle" font-size="12" class="t">P6</text>
+<text x="210" y="174" text-anchor="middle" font-size="11" class="tm">a good key spreads load; a hot key still lands on one partition</text>
+</svg>
+</div>
+<figcaption>See DynamoDB's guide to <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html" target="_blank" rel="noopener">partition key design</a>. Hot keys are also why the cache sits on every host.</figcaption>
+</figure>
+
+<div class="section-title" id="s-pipeline"><span class="dot"></span><span class="n">07</span><span class="section-line"></span></div>
+<h2>The weekly pipeline never loses a byte</h2>
+
+<p>Four inputs from different teams arrive on their own schedules, sometimes late, sometimes corrected. So the pipeline is a chain of stages joined by queues: <a href="https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html" target="_blank" rel="noopener">SNS fans each "dataset ready" event out to SQS queues</a>, and workers pull from them. The queue is the contract between stages: it absorbs bursts, survives crashes, and never drops a message silently. Pick what happens:</p>
+
+<div class="widget" id="pipeline">
+  <div class="widget-title">Animation · one message's life</div>
+  <div class="btns" role="group" aria-label="Pick what happens">
+    <button class="btn" type="button" data-s="ok">A normal message</button>
+    <button class="btn" type="button" data-s="crash">A worker crashes</button>
+    <button class="btn" type="button" data-s="poison">A poison message</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 286" aria-hidden="true">
+      <line class="wire" x1="150" y1="42" x2="150" y2="62"/><line class="wire" x1="110" y1="96" x2="77" y2="116"/><line class="wire" x1="190" y1="96" x2="222" y2="116"/>
+      <line class="wire" x1="77" y1="156" x2="77" y2="176"/><line class="wire" x1="77" y1="216" x2="77" y2="236"/><line class="wire" x1="140" y1="156" x2="170" y2="176"/>
+      <g class="node" data-node="s3"><rect x="10" y="8" width="280" height="34" rx="6"/><text x="150" y="30" font-size="12" text-anchor="middle">S3 · week 44's dataset lands</text></g>
+      <g class="node" data-node="sns"><rect x="60" y="62" width="180" height="34" rx="17"/><text x="150" y="84" font-size="12" text-anchor="middle">SNS · dataset-ready</text></g>
+      <g class="node" data-node="qa"><rect x="10" y="116" width="135" height="40" rx="6"/><text x="77" y="133" font-size="11.5" text-anchor="middle">SQS · build</text><text x="77" y="148" font-size="10.5" text-anchor="middle" class="sub">receives: <tspan id="pl-rc" data-reset="0">0</tspan></text></g>
+      <g class="node" data-node="qb"><rect x="155" y="116" width="135" height="40" rx="6"/><text x="222" y="140" font-size="11.5" text-anchor="middle">SQS · audit trail</text></g>
+      <g class="node" data-node="w"><rect x="10" y="176" width="135" height="40" rx="6"/><text x="77" y="193" font-size="11.5" text-anchor="middle">workers</text><text x="77" y="208" font-size="10.5" text-anchor="middle" class="sub">scale on queue depth</text></g>
+      <g class="node" data-node="dlq"><rect x="155" y="176" width="135" height="40" rx="6"/><text x="222" y="193" font-size="11.5" text-anchor="middle">dead-letter queue</text><text x="222" y="208" font-size="10.5" text-anchor="middle" class="sub">after 3 receives</text></g>
+      <g class="node" data-node="out"><rect x="10" y="236" width="280" height="42" rx="6"/><text x="150" y="254" font-size="11.5" text-anchor="middle">output · key = dataset + week + chunk</text><text x="150" y="270" font-size="10.5" text-anchor="middle" class="sub">written once: <tspan id="pl-out" data-reset="–">–</tspan></text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick what happens to the message.</li></ol></div>
+  </div>
+</div>
+
+<ul class="checks">
+  <li><b>immutable inputs</b>Every dataset lands in versioned S3 and is never edited in place, so any week can be rebuilt.</li>
+  <li><b>idempotent writes</b>SQS delivers at least once, so every output is keyed by dataset, week and chunk (<a href="https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/" target="_blank" rel="noopener">why</a>).</li>
+  <li><b>retries, then a DLQ</b>Back off, retry, and after a few receives park it in a <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html" target="_blank" rel="noopener">dead-letter queue</a>; alarm, fix, redrive.</li>
+  <li><b>backpressure</b>Workers scale on queue depth and the age of the oldest message, not on CPU.</li>
+  <li><b>reconcile</b>Rows in = rows out + rows rejected, at every stage. A gap is a page, not a shrug.</li>
+  <li><b>lineage</b>Every output records which input versions built it.</li>
+</ul>
+
+<div class="section-title" id="s-publish"><span class="dot"></span><span class="n">08</span><span class="section-line"></span></div>
+<h2>Publish data like a deploy</h2>
+
+<p>The rebuild runs from scratch every week: run it twice, get the same answer, and a bad week heals itself the next. But before anything serves, the new week has to prove it looks like the last. Press play:</p>
 
 <div class="widget" id="publish">
-  <div class="widget-title">Animation · the daily publish</div>
-  <div class="btns" role="group" aria-label="Pick a day">
-    <button class="btn" type="button" data-day="good">A normal day</button>
-    <button class="btn" type="button" data-day="bad">A bad-data day</button>
+  <div class="widget-title">Animation · the weekly publish</div>
+  <div class="btns" role="group" aria-label="Pick a week">
+    <button class="btn" type="button" data-day="good">A normal week</button>
+    <button class="btn" type="button" data-day="bad">A bad-data week</button>
   </div>
   <div class="journey">
     <svg viewBox="0 0 300 350" aria-hidden="true">
-      <g class="node" data-node="s1"><rect x="10" y="8" width="280" height="32" rx="6"/><text x="22" y="29" font-size="11.5">1 · pull creatives, mappings, catalog</text></g>
-      <g class="node" data-node="s2"><rect x="10" y="48" width="280" height="32" rx="6"/><text x="22" y="69" font-size="11.5">2 · ASIN↔ASIN, creative↔creative</text></g>
-      <g class="node" data-node="s3"><rect x="10" y="88" width="280" height="32" rx="6"/><text x="22" y="109" font-size="11.5">3 · join into (ASIN, creative) scores</text></g>
-      <g class="node" data-node="s4"><rect x="10" y="128" width="280" height="32" rx="6"/><text x="22" y="149" font-size="11.5">4 · validate against yesterday<tspan class="ver" id="pv-gate"></tspan></text></g>
-      <g class="node" data-node="s5"><rect x="10" y="168" width="280" height="32" rx="6"/><text x="22" y="189" font-size="11.5">5 · write rows, Bloom filter, snapshot</text></g>
-      <g class="node" data-node="man"><rect x="60" y="216" width="180" height="34" rx="17"/><text x="150" y="238" font-size="12" text-anchor="middle">current → <tspan class="ver" id="pv-man">Oct 30</tspan></text></g>
+      <g class="node" data-node="s1"><rect x="10" y="8" width="280" height="32" rx="6"/><text x="22" y="29" font-size="11.5">1 · the four mappings arrive</text></g>
+      <g class="node" data-node="s2"><rect x="10" y="48" width="280" height="32" rx="6"/><text x="22" y="69" font-size="11.5">2 · rank similar creatives per key</text></g>
+      <g class="node" data-node="s3"><rect x="10" y="88" width="280" height="32" rx="6"/><text x="22" y="109" font-size="11.5">3 · build items, Bloom filter, map</text></g>
+      <g class="node" data-node="s4"><rect x="10" y="128" width="280" height="32" rx="6"/><text x="22" y="149" font-size="11.5">4 · validate against last week<tspan class="ver" id="pv-gate"></tspan></text></g>
+      <g class="node" data-node="s5"><rect x="10" y="168" width="280" height="32" rx="6"/><text x="22" y="189" font-size="11.5">5 · write it next to last week's</text></g>
+      <g class="node" data-node="man"><rect x="60" y="216" width="180" height="34" rx="17"/><text x="150" y="238" font-size="12" text-anchor="middle">current → <tspan class="ver" id="pv-man">week 43</tspan></text></g>
       <text x="150" y="268" font-size="10.5" text-anchor="middle" class="sub">everyone loads the version it points to</text>
-      <g class="node" data-node="ad"><rect x="10" y="278" width="88" height="62" rx="8"/><text x="54" y="302" font-size="11.5" text-anchor="middle">ad servers</text><text x="54" y="324" font-size="12" text-anchor="middle" class="ver" id="pv-ad">Oct 30</text></g>
-      <g class="node" data-node="host"><rect x="106" y="278" width="88" height="62" rx="8"/><text x="150" y="302" font-size="11.5" text-anchor="middle">API hosts</text><text x="150" y="324" font-size="12" text-anchor="middle" class="ver" id="pv-host">Oct 30</text></g>
-      <g class="node" data-node="db"><rect x="202" y="278" width="88" height="62" rx="8"/><text x="246" y="302" font-size="11.5" text-anchor="middle">KV database</text><text x="246" y="324" font-size="12" text-anchor="middle" class="ver" id="pv-db">Oct 30</text></g>
+      <g class="node" data-node="ad"><rect x="10" y="278" width="88" height="62" rx="8"/><text x="54" y="302" font-size="11.5" text-anchor="middle">ad servers</text><text x="54" y="324" font-size="12" text-anchor="middle" class="ver" id="pv-ad">week 43</text></g>
+      <g class="node" data-node="host"><rect x="106" y="278" width="88" height="62" rx="8"/><text x="150" y="302" font-size="11.5" text-anchor="middle">API hosts</text><text x="150" y="324" font-size="12" text-anchor="middle" class="ver" id="pv-host">week 43</text></g>
+      <g class="node" data-node="db"><rect x="202" y="278" width="88" height="62" rx="8"/><text x="246" y="302" font-size="11.5" text-anchor="middle">DynamoDB</text><text x="246" y="324" font-size="12" text-anchor="middle" class="ver" id="pv-db">week 43</text></g>
     </svg>
     <div>
-      <ol class="log" aria-live="polite"><li>Pick a day above to run the pipeline.</li></ol>
+      <ol class="log" aria-live="polite"><li>Pick a week above to run the publish.</li></ol>
     </div>
   </div>
 </div>
 
-<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">publish · pseudocode</span></div><pre><code><span class="k">def</span> <span class="f">publish</span>(day):
-    data = rebuild(creatives(day), mappings(day), catalog(day))   <span class="c"># from scratch</span>
-    <span class="k">if</span> <span class="k">not</span> looks_like(data, yesterday):       <span class="c"># row counts, score histogram, spot checks</span>
-        alarm(<span class="s">f&quot;</span><span class="s">kept </span>{yesterday.version}<span class="s">&quot;</span>)    <span class="c"># yesterday keeps serving</span>
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">publish · pseudocode</span></div><pre><code><span class="k">def</span> <span class="f">publish</span>(week):
+    items, ad_map = rebuild(inputs(week))     <span class="c"># from scratch, every week</span>
+    <span class="k">if</span> <span class="k">not</span> looks_like(items, last_week):      <span class="c"># counts, list lengths, spot checks</span>
+        alarm(<span class="s">f&quot;</span><span class="s">kept </span>{last_week}<span class="s">&quot;</span>)            <span class="c"># last week keeps serving</span>
         <span class="k">return</span>
-    write(data, version=day)                  <span class="c"># DB rows + Bloom filter + snapshot</span>
-    manifest.current = day                    <span class="c"># one pointer flip; everyone follows</span></code></pre></div>
+    <span class="k">for</span> region <span class="k">in</span> waves(regions):             <span class="c"># one region first, then the rest</span>
+        write(region, items, bloom(items), ad_map, version=week)
+        region.current = week                 <span class="c"># one pointer flip per region</span></code></pre></div>
 
-<p>"One pointer" is literal: a Java <code>AtomicReference</code> to an immutable snapshot, read once per request, so no request sees half of Monday and half of Tuesday. Treat data publishes like deploys; Sponsored Products' move to Valkey <a href="https://aws.amazon.com/blogs/database/amazon-ads-upgrades-to-amazon-elasticache-for-valkey-to-achieve-12-higher-throughput-and-save-over-45-in-infrastructure-costs" target="_blank" rel="noopener">dual-wrote, shifted reads gradually and kept a rollback ready</a>.</p>
+<p>"One pointer" is literal: a Java <code>AtomicReference</code> to an immutable snapshot, read once per call, so no call ever sees half of two weeks. Publishing <strong>region by region</strong> means a bad version can't reach every region at once. Sponsored Products' move to Valkey used the same discipline for a live migration: <a href="https://aws.amazon.com/blogs/database/amazon-ads-upgrades-to-amazon-elasticache-for-valkey-to-achieve-12-higher-throughput-and-save-over-45-in-infrastructure-costs" target="_blank" rel="noopener">dual writes, reads shifted gradually, a rollback ready</a>.</p>
 
-<div class="section-title"><span class="dot"></span><span class="n">07</span><span class="section-line"></span></div>
+<div class="section-title" id="s-scale"><span class="dot"></span><span class="n">09</span><span class="section-line"></span></div>
 <h2>Scale before the peak</h2>
 
 <p>The API ran on identical Java hosts in an EC2 Auto Scaling group. Reactive scaling has one weakness: a new host needs minutes to boot, load its data and warm its JIT, and against a step in traffic that lag loses requests. A simulation at 10,000 requests a second per host:</p>
@@ -790,12 +899,76 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
 <p>Prime Day is the one day a year your capacity plan gets graded in public, in real time. Left: failing. Right: the same capacity, added earlier.</p>
 </div>
 
-<p>The recipe: <strong>scheduled scaling before known peaks</strong>, proven by load tests; <strong>target tracking</strong> as the safety net; <strong>slow start</strong> on the load balancer so fresh hosts warm up first. And scaling isn't just a cost knob: that 10% request drop came down to how the fleet scaled.</p>
+<p>The recipe: <strong>scheduled scaling before known peaks</strong>, proven by load tests; <strong>target tracking</strong> as the safety net; <strong>slow start</strong> on the load balancer so fresh hosts warm up first. DynamoDB gets the same treatment: raise its capacity, or pre-warm it, before the peak, not during it. And scaling isn't just a cost knob: that 10% request drop came down to how the fleet scaled.</p>
 
-<div class="section-title"><span class="dot"></span><span class="n">08</span><span class="section-line"></span></div>
+<div class="section-title" id="s-failover"><span class="dot"></span><span class="n">10</span><span class="section-line"></span></div>
+<h2>Redundancy, regions and failover</h2>
+
+<p>At this volume, something is always broken: a host, an Availability Zone, a dependency, once in a long while a whole region. The pattern is to fail small, inside the smallest boundary that can contain it. Break something:</p>
+
+<div class="widget" id="failover">
+  <div class="widget-title">Animation · break something</div>
+  <div class="btns" role="group" aria-label="Pick a failure">
+    <button class="btn" type="button" data-s="host">A host dies</button>
+    <button class="btn" type="button" data-s="az">A zone goes dark</button>
+    <button class="btn" type="button" data-s="ddb">DynamoDB throttles</button>
+    <button class="btn" type="button" data-s="region">A region goes dark</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 300" aria-hidden="true">
+      <line class="wire" x1="110" y1="34" x2="78" y2="50"/><line class="wire" x1="190" y1="34" x2="222" y2="50"/>
+      <g class="node" data-node="edge"><rect x="60" y="4" width="180" height="30" rx="15"/><text x="150" y="24" font-size="11.5" text-anchor="middle">shoppers · edge routing</text></g>
+      <g class="node" data-node="rA"><rect x="8" y="50" width="140" height="236" rx="10"/><text x="78" y="68" font-size="12" font-weight="700" text-anchor="middle">Region A</text></g>
+      <g class="node" data-node="rB"><rect x="152" y="50" width="140" height="236" rx="10"/><text x="222" y="68" font-size="12" font-weight="700" text-anchor="middle">Region B</text></g>
+      <g class="node" data-node="adA"><rect x="18" y="78" width="120" height="28" rx="6"/><text x="78" y="97" font-size="11.5" text-anchor="middle">ad servers</text></g>
+      <g class="node" data-node="adB"><rect x="162" y="78" width="120" height="28" rx="6"/><text x="222" y="97" font-size="11.5" text-anchor="middle">ad servers</text></g>
+      <text x="78" y="124" font-size="10.5" text-anchor="middle" class="sub">Relevance API</text>
+      <text x="222" y="124" font-size="10.5" text-anchor="middle" class="sub">Relevance API</text>
+      <g class="node" data-node="a1"><rect x="18" y="132" width="38" height="60" rx="5"/><text x="37" y="147" font-size="10" text-anchor="middle">AZ1</text></g>
+      <g class="node" data-node="a2"><rect x="59" y="132" width="38" height="60" rx="5"/><text x="78" y="147" font-size="10" text-anchor="middle">AZ2</text></g>
+      <g class="node" data-node="a3"><rect x="100" y="132" width="38" height="60" rx="5"/><text x="119" y="147" font-size="10" text-anchor="middle">AZ3</text></g>
+      <g class="node" data-node="b1"><rect x="162" y="132" width="38" height="60" rx="5"/><text x="181" y="147" font-size="10" text-anchor="middle">AZ1</text></g>
+      <g class="node" data-node="b2"><rect x="203" y="132" width="38" height="60" rx="5"/><text x="222" y="147" font-size="10" text-anchor="middle">AZ2</text></g>
+      <g class="node" data-node="b3"><rect x="244" y="132" width="38" height="60" rx="5"/><text x="263" y="147" font-size="10" text-anchor="middle">AZ3</text></g>
+      <g class="hosts">
+        <rect x="23" y="158" width="8" height="24" rx="2"/><rect x="33" y="158" width="8" height="24" rx="2"/><rect x="43" y="158" width="8" height="24" rx="2"/>
+        <rect x="64" y="158" width="8" height="24" rx="2"/><rect x="74" y="158" width="8" height="24" rx="2"/><rect x="84" y="158" width="8" height="24" rx="2"/>
+        <rect x="105" y="158" width="8" height="24" rx="2"/><rect x="115" y="158" width="8" height="24" rx="2"/><rect x="125" y="158" width="8" height="24" rx="2"/>
+        <rect x="167" y="158" width="8" height="24" rx="2"/><rect x="177" y="158" width="8" height="24" rx="2"/><rect x="187" y="158" width="8" height="24" rx="2"/>
+        <rect x="208" y="158" width="8" height="24" rx="2"/><rect x="218" y="158" width="8" height="24" rx="2"/><rect x="228" y="158" width="8" height="24" rx="2"/>
+        <rect x="249" y="158" width="8" height="24" rx="2"/><rect x="259" y="158" width="8" height="24" rx="2"/><rect x="269" y="158" width="8" height="24" rx="2"/>
+      </g>
+      <g class="node host" data-node="hA"><rect x="23" y="158" width="8" height="24" rx="2"/></g>
+      <g class="node" data-node="ddbA"><rect x="18" y="204" width="120" height="42" rx="6"/><text x="78" y="222" font-size="11.5" text-anchor="middle">DynamoDB</text><text x="78" y="237" font-size="10" text-anchor="middle" class="sub">its own copy</text></g>
+      <g class="node" data-node="ddbB"><rect x="162" y="204" width="120" height="42" rx="6"/><text x="222" y="222" font-size="11.5" text-anchor="middle">DynamoDB</text><text x="222" y="237" font-size="10" text-anchor="middle" class="sub">its own copy</text></g>
+      <text x="78" y="270" font-size="10" text-anchor="middle" class="sub">own fleet, own data</text>
+      <text x="222" y="270" font-size="10" text-anchor="middle" class="sub">own fleet, own data</text>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a failure above.</li></ol></div>
+  </div>
+</div>
+
+<p>Two principles carry it. <strong>Static stability:</strong> the spare capacity is in place <em>before</em> the failure, so recovery needs no scaling (<a href="https://aws.amazon.com/builders-library/static-stability-using-availability-zones/" target="_blank" rel="noopener">AWS Builders' Library</a>). And <strong>regional isolation:</strong> each region has its own fleet and its own copy of the data. On a 20 ms path, failover can't cross a region; a region fails as a unit, and traffic moves at the edge.</p>
+
+<div class="table-scroll">
+<table class="spec-table fail">
+<thead><tr><th>What fails</th><th>What happens</th><th>Signal</th></tr></thead>
+<tbody>
+<tr><td>One host</td><td>Health checks drain it; neighbours absorb</td><td>Healthy host count</td></tr>
+<tr><td>One zone</td><td>Two zones carry it, no scaling needed</td><td>Per-zone errors</td></tr>
+<tr><td>Slow DynamoDB</td><td>Only misses slow down, then fail open</td><td>Throttles, p99</td></tr>
+<tr><td>One region</td><td>Edge routing shifts shoppers</td><td>Regional health</td></tr>
+<tr><td>Weekly publish</td><td>Last week keeps serving</td><td>Live version's age</td></tr>
+<tr><td>Stale copy</td><td>Confident wrong answers</td><td>Version per host</td></tr>
+<tr><td>Pipeline stage</td><td>Messages wait in the queue or DLQ</td><td>Oldest message age</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="section-title" id="s-gc"><span class="dot"></span><span class="n">11</span><span class="section-line"></span></div>
 <h2>When the garbage collector stopped the world</h2>
 
-<p>The garbage collector is the only coworker who can stop the entire office to take out the trash. Ours did: under load, latency climbed because requests were being paused, worst exactly at peak. I no longer have those GC logs, so here's the anatomy rather than invented numbers. One host, one 50 ms pause; pick the load:</p>
+<p>The garbage collector is the only coworker who can stop the entire office to take out the trash. Ours did: under load, latency climbed because requests were being paused, worst exactly at peak, and with a 20 ms deadline a pause is a dropped answer. I no longer have those GC logs, so here's the anatomy rather than invented numbers. One host, one 50 ms pause; pick the load:</p>
 
 <div class="widget" id="gc" data-gc='{"30": {"pauses": 0.23, "p99": 15.1, "slow": "1.1%"}, "60": {"pauses": 0.46, "p99": 40.9, "slow": "4.3%"}, "80": {"pauses": 0.61, "p99": 46.8, "slow": "12.0%"}, "90": {"pauses": 0.69, "p99": 48.6, "slow": "26.7%"}}'>
   <div class="widget-title">Interactive · one pause, four loads</div>
@@ -820,7 +993,7 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
   <div class="viz gcbars"><div class="viz-title">Requests slower than 10 ms, same pause (simulation)</div><div class="hb"><div class="hb-row" tabindex="0" data-tip="30% busy: 1.1%" data-load="30"><div class="hb-label">30% busy</div><div class="hb-track"><span class="hb-bar " style="--f:0.0412"></span><b class="hb-val">1.1%</b></div></div><div class="hb-row" tabindex="0" data-tip="60% busy: 4.3%" data-load="60"><div class="hb-label">60% busy</div><div class="hb-track"><span class="hb-bar " style="--f:0.1610"></span><b class="hb-val">4.3%</b></div></div><div class="hb-row" tabindex="0" data-tip="80% busy: 12.0%" data-load="80"><div class="hb-label">80% busy</div><div class="hb-track"><span class="hb-bar " style="--f:0.4494"></span><b class="hb-val">12.0%</b></div></div><div class="hb-row" tabindex="0" data-tip="90% busy: 26.7%" data-load="90"><div class="hb-label">90% busy</div><div class="hb-track"><span class="hb-bar " style="--f:1.0000"></span><b class="hb-val">26.7%</b></div></div></div><p class="viz-cap">One host, 10,000 requests a second at full load, a 50 ms pause every 256 MB of garbage.</p></div>
 </div>
 
-<p>Two things compound: more requests make more garbage, so pauses come more often, and each backlog drains only at the host's <em>spare</em> capacity, so drain time grows like load ÷ (1 − load). That's "it only happens under load", explained. The playbook:</p>
+<p>Two things compound: more requests make more garbage, so pauses come more often, and each backlog drains only at the host's <em>spare</em> capacity, so drain time grows like load ÷ (1 − load). That's queueing theory, and it's why "it only happens under load". The playbook:</p>
 
 <ul class="checks">
   <li><b>see it</b><code>-Xlog:gc*</code>, with pause time charted next to p99.</li>
@@ -831,7 +1004,7 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
   <li><b>pick a low-pause collector</b>Generational ZGC on JDK 21+, or G1 with a pause goal.</li>
 </ul>
 
-<div class="section-title"><span class="dot"></span><span class="n">09</span><span class="section-line"></span></div>
+<div class="section-title" id="s-visible"><span class="dot"></span><span class="n">12</span><span class="section-line"></span></div>
 <h2>Reliable, correct, visible</h2>
 
 <p>In my intro video, the wolves keep me reliable. At a million a second it's fewer wolves, more of these pictures.</p>
@@ -842,58 +1015,53 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
 <h3>Retries multiply</h3>
 <div class="viz "><div class="viz-title">Calls caused by one failing request, when every layer tries 3 times</div><div class="hb"><div class="hb-row" tabindex="0" data-tip="the caller: 1×"><div class="hb-label">the caller</div><div class="hb-track"><span class="hb-bar " style="--f:0.0370"></span><b class="hb-val">1×</b></div></div><div class="hb-row" tabindex="0" data-tip="layer 1: 3×"><div class="hb-label">layer 1</div><div class="hb-track"><span class="hb-bar " style="--f:0.1111"></span><b class="hb-val">3×</b></div></div><div class="hb-row" tabindex="0" data-tip="layer 2: 9×"><div class="hb-label">layer 2</div><div class="hb-track"><span class="hb-bar " style="--f:0.3333"></span><b class="hb-val">9×</b></div></div><div class="hb-row" tabindex="0" data-tip="the database: 27×"><div class="hb-label">the database</div><div class="hb-track"><span class="hb-bar " style="--f:1.0000"></span><b class="hb-val">27×</b></div></div></div><p class="viz-cap">Back off with jitter and cap retries with a budget: in the simulation, 1,000 failures at once got 100 retries, not 2,000.</p></div>
 
-<h3>Fail open, and know what fails</h3>
-<p>Relevance is an enhancement, not a dependency: an answer after the auction is no answer. A tight timeout and a circuit breaker on the caller, and the page serves without the boost.</p>
+<p>Retries need <a href="https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/" target="_blank" rel="noopener">timeouts, backoff and jitter</a>, and a circuit breaker on the caller stops calling a failing dependency for a cooldown, then tests it with a single call. Relevance is an enhancement, not a dependency: when in doubt, the page serves without it.</p>
 
-<div class="table-scroll">
-<table class="spec-table fail">
-<thead><tr><th>What fails</th><th>What happens</th><th>Signal</th></tr></thead>
-<tbody>
-<tr><td>Daily publish</td><td>Yesterday's version keeps serving</td><td>Live version's age</td></tr>
-<tr><td>Slow database</td><td>Only misses slow down, then serve unboosted</td><td>DB latency, throttles</td></tr>
-<tr><td>One host in GC</td><td>Its share is slow; the average looks fine</td><td>Per-host p99</td></tr>
-<tr><td>Stale copy</td><td>Confident wrong answers</td><td>Version per host</td></tr>
-<tr><td>Whole API</td><td>Ads serve without the boost</td><td>Breakers opening</td></tr>
-</tbody>
-</table>
-</div>
-
-<div class="section-title"><span class="dot"></span><span class="n">10</span><span class="section-line"></span></div>
-<h2>Nine decisions, one page</h2>
+<div class="section-title" id="s-decisions"><span class="dot"></span><span class="n">13</span><span class="section-line"></span></div>
+<h2>Twelve decisions, one page</h2>
 
 <p>The options weighed, the one we stuck with, and why. <em>Recommended</em> marks what I'd pick for this workload today.</p>
 
 <ol class="dec-list">
-  <li><div class="dq">What does a request carry?</div>
-    <div class="chips"><span class="chip">the ASIN only</span><span class="chip won">ASIN + candidate creative IDs</span><span class="chip">ASIN + full creative data</span></div>
-    <p class="why">The ad server already had its candidates, and IDs are small. <span class="cost"><b>Cost:</b> a contract tied to the ad server's IDs.</span></p></li>
-  <li><div class="dq">When is relevance computed?</div>
-    <div class="chips"><span class="chip">on every request</span><span class="chip">daily batch</span><span class="chip won">daily batch + copies at the edge</span></div>
-    <p class="why">The math is cheap; fetching the data for it is not. <span class="cost"><b>Cost:</b> answers up to a day old.</span></p></li>
+  <li><div class="dq">What does a call carry?</div>
+    <div class="chips"><span class="chip">the ASIN only</span><span class="chip won">ASIN + one creative</span><span class="chip">ASIN + full creative data</span></div>
+    <p class="why">The ad server already has the map we sent, so every call is one point lookup. <span class="cost"><b>Cost:</b> a contract tied to the ad server's IDs and our weekly version.</span></p></li>
+  <li><div class="dq">When are answers computed?</div>
+    <div class="chips"><span class="chip">on every call</span><span class="chip">weekly batch</span><span class="chip won">weekly batch + a map at the ad server</span></div>
+    <p class="why">The math is cheap; fetching the data for it is not. <span class="cost"><b>Cost:</b> a new creative waits up to a week for its list.</span></p></li>
   <li><div class="dq">Where do the answers live?</div>
-    <div class="chips"><span class="chip">database every time</span><span class="chip">central cache cluster</span><span class="chip">host memory</span><span class="chip won">all three, in layers</span></div>
-    <p class="why">The cheapest request is the one never sent. <span class="cost"><b>Cost:</b> three copies to keep in agreement.</span></p></li>
-  <li><div class="dq">How do we say "not stored"?</div>
-    <div class="chips"><span class="chip">ask the database</span><span class="chip">exact hash set</span><span class="chip won">Bloom filter</span><span class="chip">cuckoo filter</span><span class="chip">xor filter</span></div>
-    <p class="why">Rebuilt daily, so it never needs deletes. <span class="cost"><b>Cost:</b> about 1% wasted reads.</span></p></li>
+    <div class="chips"><span class="chip">DynamoDB every time</span><span class="chip">central cache cluster</span><span class="chip">host memory</span><span class="chip won">all three, in layers</span></div>
+    <p class="why">The cheapest call is the one never made. <span class="cost"><b>Cost:</b> copies to keep in agreement.</span></p></li>
+  <li><div class="dq">How do we say "nothing stored"?</div>
+    <div class="chips"><span class="chip">ask DynamoDB</span><span class="chip">exact hash set</span><span class="chip won">Bloom filter</span><span class="chip">cuckoo filter</span><span class="chip">xor filter</span></div>
+    <p class="why">Rebuilt weekly, so it never needs deletes. <span class="cost"><b>Cost:</b> about 1% wasted reads.</span></p></li>
+  <li><div class="dq">How do 17 calls per ad request stay fast?</div>
+    <div class="chips"><span class="chip">wait for all 17</span><span class="chip">hedge every call</span><span class="chip rec">20 ms deadline + partial results</span></div>
+    <p class="why">The slowest call sets the pace; a dropped answer beats a late page. <span class="cost"><b>Cost:</b> now and then, fewer similar creatives.</span></p></li>
   <li><div class="dq">How does the data stay fresh?</div>
-    <div class="chips"><span class="chip">incremental updates</span><span class="chip">streaming</span><span class="chip won">full daily rebuild</span></div>
-    <p class="why">Messy upstreams; an idempotent rebuild heals itself. <span class="cost"><b>Cost:</b> a full recompute every day.</span></p></li>
+    <div class="chips"><span class="chip">incremental updates</span><span class="chip">streaming</span><span class="chip won">full weekly rebuild</span></div>
+    <p class="why">Messy upstreams; an idempotent rebuild heals itself. <span class="cost"><b>Cost:</b> a full recompute every week.</span></p></li>
+  <li><div class="dq">How does the pipeline avoid losing data?</div>
+    <div class="chips"><span class="chip">cron + scripts</span><span class="chip">one big batch job</span><span class="chip won">SNS → SQS stages with DLQs</span></div>
+    <p class="why">Retries, isolation and replay come built in; one bad message can't block the rest. <span class="cost"><b>Cost:</b> duplicates are normal, so every write is idempotent.</span></p></li>
   <li><div class="dq">Where does it run?</div>
     <div class="chips"><span class="chip">Lambda</span><span class="chip">ECS / Fargate</span><span class="chip">EKS</span><span class="chip won">EC2 Auto Scaling</span></div>
     <p class="why">Steady, huge, latency-bound traffic; Lambda's request fees alone would be about $17,000 a day. <span class="cost"><b>Cost:</b> we own capacity and patching.</span></p></li>
   <li><div class="dq">How does the fleet scale?</div>
     <div class="chips"><span class="chip">target tracking</span><span class="chip">step scaling</span><span class="chip">predictive</span><span class="chip rec">target tracking + scheduled pre-scale</span></div>
     <p class="why">New hosts need minutes; known peaks shouldn't surprise. <span class="cost"><b>Cost:</b> idle hosts before the peak.</span></p></li>
+  <li><div class="dq">What happens when a region fails?</div>
+    <div class="chips"><span class="chip">fail each call over to another region</span><span class="chip">warm standby</span><span class="chip rec">independent regions, shift at the edge</span></div>
+    <p class="why">A cross-region round trip alone would blow the 20 ms budget. <span class="cost"><b>Cost:</b> every region needs its own capacity and data.</span></p></li>
   <li><div class="dq">Which garbage collector?</div>
     <div class="chips"><span class="chip">Parallel</span><span class="chip">G1</span><span class="chip rec">generational ZGC</span></div>
     <p class="why">Tail latency is the product. <span class="cost"><b>Cost:</b> some extra CPU and memory.</span></p></li>
-  <li><div class="dq">How do we see a million requests a second?</div>
-    <div class="chips"><span class="chip">log every request</span><span class="chip">sample only</span><span class="chip rec">metrics for all + sampled traces</span></div>
-    <p class="why">Know about every request; read only a few. <span class="cost"><b>Cost:</b> unsampled outliers have metrics only.</span></p></li>
+  <li><div class="dq">How do we see a million calls a second?</div>
+    <div class="chips"><span class="chip">log every call</span><span class="chip">sample only</span><span class="chip rec">metrics for all + sampled traces</span></div>
+    <p class="why">Know about every call; read only a few. <span class="cost"><b>Cost:</b> unsampled outliers have metrics only.</span></p></li>
 </ol>
 
-<div class="section-title"><span class="dot"></span><span class="n">11</span><span class="section-line"></span></div>
+<div class="section-title" id="s-prove"><span class="dot"></span><span class="n">14</span><span class="section-line"></span></div>
 <h2>Proving it was worth it</h2>
 
 <p>A relevance model is a hypothesis until real traffic agrees. After end-to-end tests came an A/B experiment: <code>hash(experiment + user) % 100</code> buckets each user the same way on every host, with nothing to look up. Ours made the launch:</p>
@@ -907,20 +1075,20 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
 <p>I just really like those numbers. Okay. Carry on.</p>
 </div>
 
-<div class="section-title"><span class="dot"></span><span class="n">12</span><span class="section-line"></span></div>
+<div class="section-title" id="s-drink"><span class="dot"></span><span class="n">15</span><span class="section-line"></span></div>
 <h2>The well-earned drink</h2>
 
 <p>Every Brew Miles trip ends with a well-earned drink. Here's this one's:</p>
 
 <ol class="plain">
-  <li><strong>Move work out of the request,</strong> and let it carry its own address.</li>
-  <li><strong>Make "no" cheap,</strong> and cache where the request starts.</li>
-  <li><strong>Version what travels together;</strong> swap one pointer.</li>
-  <li><strong>Scale before the peak, watch the worst host,</strong> and prove it with an experiment.</li>
+  <li><strong>Move work out of the request,</strong> and hand the caller a map so every call is a lookup.</li>
+  <li><strong>Make "no" cheap,</strong> cache hot keys, and engineer the tail, because fan-out finds it.</li>
+  <li><strong>Queue between stages, write idempotently,</strong> and publish data like a deploy.</li>
+  <li><strong>Fail small and local,</strong> scale before the peak, and prove it with an experiment.</li>
 </ol>
 
-<div class="card reading"><div class="q">Further reading: Amazon's ad stack, in public</div>
-<details class="more flat"><summary>Show the 9 public sources this post cites</summary>
+<div class="card reading"><div class="q">Further reading</div>
+<details class="more flat"><summary>Show the 15 public sources this post cites</summary>
 <ul class="plain" style="padding:0 18px 6px 34px">
   <li><a href="https://aws.amazon.com/blogs/aws/reinvent-session-preview-under-the-hood-at-amazon-ads" target="_blank" rel="noopener">re:Invent session preview: Under the Hood at Amazon Ads</a> (AWS News Blog, Nov 2021): 120 ms budgets, &gt;99.9999% availability, ML scoring at scale.</li>
   <li><a href="https://aws.amazon.com/blogs/database/amazon-ads-upgrades-to-amazon-elasticache-for-valkey-to-achieve-12-higher-throughput-and-save-over-45-in-infrastructure-costs" target="_blank" rel="noopener">Amazon Ads upgrades to ElastiCache for Valkey</a> (AWS Database Blog, Nov 2025): Sponsored Products retrieval caches and a zero-downtime migration.</li>
@@ -931,6 +1099,12 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
   <li><a href="https://aps.amazon.com/aps/transparent-ad-marketplace/" target="_blank" rel="noopener">Transparent Ad Marketplace</a> and <a href="https://aps.amazon.com/aps/unified-ad-marketplace/" target="_blank" rel="noopener">Unified Ad Marketplace</a> (Amazon Publisher Services): the supply side for other publishers.</li>
   <li><a href="https://www.admonsters.com/eletters/amazon-pub-tech-what-does-this-mean/" target="_blank" rel="noopener">Amazon PubTech… What Does This Mean?</a> (AdMonsters, Aug 2023): Amazon's supply side for its own properties.</li>
   <li><a href="https://aws.amazon.com/blogs/aws/real-time-ad-impression-bids-using-dynamodb" target="_blank" rel="noopener">Real-Time Ad Impression Bids Using DynamoDB</a> (AWS News Blog, 2013): the classic latency-budget arithmetic.</li>
+  <li><a href="https://research.google/pubs/the-tail-at-scale/" target="_blank" rel="noopener">The Tail at Scale</a> (Dean and Barroso, 2013): why fan-out makes tail latency everyone's problem.</li>
+  <li><a href="https://aws.amazon.com/builders-library/static-stability-using-availability-zones/" target="_blank" rel="noopener">Static stability using Availability Zones</a> (AWS Builders' Library): capacity in place before the failure.</li>
+  <li><a href="https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/" target="_blank" rel="noopener">Timeouts, retries, and backoff with jitter</a> (AWS Builders' Library).</li>
+  <li><a href="https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/" target="_blank" rel="noopener">Making retries safe with idempotent APIs</a> (AWS Builders' Library).</li>
+  <li><a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html" target="_blank" rel="noopener">Amazon SQS dead-letter queues</a> and <a href="https://docs.aws.amazon.com/sns/latest/dg/sns-sqs-as-subscriber.html" target="_blank" rel="noopener">SNS to SQS fan-out</a> (AWS docs).</li>
+  <li><a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-partition-key-design.html" target="_blank" rel="noopener">DynamoDB partition key design</a> (AWS docs): spreading load, and hot keys.</li>
 </ul>
 </details>
 </div>
@@ -940,7 +1114,7 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
 <footer>
 <div class="wrap">
 <p class="bye">Okay. No more interruptions. Bye!</p>
-<p>Written from my time on Amazon Ads (2022–2026). Internal systems are described through public equivalents; the numbers about this API are the ones on my résumé. Production was Java; the code here is short pseudocode, and every chart comes from a small simulation I ran, labelled as such.</p>
+<p>Written from my time on Amazon Ads (2022–2026). Internal systems are described through public equivalents; the numbers about this API come from my résumé and my own notes. Production was Java; the code here is short pseudocode, and every chart comes from a small simulation I ran, labelled as such.</p>
 <p>Further watching: <a href="https://youtu.be/W4EwfEU8CGA" target="_blank" rel="noopener">Cododev, "Let's Handle 1 Million Requests per Second, It's Scarier Than You Think!"</a>, which builds toward the same number from scratch.</p>
 <p>If your team is building at scale, let's talk: <a href="../">tascano.github.io</a> · <a href="../#intro">watch my 3-minute intro</a></p>
 </div>
@@ -971,12 +1145,12 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
   if (root) {
     const dot = root.querySelector('#dot'), log = root.querySelector('.log');
     const net = root.querySelector('#m-net'), dbm = root.querySelector('#m-db');
-    const P = {ad: [150, 40], local: [214, 81], gap: [150, 132], bloom: [150, 203], cache: [150, 247], db: [150, 344]};
+    const P = {ad: [262, 32], local: [214, 81], gap: [150, 132], bloom: [150, 203], cache: [150, 247], db: [150, 344]};
     const routes = {
-      local: {net: 0, db: 0, steps: [['ad', 'The ad server needs a score for one (ASIN, creative) pair.'], ['local', '<b>Local copy: found.</b> Answered on the ad server. Done.']]},
-      bloom: {net: 1, db: 0, steps: [['ad', 'The ad server needs a score for one (ASIN, creative) pair.'], ['local', 'Local copy: not there.'], ['gap', 'One network call to the Relevance API.'], ['bloom', '<b>Bloom filter: definitely not in the dataset.</b> Answer "not relevant" from memory.']]},
-      host: {net: 1, db: 0, steps: [['ad', 'The ad server needs a score for one (ASIN, creative) pair.'], ['local', 'Local copy: not there.'], ['gap', 'One network call to the Relevance API.'], ['bloom', 'Bloom filter: maybe in the dataset.'], ['cache', '<b>Hot-key cache: found.</b> Answered from host memory.']]},
-      db: {net: 1, db: 1, steps: [['ad', 'The ad server needs a score for one (ASIN, creative) pair.'], ['local', 'Local copy: not there.'], ['gap', 'One network call to the Relevance API.'], ['bloom', 'Bloom filter: maybe in the dataset.'], ['cache', 'Hot-key cache: not there.'], ['db', '<b>One key-value read.</b> The score comes back.'], ['cache', 'Cached on the host for next time.'], ['ad', 'Answer returned to the ad server.']]},
+      local: {net: 0, db: 0, steps: [['ad', 'A page view for B0KETTLE reaches one ad-server shard.'], ['local', '<b>Its map has no creatives for B0KETTLE.</b> No call to us at all.']]},
+      bloom: {net: 1, db: 0, steps: [['ad', 'A page view for B0TRAILSHOE reaches one shard.'], ['local', 'Its map says: ask about cr-10.'], ['gap', 'One call to the Relevance API, 20 ms budget.'], ['bloom', '<b>Bloom filter: definitely not stored.</b> “No similar creatives”, from memory.']]},
+      host: {net: 1, db: 0, steps: [['ad', 'A page view for B0TRAILSHOE reaches one shard.'], ['local', 'Its map says: ask about cr-03.'], ['gap', 'One call to the Relevance API, 20 ms budget.'], ['bloom', 'Bloom filter: maybe stored.'], ['cache', '<b>Hot-key cache: found.</b> Similar creatives from host memory.']]},
+      db: {net: 1, db: 1, steps: [['ad', 'A page view for B0TENT reaches one shard.'], ['local', 'Its map says: ask about cr-04.'], ['gap', 'One call to the Relevance API, 20 ms budget.'], ['bloom', 'Bloom filter: maybe stored.'], ['cache', 'Hot-key cache: not there.'], ['db', '<b>One DynamoDB read.</b> The ranked list comes back.'], ['cache', 'Cached on the host, empty answers too.'], ['ad', 'Similar creatives returned to the shard.']]},
     };
     let token = 0;
     const lit = (name, cls) => { const n = root.querySelector(`[data-node="${name}"]`); if (n) n.classList.add(cls); };
@@ -1119,7 +1293,7 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
     set();
   }
 
-  // Search versus lookup: a row is a product, a column a creative, a filled cell a stored score.
+  // Search versus lookup: a row is a product, a column a creative, a filled cell a stored answer.
   const rg = document.getElementById('rgrid');
   if (rg) {
     const grid = rg.querySelector('.rgrid'), out = rg.querySelector('.readout'), meter = rg.querySelector('#rg-m');
@@ -1133,7 +1307,7 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
       const l = document.createElement('span'); l.className = 'rl' + (asin === 'B0TRAILSHOE' ? ' page' : ''); l.textContent = asin; grid.appendChild(l);
       scores.forEach(s => {
         const cell = document.createElement('span'); cell.className = 'cell' + (s ? ' s' : '');
-        if (s) cell.style.setProperty('--a', s);
+        if (s) cell.style.setProperty('--a', .8);
         grid.appendChild(cell);
         if (asin === 'B0TRAILSHOE') page.push(cell);
       });
@@ -1150,43 +1324,43 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
           page[i].classList.add('scan'); meter.textContent = i + 1;
           await sleep(160);
         }
-        out.innerHTML = '<b>10 cells read</b> to find 5 scores. In production the row is every creative from every DSP, on every request.';
+        out.innerHTML = '<b>10 cells read</b> to find 5 answers. In production the row is every creative from every DSP, on every request.';
       } else {
         meter.textContent = '3';
         [[2, 'hit'], [7, 'hit'], [9, 'miss']].forEach(([i, cls]) => page[i].classList.add(cls));
-        out.innerHTML = '<b>3 point lookups:</b> cr-03 → 0.91, cr-08 → 0.80, and cr-10 isn’t stored at all. Making that “no” free is the Bloom filter’s job (section 05).';
+        out.innerHTML = '<b>3 point lookups, one key per call.</b> cr-03 and cr-08 come back with similar creatives; cr-10 has nothing stored. Making that “no” free is the Bloom filter’s job (section 05).';
       }
     }));
   }
 
-  // The daily publish: five stages, a validation gate, then one pointer flip that every copy follows.
+  // The weekly publish: five stages, a validation gate, then one pointer flip that every copy follows.
   const pub = document.getElementById('publish');
   if (pub) {
     const log = pub.querySelector('.log'), btns = [...pub.querySelectorAll('[data-day]')];
     const vers = ['pv-man', 'pv-ad', 'pv-host', 'pv-db'].map(id => pub.querySelector('#' + id)), gate = pub.querySelector('#pv-gate');
     const node = n => pub.querySelector(`[data-node="${n}"]`);
     const days = {
-      good: [['s1', 'lit', 'Pull today’s creatives from every DSP, the creative→ASIN mapping and the catalog.'],
-             ['s2', 'lit', 'Compute ASIN↔ASIN and creative↔creative similarities.'],
-             ['s3', 'lit', 'Join into (ASIN, creative) scores and keep the relevant pairs.'],
-             ['s4', 'stop', '<b>Gate passed:</b> row counts and the score distribution look like yesterday’s.'],
-             ['s5', 'lit', 'Write Oct 31 next to Oct 30: rows, Bloom filter, snapshot.'],
-             ['man', 'stop', '<b>Flip one pointer:</b> current → Oct 31.'],
-             ['all', 'stop', 'Every ad server and host loads Oct 31 and swaps one reference. Oct 30 stays on disk for a one-command rollback.']],
-      bad: [['s1', 'lit', 'Pull today’s inputs. One catalog feed arrives half-empty.'],
-            ['s2', 'lit', 'Compute similarities, on what did arrive.'],
-            ['s3', 'lit', 'Join into scores: far fewer pairs than usual.'],
-            ['s4', 'bad', '<b>Gate closed:</b> the row count is way below yesterday’s.'],
+      good: [['s1', 'lit', 'This week’s four mappings arrive through the pipeline’s queues.'],
+             ['s2', 'lit', 'Rank the similar creatives for every (ASIN, creative) key.'],
+             ['s3', 'lit', 'Build the DynamoDB items, the Bloom filter and the ad server’s map.'],
+             ['s4', 'stop', '<b>Gate passed:</b> item counts and list lengths look like last week’s.'],
+             ['s5', 'lit', 'Write week 44 next to week 43, in the first region.'],
+             ['man', 'stop', '<b>Flip one pointer:</b> current → week 44.'],
+             ['all', 'stop', 'Ad servers, hosts and DynamoDB reads all move to week 44 together. Then the next region. Week 43 stays for a one-command rollback.']],
+      bad: [['s1', 'lit', 'This week’s inputs arrive. One mapping feed is half-empty.'],
+            ['s2', 'lit', 'Rank similar creatives, on what did arrive.'],
+            ['s3', 'lit', 'Build: far fewer items than usual.'],
+            ['s4', 'bad', '<b>Gate closed:</b> the item count is way below last week’s.'],
             ['s5', 'dim', 'Nothing is written. Nothing is half-published.'],
-            ['man', 'lit', 'The pointer stays on Oct 30. On-call gets an alarm, not an outage.'],
-            ['all', 'lit', 'Tomorrow’s full rebuild picks up the corrected feed and heals it, with no special handling.']],
+            ['man', 'lit', 'The pointer stays on week 43. On-call gets an alarm, not an outage.'],
+            ['all', 'lit', 'Next week’s full rebuild picks up the corrected feed and heals it, with no special handling.']],
     };
     let token = 0;
     btns.forEach(btn => btn.addEventListener('click', async () => {
       const run = ++token, good = btn.dataset.day === 'good';
       press(btns, btn);
       pub.querySelectorAll('.node').forEach(n => n.classList.remove('lit', 'stop', 'bad', 'dim'));
-      vers.forEach(v => { v.textContent = 'Oct 30'; });
+      vers.forEach(v => { v.textContent = 'week 43'; });
       gate.textContent = '';
       log.innerHTML = '';
       for (const [n, cls, text] of days[btn.dataset.day]) {
@@ -1195,8 +1369,8 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
         if (n === 'all') ['ad', 'host', 'db'].forEach(t => node(t).classList.add(cls));
         else node(n).classList.add(cls);
         if (n === 's4') gate.textContent = good ? '  ✓' : '  ✕';
-        if (good && n === 'man') vers[0].textContent = 'Oct 31';
-        if (good && n === 'all') vers.slice(1).forEach(v => { v.textContent = 'Oct 31'; });
+        if (good && n === 'man') vers[0].textContent = 'week 44';
+        if (good && n === 'all') vers.slice(1).forEach(v => { v.textContent = 'week 44'; });
         const li = document.createElement('li'); li.innerHTML = text; log.appendChild(li);
       }
     }));
@@ -1244,6 +1418,78 @@ keep(pair <span class="k">for</span> pair <span class="k">in</span> score <span 
     btns.forEach(b => b.addEventListener('click', () => { press(btns, b); set(+b.dataset.load); }));
     set(90);
   }
+
+  // Fan-out: an ad request waits for the slowest of its n calls.
+  const tail = document.getElementById('tail');
+  if (tail) {
+    const input = tail.querySelector('input'), label = tail.querySelector('#tl-v'), calls = tail.querySelector('.calls');
+    const fill = tail.querySelector('.meter span'), out = tail.querySelector('#tl-out');
+    const set = () => {
+      const n = +input.value, slow = 1 - 0.99 ** n, need = 100 * 0.99 ** (1 / n);
+      label.textContent = n;
+      calls.replaceChildren(...Array.from({length: n}, () => document.createElement('i')));
+      fill.style.width = (100 * slow).toFixed(1) + '%';
+      out.innerHTML = `With <b>${n}</b> call${n > 1 ? 's' : ''}, <b>${(100 * slow).toFixed(1)}%</b> of ad requests wait on at least one call slower than our p99. To keep the ad server’s p99 where ours is, each call must be that fast <b>${need.toFixed(n > 1 ? 2 : 0)}%</b> of the time.`;
+    };
+    input.addEventListener('input', set);
+    set();
+  }
+
+  // Story widgets: each step lights parts of a diagram and adds a line to the log.
+  const story = (root, scenarios) => {
+    if (!root) return;
+    const log = root.querySelector('.log'), btns = [...root.querySelectorAll('[data-s]')], states = ['lit', 'stop', 'bad', 'dim'];
+    let token = 0;
+    btns.forEach(btn => btn.addEventListener('click', async () => {
+      const run = ++token;
+      press(btns, btn);
+      root.querySelectorAll('.node').forEach(n => n.classList.remove(...states));
+      root.querySelectorAll('[data-reset]').forEach(e => { e.textContent = e.dataset.reset; });
+      log.innerHTML = '';
+      for (const [names, cls, text, set] of scenarios[btn.dataset.s]) {
+        await sleep(log.children.length ? 750 : 0);
+        if (run !== token) return;
+        names.split(' ').forEach(n => { const el = root.querySelector(`[data-node="${n}"]`); el.classList.remove(...states); el.classList.add(cls); });
+        for (const id in set || {}) root.querySelector('#' + id).textContent = set[id];
+        const li = document.createElement('li'); li.innerHTML = text; log.appendChild(li);
+      }
+    }));
+  };
+
+  story(document.getElementById('pipeline'), {
+    ok: [['s3', 'lit', 'A partner team’s week-44 dataset lands in S3: versioned, never edited in place.'],
+         ['sns', 'lit', 'S3 announces it on an SNS topic.'],
+         ['qa qb', 'lit', 'SNS fans the event out: the build queue and the audit trail each get their own copy.', {'pl-rc': '1'}],
+         ['w', 'lit', 'A worker receives it. The message turns invisible to other workers for the visibility timeout.'],
+         ['out', 'stop', '<b>Done:</b> the output is written under a key made of dataset, week and chunk. Only then is the message deleted.', {'pl-out': 'yes'}]],
+    crash: [['s3 sns', 'lit', 'Week 44’s dataset lands; SNS fans it out.'],
+            ['qa', 'lit', 'The build queue delivers it to a worker.', {'pl-rc': '1'}],
+            ['w', 'bad', '<b>The worker crashes halfway.</b> It never deletes the message.'],
+            ['qa', 'lit', 'The visibility timeout expires and the message reappears.', {'pl-rc': '2'}],
+            ['w', 'lit', 'Another worker picks it up and runs it again.'],
+            ['out', 'stop', '<b>Same key, same output:</b> the rerun overwrites instead of duplicating. At-least-once delivery + idempotent writes = exactly-once results.', {'pl-out': 'yes, no duplicate'}]],
+    poison: [['s3 sns', 'lit', 'A malformed file lands; SNS fans it out.'],
+             ['qa', 'lit', 'The build queue delivers it.', {'pl-rc': '1'}],
+             ['w', 'bad', 'The worker fails on it.'],
+             ['qa', 'lit', 'Back in the queue after a backoff. It fails again, and again.', {'pl-rc': '3'}],
+             ['dlq', 'bad', '<b>After 3 receives, SQS moves it to the dead-letter queue.</b> Everything behind it keeps flowing.'],
+             ['dlq', 'lit', 'An alarm on DLQ depth pages on-call. Fix the parser, then redrive the message to its queue. Nothing lost.', {'pl-out': 'after the redrive'}]],
+  });
+
+  story(document.getElementById('failover'), {
+    host: [['hA', 'bad', 'A host in region A, zone 1, dies.'],
+           ['a1 a2 a3', 'lit', 'Load-balancer health checks drain it within seconds; its neighbours absorb its share.'],
+           ['adA', 'stop', '<b>Shoppers notice nothing.</b> Auto Scaling replaces the host in the background.']],
+    az: [['a1', 'bad', 'Zone 1 in region A goes dark, with a third of the fleet.'],
+         ['a2 a3', 'stop', '<b>The other two zones carry everything, with no scaling:</b> each is sized to run under two-thirds full on a normal day. That’s static stability.'],
+         ['ddbA', 'lit', 'DynamoDB already replicates across zones, so the data never left.']],
+    ddb: [['ddbA', 'bad', 'DynamoDB in region A starts throttling a hot partition.'],
+          ['a1 a2 a3', 'lit', 'Bloom-filter “no”s and cache hits never touch it, so most calls don’t notice.'],
+          ['adA', 'stop', '<b>Misses hit the 20 ms deadline</b> and that shard serves without similar creatives: fail open. Retries stay inside their budget instead of piling on.']],
+    region: [['rA adA a1 a2 a3 ddbA', 'bad', 'All of region A goes dark.'],
+             ['edge', 'lit', 'Edge routing shifts shoppers to region B.'],
+             ['rB adB b1 b2 b3 ddbB', 'stop', '<b>Region B serves them with its own ad servers, fleet and copy of the data.</b> No call crosses regions: a cross-region round trip alone would blow the 20 ms budget.']],
+  });
 
   // Per-mark tooltips on the HTML bar charts.
   document.querySelectorAll('.viz [data-tip]').forEach(mark => {
