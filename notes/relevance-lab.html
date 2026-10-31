@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relevance API Lab</title>
+<meta name="description" content="A hands-on lab: build a small ad-relevance API with precomputed (ASIN, creative) scores, a Bloom filter, a hot-key cache and versioned publishing; load-test it, run a JVM garbage-collector experiment, then deploy it on AWS behind a load balancer with Auto Scaling.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Run It Yourself: The Relevance API Lab">
+<meta property="og:description" content="Companion lab to A Million Questions a Second: laptop first, then AWS, one experiment at a time.">
+<meta property="og:image" content="https://tascano.github.io/images/og-image.jpg">
+<meta name="theme-color" content="#fdb515">
+<link rel="icon" href="../favicon.ico?v=3" sizes="any">
+<script>
+  try { const t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+:root{
+  --accent:#fdb515;
+  --accent-ink:#9a6700;          /* the brand gold, deepened for small text on white (4.9:1) */
+  --accent-wash:rgba(253,181,21,.14);
+  --bg:#fff;
+  --text:#111;
+  --text-secondary:#333;
+  --text-muted:#555;
+  --card-bg:#fafafa;
+  --card-border:#eee;
+  --skill-bg:#f3f3f3;
+  --code-bg:#15171b;
+  --code-border:#15171b;
+  --demand:#C26A00;
+  --capacity:#00826F;
+  --capacity-wash:rgba(0,130,111,.10);
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+[data-theme="dark"]{
+  --accent-ink:#fdb515;
+  --accent-wash:rgba(253,181,21,.12);
+  --bg:#0f0f0f;
+  --text:#e8e8e8;
+  --text-secondary:#d0d0d0;
+  --text-muted:#a0a0a0;
+  --card-bg:#1a1a1a;
+  --card-border:#2a2a2a;
+  --skill-bg:#262626;
+  --code-bg:#161616;
+  --code-border:#2a2a2a;
+  --demand:#C27E00;
+  --capacity:#22A08B;
+  --capacity-wash:rgba(34,160,139,.14);
+}
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.7;color:var(--text);background:var(--bg);transition:background .3s ease,color .3s ease;}
+a{color:var(--accent-ink);text-underline-offset:3px;text-decoration-thickness:1px;}
+a:hover{color:var(--text);}
+::selection{background:var(--accent);color:#111;}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px;}
+.scroll-progress{position:fixed;top:0;left:0;width:0;height:4px;background:var(--accent);z-index:1000;}
+.theme-toggle{position:fixed;top:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--card-bg);border:2px solid var(--card-border);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:999;transition:transform .3s ease,border-color .3s ease;}
+.theme-toggle:hover{transform:scale(1.1);border-color:var(--accent);}
+.theme-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+
+/* top bar, like the main page header */
+.topbar{display:flex;align-items:center;gap:12px;padding:28px 0 18px;border-bottom:1px solid var(--card-border);}
+.topbar img{width:44px;height:44px;border-radius:8px;object-fit:cover;}
+.topbar a{text-decoration:none;color:var(--text);font-weight:700;font-size:18px;letter-spacing:.2px;}
+.topbar .last{color:var(--accent);}
+.topbar .home{margin-left:auto;margin-right:64px;font-size:14px;font-weight:600;color:var(--accent-ink);}
+
+/* hero */
+.hero{padding:44px 0 6px;}
+.kicker{display:inline-block;font:700 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:7px 11px;margin-bottom:18px;}
+.hero h1{font-size:clamp(36px,7.4vw,56px);line-height:1.06;letter-spacing:-.015em;margin:0 0 10px;font-weight:800;}
+.hero .alt{font-size:18px;font-style:italic;color:var(--text-muted);margin:0 0 20px;}
+.hero .dek{font-size:19.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 22px;}
+.byline{display:flex;flex-wrap:wrap;gap:6px 16px;font:14px var(--mono);color:var(--text-muted);margin-bottom:30px;}
+.byline b{color:var(--text);}
+
+/* section titles: the main page's dot + gold line */
+.section-title{display:flex;align-items:center;gap:12px;margin:72px 0 6px;}
+.section-title .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.section-title .section-line{flex:1;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+.section-title .n{font:700 13px var(--mono);color:var(--accent-ink);}
+h2{font-size:clamp(25px,4.8vw,32px);line-height:1.2;letter-spacing:-.01em;margin:0 0 18px;font-weight:800;}
+h3{font-size:20px;margin:36px 0 10px;font-weight:700;}
+p{margin:0 0 20px;}
+strong{font-weight:700;}
+.lede{font-size:19.5px;}
+code{font-family:var(--mono);font-size:.86em;background:var(--skill-bg);border-radius:4px;padding:.12em .36em;white-space:nowrap;}
+ul.plain,ol.plain{padding-left:22px;margin:0 0 22px;}
+ul.plain li,ol.plain li{margin-bottom:9px;}
+.note{font-size:15px;color:var(--text-muted);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 26px;}
+
+/* cards */
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:20px 22px;margin:26px 0 32px;}
+.tldr{border-left:4px solid var(--accent);}
+.tldr h2{font-size:21px;margin-bottom:12px;}
+.tldr ol{margin:0;padding-left:20px;}
+.tldr li{margin-bottom:8px;}
+.tldr-foot{margin:14px 0 12px;font-size:15.5px;}
+.tldr details.log{margin:0;}
+
+/* decision records */
+.decision,.whatidid,.runit{border-left:4px solid var(--accent);}
+.runit .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:8px;}
+.cta{display:inline-block;font-weight:700;text-decoration:none;background:var(--accent);color:#111;padding:9px 16px;border-radius:999px;}
+.cta:hover{color:#111;filter:brightness(1.05);}
+.whatidid .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:8px;}
+.whatidid ul{margin:0;}
+.decision .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:10px;}
+.decision ul{list-style:none;margin:0 0 14px;padding:0;}
+.decision li{padding:9px 0;border-top:1px solid var(--card-border);font-size:15.5px;line-height:1.55;}
+.decision li b{display:block;font-size:15.5px;}
+.decision li.won b::after{content:"  ← this one";color:var(--accent-ink);font:700 12px var(--mono);}
+.decision.rec li.won b::after{content:"  ← recommended";color:var(--capacity);}
+.decision .pick{margin:0;padding:12px 14px;background:var(--accent-wash);border-radius:8px;font-size:16px;}
+.decision .pick.rec{background:var(--capacity-wash);}
+.decision .cost{margin:10px 2px 0;font-size:14.5px;color:var(--text-muted);}
+.decision .cost b{color:var(--text-secondary);}
+
+/* the video's interruptions, on the page */
+.interrupt{border:2px dashed var(--accent);border-radius:14px;padding:18px 18px 4px;margin:34px 0 34px;background:var(--bg);position:relative;}
+.interrupt .tag{position:absolute;top:-12px;left:16px;background:var(--accent);color:#111;font:700 12px var(--mono);letter-spacing:.04em;padding:4px 10px;border-radius:999px;}
+.interrupt p{font-size:16.5px;}
+
+/* code */
+.code{background:var(--code-bg);border:1px solid var(--code-border);border-radius:12px;overflow:hidden;margin:20px 0 8px;}
+.code-bar{display:flex;align-items:center;gap:6px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.07);}
+.term-dot{width:10px;height:10px;border-radius:50%;background:#3b3f46;}
+.term-dot:first-child{background:#fdb515;}
+.code-name{margin-left:8px;font:12.5px var(--mono);color:#9aa0a6;}
+.code pre{margin:0;padding:16px 18px 18px;overflow-x:auto;font:13.5px/1.6 var(--mono);color:#e6e6e6;tab-size:4;}
+.code pre code{background:none;padding:0;border-radius:0;font-size:inherit;color:inherit;white-space:pre;}
+.code .k{color:#fdb515;}
+.code .s{color:#a8d59f;}
+.code .c{color:#8b929a;font-style:italic;}
+.code .n{color:#f2c88d;}
+.code .f,.code .b{color:#86c5f0;}
+details.more + .out{margin-top:22px;}
+.out{position:relative;margin:0 0 30px;background:var(--card-bg);border:1px solid var(--card-border);border-left:4px solid var(--accent);border-radius:0 10px 10px 0;}
+.out pre{margin:0;padding:14px 16px 12px;overflow-x:auto;font:13px/1.55 var(--mono);color:var(--text);}
+.out-label{position:absolute;top:-9px;right:12px;background:var(--bg);padding:0 6px;font:700 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+.term-body{padding:16px 20px 18px;font:14.5px/1.75 var(--mono);color:#e6e6e6;}
+.term-body .p{color:#fdb515;}
+.term-body .dim{color:#9aa0a6;}
+.cursor{display:inline-block;width:8px;height:16px;background:#fdb515;vertical-align:-3px;animation:blink 1.1s steps(1) infinite;}
+@keyframes blink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+
+/* collapsibles */
+details.more.flat{margin-top:0;}
+details.more{margin:-14px 0 30px;border:1px solid var(--card-border);border-radius:10px;background:var(--card-bg);}
+details.more summary{cursor:pointer;padding:10px 14px;font:600 13.5px var(--mono);color:var(--text-muted);list-style:none;}
+details.more summary::-webkit-details-marker{display:none;}
+details.more summary::before{content:"+ ";color:var(--accent-ink);font-weight:800;}
+details.more[open] summary::before{content:"− ";}
+details.more > .code,details.more > .out,details.more > .table-scroll{margin-left:12px;margin-right:12px;}
+details.more > .out{margin-bottom:14px;}
+
+/* formula */
+.formula{font:14.5px/1.9 var(--mono);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 22px;overflow-x:auto;white-space:nowrap;}
+
+/* figures and tables */
+figure{margin:28px 0 36px;}
+figure svg{width:100%;height:auto;display:block;}
+figcaption{font:13px/1.5 var(--mono);color:var(--text-muted);margin-top:10px;}
+.fig-frame{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:16px 12px;}
+.fig-frame svg{max-width:580px;margin:0 auto;}
+.arch text{font-family:var(--mono);}
+.arch .t{fill:var(--text);} .arch .tm{fill:var(--text-muted);} .arch .ta{fill:var(--accent-ink);}
+.arch .bx{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;}
+.arch .bx-main{fill:var(--bg);stroke:var(--text);stroke-width:1.5;}
+.arch .pipe{fill:#15171b;stroke:var(--card-border);stroke-width:1.5;}
+.arch .pipe-t{fill:#e6e6e6;font-family:system-ui,sans-serif;font-weight:700;} .arch .pipe-a{fill:#fdb515;}
+.arch .chip{fill:var(--accent-wash);stroke:var(--accent-ink);stroke-width:1.2;}
+.arch .chip-teal{fill:var(--capacity-wash);stroke:var(--capacity);stroke-width:1.2;}
+.arch .ln{stroke:var(--text-muted);stroke-width:1.5;fill:none;}
+.arch .la{stroke:var(--accent-ink);stroke-width:2;fill:none;}
+.arch .mk{fill:var(--text-muted);} .arch .mka{fill:var(--accent-ink);}
+.arch .rule{stroke:var(--card-border);}
+.table-scroll{overflow-x:auto;margin:0 0 30px;}
+.spec-table{width:100%;border-collapse:collapse;font-size:15px;}
+.spec-table th,.spec-table td{text-align:left;padding:10px;border-bottom:1px solid var(--card-border);vertical-align:top;}
+.spec-table thead th{font:700 12px var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--accent);}
+.spec-table td:first-child{font-weight:600;}
+.spec-table.num td{font-family:var(--mono);text-align:right;padding:5px 10px;font-size:13px;font-weight:400;}
+.spec-table.num th{text-align:right;}
+.spec-table.fail td{font-size:14.5px;}
+.spec-table.fail td:first-child{width:30%;}
+
+/* widgets */
+.widget{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:16px;margin:26px 0 34px;}
+.widget-title{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.btn{font:600 14px system-ui,sans-serif;padding:8px 14px;min-height:38px;border-radius:999px;border:2px solid var(--card-border);background:var(--bg);color:var(--text);cursor:pointer;transition:border-color .2s;}
+.btn:hover{border-color:var(--accent);}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#111;}
+.btn:focus-visible,.bf-input:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+.journey{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
+.journey svg{width:100%;height:auto;display:block;max-width:360px;margin:0 auto;}
+.journey text{font-family:var(--mono);fill:var(--text);}
+.journey .sub{fill:var(--text-muted);}
+.journey .node rect{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;transition:fill .25s,stroke .25s;}
+.journey .node.lit rect{fill:var(--accent-wash);stroke:var(--accent);}
+.journey .node.stop rect{fill:var(--capacity-wash);stroke:var(--capacity);stroke-width:2.5;}
+.journey #dot{fill:var(--accent);stroke:var(--bg);}
+.log{list-style:none;margin:0;padding:0;font:13px/1.55 var(--mono);min-height:150px;}
+.log li{padding:6px 0;border-bottom:1px dashed var(--card-border);}
+.log li b{color:var(--accent-ink);}
+.meters{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font:13px var(--mono);color:var(--text-muted);}
+.meters b{color:var(--text);}
+.bf-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.bf-input{flex:1 1 180px;min-width:0;min-height:40px;padding:8px 10px;font:15px var(--mono);border:2px solid var(--card-border);border-radius:10px;background:var(--bg);color:var(--text);}
+.bits{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;margin:12px 0 6px;}
+.bit{aspect-ratio:1;border-radius:6px;background:var(--bg);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;font:600 11px var(--mono);color:var(--text-muted);transition:background .2s;}
+.bit.on{background:var(--accent);border-color:var(--accent);color:#111;}
+.bit.probe{outline:2px solid var(--text);outline-offset:1px;}
+.bit.probe.zero{outline:3px solid var(--capacity);}
+.bf-result{font-size:15.5px;margin:10px 0 4px;min-height:48px;}
+.bf-items,.bf-stats{font:12.5px var(--mono);color:var(--text-muted);word-break:break-word;}
+.bf-stats{margin-top:6px;}
+
+/* charts */
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:26px 0 10px;font-size:14px;color:var(--text-muted);}
+.legend span{display:inline-flex;align-items:center;gap:7px;}
+.lk{display:inline-block;width:16px;height:2px;border-radius:1px;}
+.lk-dem{background:var(--demand);} .lk-cap{background:var(--capacity);}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;}
+.sw-gap{background:var(--demand);opacity:.25;}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+.chart{position:relative;margin:0;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:10px 8px 4px;}
+.chart-title{font-size:14.5px;font-weight:700;margin:0 0 4px 6px;}
+.chart .ax{font:10.5px var(--mono);fill:var(--text-muted);}
+.chart .grid{stroke:var(--card-border);}
+.chart .note{stroke:var(--text-muted);}
+.chart .s-dem{stroke:var(--demand);} .chart .s-cap{stroke:var(--capacity);}
+.chart .s-gap{fill:var(--demand);fill-opacity:.2;}
+.chart .xhair{stroke:var(--text);}
+.chart .hit{cursor:crosshair;}
+.tip{position:absolute;pointer-events:none;z-index:2;background:#111;color:#f2f2f2;border-radius:6px;padding:7px 9px;font:12px/1.5 var(--mono);white-space:nowrap;}
+[data-theme="dark"] .tip{background:#f2f2f2;color:#111;}
+.tip .row{display:flex;align-items:center;gap:7px;}
+.tip i{display:inline-block;width:12px;height:2px;}
+
+footer{border-top:1px solid var(--card-border);margin-top:30px;padding:30px 0 70px;}
+footer p{font-size:15px;color:var(--text-muted);}
+.bye{font-size:22px;font-weight:800;color:var(--text) !important;}
+
+@media (max-width:640px){
+  body{font-size:16.5px;}
+  .theme-toggle{top:14px;right:14px;width:44px;height:44px;font-size:18px;}
+  .topbar .home{margin-right:52px;}
+  .hero{padding-top:30px;}
+  .journey,.charts{grid-template-columns:1fr;}
+  .bits{grid-template-columns:repeat(8,minmax(0,1fr));}
+  .code pre{font-size:12.5px;}
+}
+@media (max-width:420px){ .topbar .home{display:none;} }
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  .cursor{animation:none;}
+}
+/* lab-specific */
+article code{white-space:normal;overflow-wrap:anywhere;}  /* long commands in prose must wrap on phones */
+.out pre{white-space:pre-wrap;overflow-wrap:anywhere;}  /* every number in an output stays visible */
+.progress{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--card-border);margin-bottom:8px;display:flex;align-items:center;gap:12px;font:600 13.5px var(--mono);color:var(--text-muted);}
+.progress .track{flex:1;height:8px;border-radius:999px;background:var(--card-border);overflow:hidden;}
+.progress .fill{height:100%;width:0;background:var(--accent);transition:width .3s ease;}
+.step{display:flex;align-items:baseline;gap:12px;margin:46px 0 10px;}
+.step h3{margin:0;font-size:21px;}
+.step input{width:20px;height:20px;accent-color:#fdb515;flex-shrink:0;transform:translateY(3px);cursor:pointer;}
+.step .tag{font:700 11.5px var(--mono);color:var(--accent-ink);background:var(--accent-wash);padding:3px 8px;border-radius:999px;white-space:nowrap;}
+.cmd{position:relative;}
+.cmd .copy{position:absolute;top:7px;right:10px;font:600 12px var(--mono);background:#2a2d33;color:#e6e6e6;border:1px solid #3b3f46;border-radius:6px;padding:4px 9px;cursor:pointer;}
+.cmd .copy:hover{border-color:#fdb515;}
+.cmd .code-bar{padding-right:80px;}
+.os{font-size:14.5px;color:var(--text-muted);margin:-2px 0 18px;}
+.exp{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:16px 20px;margin:20px 0 30px;}
+.exp dl{display:grid;grid-template-columns:110px 1fr;gap:8px 14px;margin:0;}
+.exp dt{font:700 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);padding-top:3px;}
+.exp dd{margin:0;font-size:16px;}
+.warn{border-left:4px solid #C26A00;background:var(--card-bg);border-radius:0 10px 10px 0;padding:12px 16px;margin:18px 0 26px;font-size:15.5px;}
+.part{margin-top:80px;}
+.toc{columns:2;column-gap:28px;margin:0 0 10px;padding-left:20px;}
+.toc li{margin-bottom:6px;break-inside:avoid;}
+@media (max-width:640px){ .exp dl{grid-template-columns:1fr;gap:2px;} .exp dt{padding-top:10px;} .toc{columns:1;} }
+</style>
+</head>
+<body>
+<div class="scroll-progress" aria-hidden="true"></div>
+<button class="theme-toggle" type="button" aria-label="Toggle dark mode">🌙</button>
+
+<div class="wrap">
+<nav class="topbar" aria-label="Site">
+  <img src="../images/avatar.webp?v=3" alt="" width="44" height="44">
+  <a href="../">Ambrose <span class="last">Tuscano</span></a>
+  <a class="home" href="scaling-ad-relevance-apis.html">← Back to the post</a>
+</nav>
+
+<header class="hero">
+  <span class="kicker">Hands-on lab · companion to <a href="scaling-ad-relevance-apis.html" style="color:inherit">A Million Questions a Second</a></span>
+  <h1>Run It Yourself: The Relevance API Lab</h1>
+  <p class="dek">Build a small version of the system from the post and poke at it until it teaches you something. Precompute (ASIN, creative) relevance once a day, answer requests through a Bloom filter and a cache, publish a new version under load, watch a garbage collector misbehave, then run the same service on AWS behind a load balancer with Auto Scaling.</p>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>about 1 hour on a laptop · 1–2 more on AWS</span></div>
+</header>
+
+<div class="progress" role="status" aria-live="polite"><span id="prog-text">0 of 0 steps done</span><div class="track"><div class="fill" id="prog-fill"></div></div></div>
+
+<article>
+<section class="card tldr">
+<h2>What you'll build</h2>
+<ol>
+  <li><strong>A synthetic world:</strong> 10,000 products (ASINs) in 50 categories and 1,000 creatives that advertise them, some brand new with no product yet.</li>
+  <li><strong>The daily batch:</strong> ASIN-to-ASIN and creative-to-creative similarities, joined into about 277,000 relevant (ASIN, creative) pairs, validated, and published as one version with its own Bloom filter.</li>
+  <li><strong>The API:</strong> an ASIN plus candidate creatives in, a score per creative out, through the Bloom filter, a hot-key cache and one batched database read, swapping versions while it serves.</li>
+  <li><strong>Five experiments</strong> on your laptop, a <strong>garbage-collector experiment</strong> in Java, and the <strong>same service on AWS</strong>: DynamoDB, S3, a load balancer, an Auto Scaling group and its own load-generator machine.</li>
+</ol>
+<p class="tldr-foot">Tick each step as you finish it; your progress is saved in this browser.</p>
+</section>
+
+<div class="table-scroll">
+<table class="spec-table">
+<thead><tr><th>Part</th><th>You need</th><th>Cost</th></tr></thead>
+<tbody>
+<tr><td>1 · Laptop</td><td>Python 3.10 or newer, about 1 GB free disk</td><td>Free</td></tr>
+<tr><td>2 · Garbage collector</td><td>Java 21 (any OpenJDK build)</td><td>Free</td></tr>
+<tr><td>3 · AWS</td><td>An AWS account you can create resources in, AWS CLI v2</td><td>Billable while it runs: EC2, a load balancer, DynamoDB, an Elastic IP. Delete it when done (step 17).</td></tr>
+</tbody>
+</table>
+</div>
+
+<ol class="toc">
+  <li><a href="#part1">Part 1 · On your laptop</a></li>
+  <li><a href="#experiments">Five experiments</a></li>
+  <li><a href="#part2">Part 2 · The garbage collector</a></li>
+  <li><a href="#part3">Part 3 · On AWS</a></li>
+  <li><a href="#trouble">Troubleshooting</a></li>
+  <li><a href="#cleanup">Clean up</a></li>
+</ol>
+
+<div class="section-title part" id="part1"><span class="dot"></span><span class="n">PART 1</span><span class="section-line"></span></div>
+<h2>On your laptop</h2>
+
+<div class="step"><input type="checkbox" data-step="get" aria-label="Done: get the code"><h3>1. Get the code</h3></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">get the lab</span></div><button class="copy" type="button">copy</button><pre><code>curl -LO https://tascano.github.io/notes/relevance-lab.zip
+unzip relevance-lab.zip &amp;&amp; cd relevance-lab</code></pre></div>
+<p class="os">No curl? Download <a href="relevance-lab.zip">relevance-lab.zip</a> and unzip it. Every file is also readable on GitHub in <a href="https://github.com/Tascano/Tascano.github.io/tree/main/notes/relevance-lab" target="_blank" rel="noopener">notes/relevance-lab</a>.</p>
+
+<div class="table-scroll">
+<table class="spec-table">
+<thead><tr><th>File</th><th>What it is</th></tr></thead>
+<tbody>
+<tr><td><code>data.py</code></td><td>The synthetic world of ASINs and creatives (same seed, same world, for everyone)</td></tr>
+<tr><td><code>precompute.py</code></td><td>The daily batch: similarities → scores → validate → publish one version</td></tr>
+<tr><td><code>bloom.py</code></td><td>The Bloom filter from the post, plus save and load</td></tr>
+<tr><td><code>store.py</code></td><td>Score storage: SQLite on a laptop, DynamoDB on AWS, versions side by side</td></tr>
+<tr><td><code>service.py</code></td><td>The API: Bloom filter → cache → one batched read, swapping versions live</td></tr>
+<tr><td><code>loadtest.py</code></td><td>A load generator with skewed, realistic traffic</td></tr>
+<tr><td><code>GcLab.java</code></td><td>The garbage-collector experiment</td></tr>
+<tr><td><code>aws/stack.yaml</code></td><td>Everything AWS needs, as one CloudFormation template</td></tr>
+<tr><td><code>test_lab.py</code></td><td>Checks for the laptop path and (with moto) the AWS path</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="step"><input type="checkbox" data-step="venv" aria-label="Done: install"><h3>2. Create a virtual environment and install</h3></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">macOS / Linux</span></div><button class="copy" type="button">copy</button><pre><code>python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install -r requirements.txt</code></pre></div>
+<p class="os">Windows (PowerShell): <code>py -m venv .venv</code>, then <code>.venv\Scripts\Activate.ps1</code>, then the same <code>pip install</code>. Everything below works the same, except you set environment variables with <code>$env:BLOOM="off"</code> instead of <code>BLOOM=off</code>.</p>
+
+<div class="step"><input type="checkbox" data-step="batch1" aria-label="Done: first batch"><h3>3. Run the daily batch: version 1</h3><span class="tag">post §03, §08</span></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">build and publish 2026-10-30</span></div><button class="copy" type="button">copy</button><pre><code>python precompute.py --day 2026-10-30</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>[2026-10-30] scored pairs: 276,536 relevant (ASIN, creative) pairs in 0.6s
+[2026-10-30] validation passed (first version)
+[2026-10-30] Bloom filter: 2,650,614 bits (324 KiB), k=7
+[2026-10-30] wrote 276,536 rows to sqlite in 0.8s
+[2026-10-30] published: current.json now points at version 2026-10-30</pre></div>
+<p>That's the whole daily backfill in one command: similarities, the threshold, the validation gate, a Bloom filter for exactly these keys, a SQLite file for this version, and finally <code>data/current.json</code> pointing at it. That last write is atomic (write a temp file, then rename), which is the "publish as one version" rule from the post.</p>
+
+<div class="step"><input type="checkbox" data-step="serve" aria-label="Done: start the API"><h3>4. Start the API</h3><span class="tag">post §05</span></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">terminal 1</span></div><button class="copy" type="button">copy</button><pre><code>uvicorn service:app --port 8000</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>INFO:     Application startup complete.
+serving version 2026-10-30 (276,536 rows)
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)</pre></div>
+
+<div class="step"><input type="checkbox" data-step="ask" aria-label="Done: ask a question"><h3>5. Ask it a question</h3></div>
+<p>In a second terminal (activate the same virtual environment), send one product and three candidate creatives, twice:</p>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">terminal 2</span></div><button class="copy" type="button">copy</button><pre><code>curl -s localhost:8000/relevance -H &#x27;content-type: application/json&#x27; \
+  -d &#x27;{&quot;asin&quot;: &quot;B000000042&quot;, &quot;creatives&quot;: [&quot;cr-179&quot;, &quot;cr-396&quot;, &quot;cr-7&quot;]}&#x27;</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>{"version":"2026-10-30","scores":{"cr-179":0.935,"cr-396":0.923,"cr-7":0.0}}</pre></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">what each layer did</span></div><button class="copy" type="button">copy</button><pre><code>curl -s localhost:8000/metrics</code></pre></div>
+<div class="out"><span class="out-label">output, after asking twice</span><pre>{"version":"2026-10-30", ..., "requests":2, "lookups":6, "bloom_no":2,
+ "cache_hits":2, "db_reads":1, "db_keys":2, ...}</pre></div>
+<p>Six lookups, and only one trip to the database. <code>cr-7</code> isn't relevant to this product, and the Bloom filter said so from memory, both times. The first request fetched the other two scores in a single batched read; the second found them in the cache.</p>
+
+<div class="step"><input type="checkbox" data-step="load" aria-label="Done: baseline load test"><h3>6. Load-test it</h3><span class="tag">post §02</span></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">terminal 2</span></div><button class="copy" type="button">copy</button><pre><code>python loadtest.py --seconds 12 --processes 2 --concurrency 32 --reset</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>requests: 8,102 ok, 0 errors in 12.2s -&gt; 665 req/s
+client latency ms: p50 59.1  p99 457.5  max 864.8
+Little&#x27;s law: 665 req/s x 0.0946 s = 63 in flight (you ran 64)
+server [2026-10-30] 40,510 lookups: Bloom said no 50%, cache hits 25%, read from db 25% in 4,591 batched reads
+server latency ms: p50 0.083  p99 1.994  max 16.939</pre></div>
+<p>Four things to read in that output:</p>
+<ul class="plain">
+  <li><strong>Little's law holds:</strong> requests per second × average latency ≈ requests in flight, and in flight is exactly the concurrency you asked for (64).</li>
+  <li><strong>The layers:</strong> about half the lookups never got past the Bloom filter, a quarter came from the cache, a quarter went to the database.</li>
+  <li><strong>Client vs server time:</strong> the server needs well under a millisecond per request, but clients wait about 60 ms. That gap is queueing in the HTTP layer, not the lookups. Always measure both sides.</li>
+  <li><strong>Who's the bottleneck?</strong> Rerun with <code>--processes 3</code>. On my 4-core machine throughput rose from about 690 to 970 requests a second while the server sat around 50% CPU. The load generator was the limit, which is why real load tests run from a fleet of their own.</li>
+</ul>
+
+<div class="section-title part" id="experiments"><span class="dot"></span><span class="n">EXPERIMENTS</span><span class="section-line"></span></div>
+<h2>Five experiments</h2>
+<p>Each one changes one thing. Stop the API (Ctrl+C in terminal 1), restart it with the setting shown, and rerun the load test from step 6. Make a prediction first; it's more fun when you're wrong.</p>
+
+<div class="step"><input type="checkbox" data-step="e1" aria-label="Done: experiment 1"><h3>7. Experiment 1 · Turn the Bloom filter off</h3><span class="tag">post §06</span></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">terminal 1</span></div><button class="copy" type="button">copy</button><pre><code>BLOOM=off uvicorn service:app --port 8000</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>requests: 8,406 ok, 0 errors in 12.1s -&gt; 692 req/s
+client latency ms: p50 57.2  p99 456.2  max 1079.4
+Little&#x27;s law: 692 req/s x 0.0910 s = 63 in flight (you ran 64)
+server [2026-10-30] 42,030 lookups: Bloom said no 0%, cache hits 39%, read from db 61% in 7,202 batched reads
+server latency ms: p50 0.082  p99 1.702  max 12.737</pre></div>
+<div class="exp"><dl>
+  <dt>Predict</dt><dd>How much more of the work reaches the database?</dd>
+  <dt>Observe</dt><dd>Database reads go from 25% of lookups to 61%, and batched reads from about 4,600 to 7,200.</dd>
+  <dt>Why</dt><dd>Without the filter, every "not relevant" pair costs a read that comes back empty. The cache absorbs some of them (negative caching), but the filter answers them all from memory, with certainty.</dd>
+</dl></div>
+
+<div class="step"><input type="checkbox" data-step="e2" aria-label="Done: experiment 2"><h3>8. Experiment 2 · Turn the cache off</h3><span class="tag">post §07</span></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">terminal 1</span></div><button class="copy" type="button">copy</button><pre><code>CACHE_SIZE=0 uvicorn service:app --port 8000</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>requests: 8,342 ok, 0 errors in 12.1s -&gt; 688 req/s
+client latency ms: p50 58.6  p99 468.1  max 904.1
+Little&#x27;s law: 688 req/s x 0.0917 s = 63 in flight (you ran 64)
+server [2026-10-30] 41,710 lookups: Bloom said no 50%, cache hits 0%, read from db 50% in 8,055 batched reads
+server latency ms: p50 0.132  p99 2.734  max 30.163</pre></div>
+<div class="exp"><dl>
+  <dt>Observe</dt><dd>The Bloom filter still stops half the lookups, but everything else now goes to the database: batched reads nearly double, and the server's own p99 rises.</dd>
+  <dt>Why</dt><dd>Popularity is skewed (the load test uses a Zipf curve), so a small cache catches a big share. Layers multiply.</dd>
+</dl></div>
+
+<div class="step"><input type="checkbox" data-step="e3" aria-label="Done: experiment 3"><h3>9. Experiment 3 · Make the database slow</h3></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">terminal 1, then again with CACHE_SIZE=0</span></div><button class="copy" type="button">copy</button><pre><code>DB_DELAY_MS=2 uvicorn service:app --port 8000
+DB_DELAY_MS=2 CACHE_SIZE=0 uvicorn service:app --port 8000</code></pre></div>
+<div class="out"><span class="out-label">output, with the cache</span><pre>requests: 8,487 ok, 0 errors in 12.1s -&gt; 700 req/s
+client latency ms: p50 56.1  p99 456.2  max 831.6
+Little&#x27;s law: 700 req/s x 0.0901 s = 63 in flight (you ran 64)
+server [2026-10-30] 42,435 lookups: Bloom said no 50%, cache hits 25%, read from db 25% in 4,768 batched reads
+server latency ms: p50 2.169  p99 3.834  max 28.117</pre></div>
+<div class="out"><span class="out-label">output, without the cache</span><pre>requests: 8,540 ok, 0 errors in 12.1s -&gt; 704 req/s
+client latency ms: p50 54.6  p99 450.9  max 1354.5
+Little&#x27;s law: 704 req/s x 0.0896 s = 63 in flight (you ran 64)
+server [2026-10-30] 42,700 lookups: Bloom said no 50%, cache hits 0%, read from db 50% in 8,244 batched reads
+server latency ms: p50 2.243  p99 4.108  max 12.432</pre></div>
+<div class="exp"><dl>
+  <dt>Observe</dt><dd>Divide batched reads by requests: with the cache, 56% of requests waited the extra 2 ms; without it, 97% did.</dd>
+  <dt>Why</dt><dd>Every layer in front of a slow dependency decides how many requests feel it. This is also why the post's ad server fails open: a slow answer is worth the same as no answer.</dd>
+</dl></div>
+
+<div class="step"><input type="checkbox" data-step="e4" aria-label="Done: experiment 4"><h3>10. Experiment 4 · Publish a new version under load</h3><span class="tag">post §08</span></div>
+<p>Restart the API normally. Start a 15-second load test, and while it runs, publish the next day from a third terminal:</p>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">terminal 2</span></div><button class="copy" type="button">copy</button><pre><code>python loadtest.py --seconds 15 --processes 2 --concurrency 32 --reset</code></pre></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">terminal 3, a few seconds later</span></div><button class="copy" type="button">copy</button><pre><code>python precompute.py --day 2026-10-31</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>[2026-10-31] scored pairs: 280,948 relevant (ASIN, creative) pairs in 1.2s
+[2026-10-31] validation passed (live version 2026-10-30 has 276,536 rows)
+[2026-10-31] Bloom filter: 2,692,903 bits (329 KiB), k=7
+[2026-10-31] wrote 280,948 rows to sqlite in 0.8s
+[2026-10-31] published: current.json now points at version 2026-10-31</pre></div>
+<div class="out"><span class="out-label">output</span><pre>requests: 8,899 ok, 0 errors in 15.2s -&gt; 586 req/s
+client latency ms: p50 69.8  p99 531.7  max 1189.1
+Little&#x27;s law: 586 req/s x 0.1077 s = 63 in flight (you ran 64)
+server [2026-10-31] 44,495 lookups: Bloom said no 70%, cache hits 13%, read from db 17% in 3,564 batched reads
+server latency ms: p50 0.053  p99 1.828  max 12.682</pre></div>
+<div class="out"><span class="out-label">terminal 1 (the API)</span><pre>serving version 2026-10-30 (276,536 rows)
+serving version 2026-10-31 (280,948 rows)</pre></div>
+<div class="exp"><dl>
+  <dt>Observe</dt><dd>Zero errors. The service built the whole new snapshot (Bloom filter, database file, empty cache) next to the old one, then swapped a single reference. Requests in flight finished on the version they started with.</dd>
+  <dt>Why</dt><dd>The Bloom filter's "no false negatives" only holds for the keys it was built from, so filter, data and cache must change together, or not at all.</dd>
+</dl></div>
+
+<div class="step"><input type="checkbox" data-step="e5" aria-label="Done: experiment 5"><h3>11. Experiment 5 · Try to publish broken data</h3><span class="tag">post §11</span></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">a dataset that shrank overnight</span></div><button class="copy" type="button">copy</button><pre><code>python precompute.py --day 2026-11-01 --threshold 0.95</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>[2026-11-01] scored pairs: 5,910 relevant (ASIN, creative) pairs in 0.4s
+refusing to publish: row count moved 98% (280,948 -&gt; 5,910); rerun with --force if that is expected</pre></div>
+<div class="exp"><dl>
+  <dt>Observe</dt><dd>The batch refuses, and version 2026-10-31 stays live. <code>curl -s localhost:8000/healthz</code> agrees.</dd>
+  <dt>Why</dt><dd>Data publishes are deploys too. A validation gate that keeps yesterday's version is the cheapest outage you'll never have.</dd>
+</dl></div>
+
+<div class="step"><input type="checkbox" data-step="tests" aria-label="Done: run the tests"><h3>12. Run the checks</h3></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the laptop path, and the AWS path against moto&#x27;s fake DynamoDB and S3</span></div><button class="copy" type="button">copy</button><pre><code>pip install pytest moto
+python -m pytest -q test_lab.py</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>3 passed</pre></div>
+
+<div class="section-title part" id="part2"><span class="dot"></span><span class="n">PART 2</span><span class="section-line"></span></div>
+<h2>The garbage collector</h2>
+
+<p><code>GcLab.java</code> plays a relevance service: 20,000 requests a second on a fixed schedule, garbage on every request (key strings, lists, a response buffer), a 3-million-entry precomputed table, and a hot-key cache that churns. Latency is measured from when each request was <em>supposed</em> to start, so a pause shows up in every request it delays. Java 21 runs a single source file directly; no build step.</p>
+
+<div class="step"><input type="checkbox" data-step="gc1" aria-label="Done: three collectors"><h3>13. Three collectors, same workload</h3><span class="tag">post §10</span></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">about 40 seconds each</span></div><button class="copy" type="button">copy</button><pre><code>java -Xms2g -Xmx2g -XX:+AlwaysPreTouch -XX:+UseParallelGC GcLab.java objects
+java -Xms2g -Xmx2g -XX:+AlwaysPreTouch -XX:+UseG1GC GcLab.java objects
+java -Xms2g -Xmx2g -XX:+AlwaysPreTouch -XX:+UseZGC -XX:+ZGenerational GcLab.java objects</code></pre></div>
+<div class="out"><span class="out-label">output, Parallel</span><pre>objects layout, cache 1,000,000 entries, 20,000 req/s for 30s
+latency ms: p50 0.003  p99 0.279  p99.9 99.954  max 127.9
+collections: 1, stop-the-world pause time 127 ms</pre></div>
+<div class="table-scroll">
+<table class="spec-table">
+<thead><tr><th>Collector</th><th>p99.9</th><th>Worst request</th><th>Stop-the-world time</th></tr></thead>
+<tbody>
+<tr><td>Parallel</td><td>100 ms</td><td>128 ms</td><td>127 ms, one full collection</td></tr>
+<tr><td>G1</td><td>55 ms</td><td>69 ms</td><td>264 ms across 5 pauses</td></tr>
+<tr><td>Generational ZGC</td><td>1.3 ms</td><td>5.8 ms</td><td>under 1 ms across 16 cycles</td></tr>
+</tbody>
+</table>
+</div>
+<div class="exp"><dl>
+  <dt>Observe</dt><dd>The median request takes microseconds under every collector. The tail is where they differ, by almost a hundred times.</dd>
+  <dt>Why</dt><dd>Parallel stops everything and cleans the whole heap at once; G1 splits the work into shorter pauses; ZGC does almost all of it while your code keeps running. Your numbers will differ from my 4-core machine; the ranking shouldn't.</dd>
+</dl></div>
+
+<div class="step"><input type="checkbox" data-step="gc2" aria-label="Done: cap the cache"><h3>14. Now cap the cache instead</h3></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">Parallel again, with a 100,000-entry cache</span></div><button class="copy" type="button">copy</button><pre><code>java -Xms2g -Xmx2g -XX:+AlwaysPreTouch -XX:+UseParallelGC GcLab.java objects 100000</code></pre></div>
+<div class="out"><span class="out-label">output</span><pre>objects layout, cache 100,000 entries, 20,000 req/s for 30s
+latency ms: p50 0.003  p99 0.012  p99.9 1.252  max 10.6
+collections: 1, stop-the-world pause time 10 ms</pre></div>
+<div class="exp"><dl>
+  <dt>Observe</dt><dd>Same collector, same table: the worst pause drops from about 127 ms to about 10 ms.</dd>
+  <dt>Why</dt><dd>The churning cache was most of the old generation's work. Holding the table as one flat array instead (<code>GcLab.java array</code>) barely changed anything here, because the cache, not the table, was the weight. Measure before you optimize: the playbook in the post is a list of suspects, not a list of fixes.</dd>
+</dl></div>
+
+<div class="section-title part" id="part3"><span class="dot"></span><span class="n">PART 3</span><span class="section-line"></span></div>
+<h2>On AWS</h2>
+
+<div class="warn"><strong>This part costs money while it runs</strong> (by default: two API hosts, a load-generator machine, an Application Load Balancer, an Elastic IP, and DynamoDB on demand). Do it in one sitting and finish with step 17. The template passes <code>cfn-lint</code>, and the DynamoDB and S3 code paths are covered by <code>test_lab.py</code>.</div>
+
+<p>The commands below are for macOS or Linux shells (on Windows, use WSL or AWS CloudShell). They use the stack from <code>aws/stack.yaml</code>:</p>
+<ul class="plain">
+  <li><strong>Data:</strong> a DynamoDB table (versions side by side, with a time-to-live so old ones expire) and a private S3 bucket for the Bloom filters and <code>current.json</code>.</li>
+  <li><strong>The API:</strong> an Auto Scaling group of hosts behind an Application Load Balancer, with slow start and target tracking on requests per host.</li>
+  <li><strong>A load generator:</strong> its own machine, which you drive through AWS Systems Manager, so nothing needs SSH.</li>
+</ul>
+
+<div class="step"><input type="checkbox" data-step="aws1" aria-label="Done: AWS prerequisites"><h3>15. Deploy the stack</h3><span class="tag">post §09</span></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">check who you are, pick a region</span></div><button class="copy" type="button">copy</button><pre><code>aws sts get-caller-identity
+export AWS_REGION=us-east-1 AWS_DEFAULT_REGION=us-east-1</code></pre></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">find the default VPC, its subnets, and your IP</span></div><button class="copy" type="button">copy</button><pre><code>VPC=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query &#x27;Vpcs[0].VpcId&#x27; --output text)
+SUBNETS=$(aws ec2 describe-subnets --filters Name=vpc-id,Values=$VPC Name=default-for-az,Values=true \
+  --query &#x27;Subnets[].SubnetId&#x27; --output text | tr &#x27;\t&#x27; &#x27;,&#x27;)
+MYIP=$(curl -s https://checkip.amazonaws.com)/32
+echo $VPC $SUBNETS $MYIP</code></pre></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">deploy (about 5 minutes)</span></div><button class="copy" type="button">copy</button><pre><code>aws cloudformation deploy --stack-name relevance-lab --template-file aws/stack.yaml \
+  --capabilities CAPABILITY_IAM \
+  --parameter-overrides VpcId=$VPC SubnetIds=$SUBNETS AllowedCidr=$MYIP</code></pre></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">read the outputs into variables</span></div><button class="copy" type="button">copy</button><pre><code>out() { aws cloudformation describe-stacks --stack-name relevance-lab \
+  --query &quot;Stacks[0].Outputs[?OutputKey==&#x27;$1&#x27;].OutputValue&quot; --output text; }
+API=$(out ApiUrl); TABLE=$(out TableName); BUCKET=$(out BucketName)
+ASG=$(out HostGroupName); LB=$(out LoadBalancerFullName); LOADGEN=$(out LoadGenInstanceId)
+echo $API</code></pre></div>
+<p>The hosts start, install the lab, and answer <code>/healthz</code> with 503 until a data version exists. That's deliberate: the load balancer only sends traffic to hosts that have data.</p>
+
+<div class="step"><input type="checkbox" data-step="aws2" aria-label="Done: publish on AWS"><h3>16. Publish, test, scale, publish again</h3></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">publish version 1 to DynamoDB and S3 (a few minutes for ~277,000 writes)</span></div><button class="copy" type="button">copy</button><pre><code>python precompute.py --day 2026-10-30 --table $TABLE --bucket $BUCKET</code></pre></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">wait until the fleet has it (hosts check every 30 seconds)</span></div><button class="copy" type="button">copy</button><pre><code>until curl -sf $API/healthz; do sleep 10; done; echo
+curl -s $API/relevance -H &#x27;content-type: application/json&#x27; \
+  -d &#x27;{&quot;asin&quot;: &quot;B000000042&quot;, &quot;creatives&quot;: [&quot;cr-179&quot;, &quot;cr-396&quot;, &quot;cr-7&quot;]}&#x27;</code></pre></div>
+<p>You should get the same scores as on your laptop: same seed, same world, now served from DynamoDB. Next, load from the load generator (8 generator processes):</p>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">start a 3-minute load test on the generator, then read its output</span></div><button class="copy" type="button">copy</button><pre><code>CMD=$(aws ssm send-command --instance-ids $LOADGEN --document-name AWS-RunShellScript \
+  --parameters &quot;{\&quot;commands\&quot;:[\&quot;cd /opt/lab/relevance-lab &amp;&amp; /opt/lab/venv/bin/python loadtest.py --url $API --seconds 180 --processes 8 --concurrency 64\&quot;]}&quot; \
+  --query Command.CommandId --output text)
+sleep 200
+aws ssm get-command-invocation --command-id $CMD --instance-id $LOADGEN --query StandardOutputContent --output text</code></pre></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">while it runs: watch the fleet react, and the load balancer&#x27;s p99</span></div><button class="copy" type="button">copy</button><pre><code>aws autoscaling describe-scaling-activities --auto-scaling-group-name $ASG --max-items 5 \
+  --query &#x27;Activities[].[StartTime,Description]&#x27; --output table
+aws cloudwatch get-metric-statistics --namespace AWS/ApplicationELB --metric-name TargetResponseTime \
+  --dimensions Name=LoadBalancer,Value=$LB --extended-statistics p99 --period 60 \
+  --start-time $(date -u -d &#x27;-20 min&#x27; +%FT%TZ 2&gt;/dev/null || date -u -v-20M +%FT%TZ) --end-time $(date -u +%FT%TZ) \
+  --query &#x27;sort_by(Datapoints,&amp;Timestamp)[].[Timestamp,ExtendedStatistics.p99]&#x27; --output table</code></pre></div>
+<div class="exp"><dl>
+  <dt>Predict</dt><dd>Target tracking aims for 500 requests a second per host. When does a new host start helping?</dd>
+  <dt>Observe</dt><dd>The scaling activity appears within a few minutes, but the new host only takes its full share after it boots, installs, loads the data and finishes the load balancer's 60-second slow start. That gap is section 09 of the post, live.</dd>
+</dl></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">pre-scale instead (the Prime Day move), then rerun the load test and compare p99</span></div><button class="copy" type="button">copy</button><pre><code>aws autoscaling set-desired-capacity --auto-scaling-group-name $ASG --desired-capacity 4
+<span class="c"># or schedule it, the way you would before a known peak:</span>
+aws autoscaling put-scheduled-update-group-action --auto-scaling-group-name $ASG \
+  --scheduled-action-name before-the-peak --desired-capacity 4 \
+  --start-time $(date -u -d &#x27;+10 min&#x27; +%FT%TZ 2&gt;/dev/null || date -u -v+10M +%FT%TZ)</code></pre></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">publish day 2 while the load test runs, and watch the fleet switch</span></div><button class="copy" type="button">copy</button><pre><code>python precompute.py --day 2026-10-31 --table $TABLE --bucket $BUCKET
+for i in 1 2 3 4 5 6; do curl -s $API/healthz; echo; sleep 10; done</code></pre></div>
+<p>Within about 30 seconds every host reports <code>2026-10-31</code>, and the load test's error count stays at zero: each host swaps its own snapshot, and DynamoDB keeps both versions' rows side by side (keys start with the version) until the old ones expire.</p>
+
+<div class="step" id="cleanup"><input type="checkbox" data-step="aws3" aria-label="Done: clean up"><h3>17. Clean up (don't skip this)</h3></div>
+<div class="code cmd"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">empty the bucket, delete the stack, wait</span></div><button class="copy" type="button">copy</button><pre><code>aws s3 rm s3://$BUCKET --recursive
+aws cloudformation delete-stack --stack-name relevance-lab
+aws cloudformation wait stack-delete-complete --stack-name relevance-lab &amp;&amp; echo deleted</code></pre></div>
+<p>Deleting the stack removes the hosts, load balancer, load generator, Elastic IP, table, bucket and roles together. On your laptop, stop the API with Ctrl+C and delete the <code>relevance-lab</code> folder when you're done.</p>
+
+<div class="section-title part" id="trouble"><span class="dot"></span><span class="n">HELP</span><span class="section-line"></span></div>
+<h2>Troubleshooting</h2>
+<ul class="plain">
+  <li><strong><code>pip install</code> fails on numpy:</strong> you're on Python older than 3.10. Install a newer Python and recreate the virtual environment.</li>
+  <li><strong>The API says <code>no data version loaded yet</code>:</strong> run step 3 first, from the same folder you started the API in.</li>
+  <li><strong>Port 8000 is busy:</strong> use <code>--port 8001</code> for the API and <code>--url http://localhost:8001</code> for the load test.</li>
+  <li><strong><code>-XX:+ZGenerational</code> is rejected:</strong> your Java is older than 21. Drop the flag (plain ZGC still works on 17), or install Java 21.</li>
+  <li><strong>The stack fails with an instance type error:</strong> some regions or zones don't offer c7i. Add <code>InstanceType=c6i.large LoadGenInstanceType=c6i.2xlarge</code> to the parameter overrides.</li>
+  <li><strong><code>curl $API</code> hangs:</strong> your public IP changed since step 15. Redeploy with the new <code>AllowedCidr</code>.</li>
+  <li><strong>Hosts never turn healthy:</strong> check that step 16's publish finished, then open a shell on a host without SSH: <code>aws ssm start-session --target &lt;instance-id&gt;</code> and run <code>journalctl -u relevance</code>.</li>
+  <li><strong>The load generator returns nothing:</strong> it may still be installing; wait three minutes after the stack finishes and send the command again.</li>
+</ul>
+
+<div class="card runit"><div class="q">Back to the story</div>
+<p style="margin:0">Every experiment here maps to a decision in <a href="scaling-ad-relevance-apis.html">A Million Questions a Second</a>. If you ran it and found something surprising, I'd love to hear about it: <a href="../">tascano.github.io</a>.</p>
+</div>
+</article>
+</div>
+
+<footer>
+<div class="wrap">
+<p>The lab is a small, synthetic model of the ideas in the post, not Amazon's system. The numbers shown are from my runs on a 4-core cloud machine; yours will differ, but the shapes shouldn't.</p>
+<p><a href="scaling-ad-relevance-apis.html">← A Million Questions a Second</a> · <a href="../">tascano.github.io</a></p>
+</div>
+</footer>
+
+<script>
+(() => {
+  const html = document.documentElement, toggle = document.querySelector('.theme-toggle');
+  const setIcon = () => { toggle.textContent = html.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'; };
+  setIcon();
+  toggle.addEventListener('click', () => {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    setIcon();
+  });
+  const bar = document.querySelector('.scroll-progress');
+  addEventListener('scroll', () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+  }, {passive: true});
+
+  // Progress: one checkbox per step, remembered in this browser.
+  const KEY = 'relevance-lab-progress';
+  let done = {};
+  try { done = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
+  const boxes = [...document.querySelectorAll('.step input[type=checkbox]')];
+  const update = () => {
+    const n = boxes.filter(b => b.checked).length;
+    document.getElementById('prog-text').textContent = `${n} of ${boxes.length} steps done`;
+    document.getElementById('prog-fill').style.width = (100 * n / boxes.length) + '%';
+  };
+  boxes.forEach(b => {
+    b.checked = !!done[b.dataset.step];
+    b.addEventListener('change', () => {
+      done[b.dataset.step] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(done)); } catch (e) {}
+      update();
+    });
+  });
+  update();
+
+  // Copy buttons on every command.
+  document.querySelectorAll('.cmd').forEach(block => {
+    const btn = block.querySelector('.copy'), code = block.querySelector('pre code');
+    btn.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(code.textContent); btn.textContent = 'copied'; }
+      catch (e) { btn.textContent = 'select it'; }
+      setTimeout(() => { btn.textContent = 'copy'; }, 1500);
+    });
+  });
+})();
+</script>
+</body>
+</html>
