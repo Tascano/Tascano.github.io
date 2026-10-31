@@ -478,6 +478,39 @@ html{scroll-padding-top:16px;}
 .d-alarm.on{background:var(--demand-wash);border:1px solid var(--demand);}
 .d-alarm.ok{background:var(--capacity-wash);border:1px solid var(--capacity);}
 @media (max-width:640px){.d-tiles{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* fewer words: one-line notes, the speed rules as icons */
+.small-note{font:13px/1.5 var(--mono);color:var(--text-muted);margin:-6px 0 26px;}
+.rules{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0 30px;}
+.rules div{border:1px solid var(--card-border);border-radius:12px;background:var(--card-bg);padding:12px 8px;text-align:center;}
+.rules svg{width:36px;height:36px;display:block;margin:0 auto 6px;fill:none;stroke:var(--accent-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.rules b{display:block;font-size:15px;}
+.rules span{font-size:13px;color:var(--text-muted);}
+@media (max-width:640px){.rules{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* the failover ladder */
+.ladder{list-style:none;margin:6px 0 12px;padding:0;counter-reset:l;display:grid;gap:6px;}
+.ladder li{counter-increment:l;display:grid;grid-template-columns:28px 1fr auto;column-gap:10px;align-items:center;padding:9px 12px;border:1px solid var(--card-border);border-radius:10px;background:var(--bg);transition:background .25s,border-color .25s;}
+.ladder li::before{content:counter(l);grid-row:span 2;font:700 15px var(--mono);color:var(--accent-ink);text-align:center;}
+.ladder li b{font-size:15px;}
+.ladder li span{grid-column:2;font-size:13px;color:var(--text-muted);}
+.ladder li i{grid-column:3;grid-row:1 / span 2;font:700 12.5px var(--mono);font-style:normal;}
+.ladder li.try{border-color:var(--accent);background:var(--accent-wash);}
+.ladder li.fail{border-color:var(--demand);background:var(--demand-wash);border-style:dashed;}
+.ladder li.ok{border-color:var(--capacity);background:var(--capacity-wash);}
+
+/* the guardrails demo */
+.g-row{display:flex;gap:12px;align-items:baseline;padding:10px 12px;border:1px solid var(--card-border);border-radius:10px;background:var(--bg);margin-bottom:8px;font-size:15.5px;}
+.g-tag{font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--accent-ink);flex:none;width:30px;}
+.g-text mark{background:var(--accent-wash);color:var(--text);border-radius:4px;padding:0 3px;font-family:var(--mono);font-size:.9em;}
+.g-text s{color:var(--demand);}
+
+/* diagrams that move */
+.arch .flow{stroke-dasharray:5 5;animation:flowdash 1s linear infinite;}
+@keyframes flowdash{to{stroke-dashoffset:-20;}}
+.arch .sm{animation:smpulse 5s ease-in-out infinite;}
+@keyframes smpulse{0%,14%,100%{stroke-width:1.2;}7%{stroke-width:3.5;}}
+@media (prefers-reduced-motion:reduce){.arch .flow,.arch .sm{animation:none;}}
 </style>
 </head>
 <body>
@@ -495,14 +528,25 @@ html{scroll-padding-top:16px;}
   <span class="kicker">Field notes · Agentic AI</span>
   <h1>Four Agents Walk Into a Service Bay</h1>
   <p class="alt">or: why the most important agent is a state machine</p>
-  
-  <p class="dek">A customer books a service appointment, gets a link, and a team of AI agents turns "it makes a noise sometimes" into something a technician can act on before the car even arrives. Here's how I'd build that to be fast, scale on a Monday morning, survive a model outage, and stay visible the whole time, mostly in pictures.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>8 min read</span></div>
+  <section class="watch" id="watch" aria-label="The video version of this post">
+    <div class="intro-video">
+      <button class="play-facade" type="button" data-src="../videos/agents-service-bay.mp4" data-src-small="../videos/agents-service-bay-720p.mp4"
+        aria-label="Play the video version of this post (about three minutes)">
+        <img src="../images/agents-poster-960.webp" srcset="../images/agents-poster-640.webp 640w, ../images/agents-poster-960.webp 960w, ../images/agents-poster-1280.webp 1280w" sizes="(max-width: 760px) 100vw, 716px" width="1280" height="720" loading="lazy" decoding="async"
+          alt="Four Agents Walk Into a Service Bay, written on a dark canvas">
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
+        <span class="play-len" aria-hidden="true">3:13</span>
+      </button>
+    </div>
+    <p class="intro-note">Prefer to watch? Every animation in this post, narrated in about three minutes, with captions built in. The narration is a local AI clone of my voice.</p>
+  </section>
+  <p class="dek">A booking, a link, and four AI agents that turn "it makes a noise sometimes" into a summary a technician can act on. Built for scale, speed, reliability, visibility and failover, and told in animations.</p>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>5 min read</span></div>
 </header>
 
 <div class="card recreation" role="note">
   <div class="q">Before we start: this is not how it is at Nissan</div>
-  <p>At Nissan I designed and shipped <em>Tell Me More</em>, a multi-agent intake chatbot for dealership service appointments. <strong>This post is not that system.</strong> It's my own recreation of the idea, expanded with what I'd build next, in my own words. Every design, name, number and line of pseudocode here is mine and illustrative; none of it is Nissan's architecture, data, prompts or code.</p>
+  <p>At Nissan I designed and shipped <em>Tell Me More</em>, a multi-agent intake chatbot. <strong>This post is not that system.</strong> It's my own recreation of the idea, expanded, in my own words. Every design, name, number and line of pseudocode here is mine and illustrative, not Nissan's architecture, data, prompts or code.</p>
 </div>
 
 <div class="code" aria-label="An example intake conversation">
@@ -585,7 +629,7 @@ html{scroll-padding-top:16px;}
 <div class="section-title" id="s-problem"><span class="dot"></span><span class="n">01</span><span class="section-line"></span></div>
 <h2>"It makes a noise sometimes"</h2>
 
-<p class="lede">That sentence is where most service visits start, and a technician can't do much with it. They need what, where, when, how to reproduce it, and whether it's safe to drive. Usually they get that by calling the customer, after the car is already on the lift.</p>
+<p class="lede">Most service visits start with a vague sentence. A technician needs facts.</p>
 
 <figure>
 <div class="fig-frame">
@@ -614,12 +658,10 @@ html{scroll-padding-top:16px;}
 <figcaption>The whole product in one picture: a vague note in, a confirmed, structured summary out.</figcaption>
 </figure>
 
-<p>The idea: when a customer books an appointment, the dealership sends a personal link, and a short conversation collects everything before the visit. It sounds like a chatbot. The engineering is everything around the chatbot.</p>
-
 <div class="section-title" id="s-system"><span class="dot"></span><span class="n">02</span><span class="section-line"></span></div>
 <h2>The whole system, in one animation</h2>
 
-<p>Three acts: a booking creates a link, a conversation fills in the concern, and a hand-off delivers the summary. Every later section zooms into one box.</p>
+<p>Three acts. Every later section zooms into one box.</p>
 
 <div class="widget" id="tour2">
   <div class="widget-title">Animation · a booking, a conversation, a hand-off</div>
@@ -675,7 +717,7 @@ html{scroll-padding-top:16px;}
 <div class="section-title" id="s-agents"><span class="dot"></span><span class="n">03</span><span class="section-line"></span><span class="pill">reliability</span></div>
 <h2>Four agents, one conductor</h2>
 
-<p>There are two ways to build "multi-agent". In a group chat, agents talk to each other freely: flexible, and almost impossible to reason about. I'd build the other way: <strong>one agent talks to the customer, and the other three are its tools</strong>, each with one job and a typed output.</p>
+<p>One agent talks. Three are its tools. Code decides what happens next.</p>
 
 <figure>
 <div class="fig-frame">
@@ -683,23 +725,23 @@ html{scroll-padding-top:16px;}
 <title id="hub-t">The Conversation Agent sits in the middle and is the only agent the customer sees. It calls three tools: the Rubric Agent, which extracts fields and decides what is still missing; the Vehicle History Agent, which pulls past repairs for the VIN; and the Dealership Internal Agent, which checks warranty, parts and advisories. Outside the agents, a state machine owns each concern's lifecycle: queued, intake, summary, confirmed, delivered.</title>
 <defs><marker id="hg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker></defs>
 <rect class="bx" x="140" y="8" width="140" height="30" rx="15"/><text x="210" y="27" text-anchor="middle" font-size="12" class="t">customer</text>
-<line class="ln" x1="210" y1="38" x2="210" y2="60" marker-start="url(#hg)" marker-end="url(#hg)"/>
+<line class="ln flow" x1="210" y1="38" x2="210" y2="60" marker-start="url(#hg)" marker-end="url(#hg)"/>
 <rect class="bx-main" x="96" y="62" width="228" height="46" rx="10"/>
 <text x="210" y="82" text-anchor="middle" font-size="13" font-weight="700" class="t">Conversation Agent</text>
 <text x="210" y="99" text-anchor="middle" font-size="10.5" class="tm">talks · plans the next question</text>
-<line class="ln" x1="160" y1="108" x2="72" y2="138" marker-end="url(#hg)"/>
-<line class="ln" x1="210" y1="108" x2="210" y2="138" marker-end="url(#hg)"/>
-<line class="ln" x1="260" y1="108" x2="348" y2="138" marker-end="url(#hg)"/>
+<line class="ln flow" x1="160" y1="108" x2="72" y2="138" marker-end="url(#hg)"/>
+<line class="ln flow" x1="210" y1="108" x2="210" y2="138" marker-end="url(#hg)"/>
+<line class="ln flow" x1="260" y1="108" x2="348" y2="138" marker-end="url(#hg)"/>
 <text x="98" y="118" text-anchor="end" font-size="10" class="ta">tool</text><text x="218" y="128" font-size="10" class="ta">tool</text><text x="322" y="118" font-size="10" class="ta">tool</text>
 <rect class="chip" x="10" y="140" width="124" height="44" rx="8"/><text x="72" y="159" text-anchor="middle" font-size="12" class="t">Rubric</text><text x="72" y="175" text-anchor="middle" font-size="10" class="tm">fields and gaps</text>
 <rect class="chip" x="148" y="140" width="124" height="44" rx="8"/><text x="210" y="159" text-anchor="middle" font-size="12" class="t">Vehicle History</text><text x="210" y="175" text-anchor="middle" font-size="10" class="tm">past repairs by VIN</text>
 <rect class="chip" x="286" y="140" width="124" height="44" rx="8"/><text x="348" y="159" text-anchor="middle" font-size="12" class="t">Dealership</text><text x="348" y="175" text-anchor="middle" font-size="10" class="tm">warranty · parts</text>
 <text x="10" y="210" font-size="10.5" class="tm">STATE MACHINE (no LLM)</text>
-<rect class="chip-teal" x="10" y="218" width="64" height="24" rx="6"/><text x="42" y="234" text-anchor="middle" font-size="10" class="t">queued</text>
-<rect class="chip-teal" x="92" y="218" width="64" height="24" rx="6"/><text x="124" y="234" text-anchor="middle" font-size="10" class="t">intake</text>
-<rect class="chip-teal" x="174" y="218" width="70" height="24" rx="6"/><text x="209" y="234" text-anchor="middle" font-size="10" class="t">summary</text>
-<rect class="chip-teal" x="262" y="218" width="72" height="24" rx="6"/><text x="298" y="234" text-anchor="middle" font-size="10" class="t">confirmed</text>
-<rect class="chip-teal" x="352" y="218" width="60" height="24" rx="6"/><text x="382" y="234" text-anchor="middle" font-size="10" class="t">sent</text>
+<rect class="chip-teal sm" x="10" y="218" width="64" height="24" rx="6"/><text x="42" y="234" text-anchor="middle" font-size="10" class="t">queued</text>
+<rect class="chip-teal sm" style="animation-delay:1s" x="92" y="218" width="64" height="24" rx="6"/><text x="124" y="234" text-anchor="middle" font-size="10" class="t">intake</text>
+<rect class="chip-teal sm" style="animation-delay:2s" x="174" y="218" width="70" height="24" rx="6"/><text x="209" y="234" text-anchor="middle" font-size="10" class="t">summary</text>
+<rect class="chip-teal sm" style="animation-delay:3s" x="262" y="218" width="72" height="24" rx="6"/><text x="298" y="234" text-anchor="middle" font-size="10" class="t">confirmed</text>
+<rect class="chip-teal sm" style="animation-delay:4s" x="352" y="218" width="60" height="24" rx="6"/><text x="382" y="234" text-anchor="middle" font-size="10" class="t">sent</text>
 <line class="ln" x1="74" y1="230" x2="90" y2="230" marker-end="url(#hg)"/><line class="ln" x1="156" y1="230" x2="172" y2="230" marker-end="url(#hg)"/>
 <line class="ln" x1="244" y1="230" x2="260" y2="230" marker-end="url(#hg)"/><line class="ln" x1="334" y1="230" x2="350" y2="230" marker-end="url(#hg)"/>
 </svg>
@@ -707,12 +749,10 @@ html{scroll-padding-top:16px;}
 <figcaption>Agents handle language; the state machine handles control. A model never decides whether a summary was confirmed.</figcaption>
 </figure>
 
-<p>That split is the reliability story in miniature. The model can phrase a question beautifully and still be wrong about whether we're done, so "done" is decided by code: the Rubric's typed output, checked against a schema, moves a concern from <em>intake</em> to <em>summary</em>.</p>
-
 <div class="section-title" id="s-queue"><span class="dot"></span><span class="n">04</span><span class="section-line"></span><span class="pill">scale</span></div>
 <h2>Safety first: the concern queue</h2>
 
-<p>Customers rarely have one problem. They mention three in one breath, and the most dangerous is often the last. Every concern goes into a <strong>priority queue</strong>, safety first, and each gets its own full intake cycle. Add a few:</p>
+<p>Three problems in one breath? A priority queue, safety first:</p>
 
 <div class="widget" id="queue">
   <div class="widget-title">Interactive · what the customer mentions, and what we ask about first</div>
@@ -728,12 +768,10 @@ html{scroll-padding-top:16px;}
   <p class="readout" id="q-out">Mention a few problems, in any order.</p>
 </div>
 
-<p>The order is a lookup, not a judgement call: safety, then drivability, then comfort, then convenience. The agent acknowledges every concern ("I've noted the radio too"), so nothing is lost, but it never abandons the brakes halfway to talk about the radio.</p>
-
 <div class="section-title" id="s-rubric"><span class="dot"></span><span class="n">05</span><span class="section-line"></span><span class="pill">speed</span></div>
 <h2>Knowing when you're done</h2>
 
-<p>A technician needs a handful of facts per concern. The Rubric Agent's job is to pull <strong>as many as possible out of every answer</strong>, so the customer answers fewer questions. Pick an answer and watch what it fills:</p>
+<p>Fewer questions, same facts: every answer should fill as many fields as it can.</p>
 
 <div class="widget" id="rubric">
   <div class="widget-title">Interactive · one answer, many fields</div>
@@ -746,8 +784,6 @@ html{scroll-padding-top:16px;}
   <p class="readout" id="r-out">Each tile is a fact the technician needs. Pick an answer.</p>
 </div>
 
-<p>The rubric also chooses the next question: the most important field still missing. Fewer turns means a faster intake, fewer model calls and lower cost, which is why "fields per question" sits on the dashboard in section 10.</p>
-
 <div class="interrupt"><span class="tag">Sorry, sorry, quick interruption</span>
 <p>Every mechanic I've talked to says the most useful thing a customer can say is "I can make it happen again." That's the reproduction field. If you remember one thing from this post, make it that. Okay, back to it.</p>
 </div>
@@ -755,7 +791,7 @@ html{scroll-padding-top:16px;}
 <div class="section-title" id="s-memory"><span class="dot"></span><span class="n">06</span><span class="section-line"></span><span class="pill">speed</span></div>
 <h2>Memory is a cache with manners</h2>
 
-<p>An agent that forgets what you said three turns ago is annoying; one that sends the whole transcript every turn is slow and expensive. Memory works like layered caching, nearest first:</p>
+<p>Memory is layered caching, nearest first:</p>
 
 <figure>
 <div class="fig-frame">
@@ -774,7 +810,7 @@ html{scroll-padding-top:16px;}
 <div class="section-title" id="s-speed"><span class="dot"></span><span class="n">07</span><span class="section-line"></span><span class="pill">speed</span></div>
 <h2>One turn, against the clock</h2>
 
-<p>A conversation feels broken after a few seconds of silence. One turn touches a guardrail, the agent and up to three tools, and the order you do that in decides how long the customer waits. Same work, three schedules:</p>
+<p>Same work, three schedules:</p>
 
 <div class="widget" id="turn">
   <div class="widget-title">Animation · time to the first word, three ways</div>
@@ -804,12 +840,17 @@ html{scroll-padding-top:16px;}
     <span class="k">await</span> sessions.save(state, turn_id=message.turn_id)  <span class="c"># saved every turn: resumable</span>
     <span class="k">return</span> reply</code></pre></div>
 
-<p>Three rules fall out of that picture. <strong>Fan out:</strong> tools that don't depend on each other run at once. <strong>Deadlines:</strong> a tool that misses its two seconds is skipped and flagged, not waited on. <strong>Stream:</strong> the first words reach the customer while the rest is still being written. And every turn is saved before it's acknowledged, keyed by its turn ID, so a retried message can never produce two answers.</p>
+<div class="rules" role="list">
+  <div role="listitem"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 16h8M12 16l14-9M12 16h14M12 16l14 9"/></svg><b>fan out</b><span>tools at once</span></div>
+  <div role="listitem"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="18" r="10"/><path d="M16 18V12M13 4h6"/></svg><b>deadline</b><span>2 s, then skip</span></div>
+  <div role="listitem"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 12c4-5 7 5 11 0s7 5 11 0M3 20c4-5 7 5 11 0s7 5 11 0"/></svg><b>stream</b><span>first words early</span></div>
+  <div role="listitem"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M12 5L9 27M23 5l-3 22M5 12h22M4 20h22"/></svg><b>turn ID</b><span>retries can't duplicate</span></div>
+</div>
 
 <div class="section-title" id="s-scale"><span class="dot"></span><span class="n">08</span><span class="section-line"></span><span class="pill">scale</span></div>
 <h2>Monday, 9 am</h2>
 
-<p>Appointments cluster, so links get opened in waves, and every model has a <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/quotas.html" target="_blank" rel="noopener">quota</a> on requests and tokens per minute. Quotas are a capacity plan, exactly like hosts. Without admission control, the wave overshoots the quota, calls get throttled, retries pile on, and live conversations fail. Drag the wave:</p>
+<p>Links open in waves; the model has a <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/quotas.html" target="_blank" rel="noopener">quota</a>. Drag the wave:</p>
 
 <div class="widget" id="rush">
   <div class="widget-title">Interactive · a morning of model calls against the quota</div>
@@ -829,12 +870,12 @@ html{scroll-padding-top:16px;}
         <span class="k">return</span> queue.push(call)
     <span class="k">return</span> offer_callback(call.session)   <span class="c"># shed gracefully: &quot;we&#x27;ll text you when it&#x27;s quiet&quot;</span></code></pre></div>
 
-<p>A <a href="https://en.wikipedia.org/wiki/Token_bucket" target="_blank" rel="noopener">token bucket</a> spends the quota smoothly, a queue absorbs the burst, live conversations go to the front, and when the wait gets long, new sessions are <a href="https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/" target="_blank" rel="noopener">shed gracefully</a> with a "we'll text you" instead of an error. The chat service itself is the easy part: stateless containers on ECS, scaling on open connections.</p>
+<p class="small-note">A <a href="https://en.wikipedia.org/wiki/Token_bucket" target="_blank" rel="noopener">token bucket</a>, a queue that favours live chats, and <a href="https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/" target="_blank" rel="noopener">graceful load shedding</a>.</p>
 
 <div class="section-title" id="s-break"><span class="dot"></span><span class="n">09</span><span class="section-line"></span><span class="pill">reliability</span><span class="pill">failover</span></div>
 <h2>When the model says no</h2>
 
-<p>The language model is the least reliable part of this system: it gets throttled, it times out, and now and then it returns JSON that isn't. Design as if it will be slow, wrong or gone. Break something:</p>
+<p>Design as if the model will be slow, wrong or gone. Break something:</p>
 
 <div class="widget" id="fail2">
   <div class="widget-title">Animation · break something</div>
@@ -864,22 +905,31 @@ html{scroll-padding-top:16px;}
   </div>
 </div>
 
-<p>Every failure lands somewhere on one ladder. Each rung is slower or plainer than the one above, and the bottom rung needs no model at all:</p>
+<p>Every failure lands on one ladder:</p>
 
-<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">ladder · pseudocode</span></div><pre><code>FAILOVER = [
-    retry_with_jitter(attempts=<span class="n">2</span>),          <span class="c"># most throttles clear in a second</span>
-    cross_region_inference(),               <span class="c"># same model, another region&#x27;s capacity</span>
-    smaller_model(),                        <span class="c"># faster and cheaper; still good at intake</span>
-    scripted_questions(),                   <span class="c"># deterministic: the rubric&#x27;s questions, in order</span>
-    text_me_later(),                        <span class="c"># save progress, send the link again</span>
-]</code></pre></div>
+<div class="widget" id="ladder">
+  <div class="widget-title">Animation · the failover ladder</div>
+  <div class="btns" role="group" aria-label="Pick an outage">
+    <button class="btn" type="button" data-l="1">A busy region</button>
+    <button class="btn" type="button" data-l="3">Every model is down</button>
+    <button class="btn" type="button" data-l="4">Total outage</button>
+  </div>
+  <ol class="ladder">
+    <li><b>retry with jitter</b><span>most throttles clear in a second</span><i></i></li>
+    <li><b>another region</b><span><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html" target="_blank" rel="noopener">cross-region inference</a>, same model</span><i></i></li>
+    <li><b>a smaller model</b><span>faster, cheaper, still good at intake</span><i></i></li>
+    <li><b>scripted questions</b><span>the rubric's questions, in order: no model</span><i></i></li>
+    <li><b>"we'll text you"</b><span>progress saved, link sent again</span><i></i></li>
+  </ol>
+  <p class="readout" id="l-out" aria-live="polite">Pick an outage and watch it fall down the ladder.</p>
+</div>
 
-<p><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html" target="_blank" rel="noopener">Cross-region inference</a> handles the common case, a busy region, with the same model. Session state in a <a href="https://aws.amazon.com/dynamodb/global-tables/" target="_blank" rel="noopener">DynamoDB global table</a> means a customer can reopen their link anywhere and pick up at the same question. And the hand-off to the dealership is a Step Functions workflow with <a href="https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html" target="_blank" rel="noopener">retries and a catch</a>, so a confirmed summary is never lost in transit.</p>
+<p class="small-note">Sessions live in a <a href="https://aws.amazon.com/dynamodb/global-tables/" target="_blank" rel="noopener">DynamoDB global table</a>; hand-offs retry in <a href="https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html" target="_blank" rel="noopener">Step Functions</a>.</p>
 
 <div class="section-title" id="s-visible"><span class="dot"></span><span class="n">10</span><span class="section-line"></span><span class="pill">visibility</span></div>
 <h2>Quality is a metric too</h2>
 
-<p>For an agent, "up" isn't enough. It can be fast, error-free and still asking terrible questions. So the dashboard puts <strong>quality next to latency</strong>: completion rate, turns per concern, fields per question, and the rubric's own scores. Ship a bad prompt and watch:</p>
+<p>Fast and error-free isn't enough. Ship a bad prompt:</p>
 
 <div class="widget" id="dash">
   <div class="widget-title">Interactive · the on-call dashboard</div>
@@ -889,28 +939,30 @@ html{scroll-padding-top:16px;}
   <div class="bf-stats">simulated: one tick per minute; alarm when completion rate stays under target for 3 minutes</div>
 </div>
 
-<p>Every turn is a trace: guardrail, agent, each tool, with timings and token counts, through <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html" target="_blank" rel="noopener">AgentCore observability</a> into <a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/GenAI-observability.html" target="_blank" rel="noopener">CloudWatch</a>. Alarms fire on symptoms: p99 turn time, error rate, cost per session, and completion rate, because a prompt regression shows up there first.</p>
+<p class="small-note">Every turn is a trace in <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html" target="_blank" rel="noopener">AgentCore observability</a> and <a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/GenAI-observability.html" target="_blank" rel="noopener">CloudWatch</a>.</p>
 
 <div class="section-title" id="s-ship"><span class="dot"></span><span class="n">11</span><span class="section-line"></span><span class="pill">visibility</span><span class="pill">reliability</span></div>
 <h2>Ship prompts like code</h2>
 
-<figure>
-<div class="fig-frame">
-<svg class="arch" viewBox="0 0 420 150" role="img" aria-labelledby="ship-t">
-<title id="ship-t">A prompt release pipeline. A new prompt version is replayed against a golden set of recorded conversations. A judge model scores each conversation on every rubric dimension, and any drop blocks the release. Then a canary sends a small share of live sessions to the new version while the dashboard is watched, and an alias flip promotes it. Rolling back is flipping the alias back.</title>
-<defs><marker id="sp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker></defs>
-<rect class="bx-main" x="6" y="20" width="74" height="44" rx="8"/><text x="43" y="40" text-anchor="middle" font-size="11" class="t">prompt</text><text x="43" y="55" text-anchor="middle" font-size="10.5" class="ta">v13</text>
-<rect class="chip" x="96" y="20" width="96" height="44" rx="8"/><text x="144" y="40" text-anchor="middle" font-size="11" class="t">golden set</text><text x="144" y="55" text-anchor="middle" font-size="10" class="tm">replayed chats</text>
-<rect class="chip" x="208" y="20" width="96" height="44" rx="8"/><text x="256" y="40" text-anchor="middle" font-size="11" class="t">judge scores</text><text x="256" y="55" text-anchor="middle" font-size="10" class="tm">every dimension</text>
-<rect class="chip-teal" x="320" y="20" width="94" height="44" rx="8"/><text x="367" y="40" text-anchor="middle" font-size="11" class="t">canary 5%</text><text x="367" y="55" text-anchor="middle" font-size="10" class="tm">then alias flip</text>
-<line class="ln" x1="80" y1="42" x2="94" y2="42" marker-end="url(#sp)"/><line class="ln" x1="192" y1="42" x2="206" y2="42" marker-end="url(#sp)"/><line class="ln" x1="304" y1="42" x2="318" y2="42" marker-end="url(#sp)"/>
-<path class="la" d="M367,64 C367,118 43,118 43,66" fill="none" stroke-dasharray="5 4" marker-end="url(#sp)"/>
-<text x="210" y="112" text-anchor="middle" font-size="10.5" class="ta">rollback = flip the alias back</text>
-<text x="210" y="140" text-anchor="middle" font-size="10.5" class="tm">any dimension drops → the release stops before a customer sees it</text>
-</svg>
+<div class="widget" id="release">
+  <div class="widget-title">Animation · shipping a prompt</div>
+  <div class="btns" role="group" aria-label="Pick a prompt">
+    <button class="btn" type="button" data-s="good">A good prompt</button>
+    <button class="btn" type="button" data-s="bad">A bad prompt</button>
+    <button class="btn" type="button" data-s="subtle">A subtle regression</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 268" aria-hidden="true">
+      <line class="wire" x1="150" y1="40" x2="150" y2="56"/><line class="wire" x1="150" y1="92" x2="150" y2="108"/><line class="wire" x1="150" y1="144" x2="150" y2="160"/><line class="wire" x1="150" y1="196" x2="150" y2="212"/>
+      <g class="node" data-node="p"><rect x="60" y="6" width="180" height="34" rx="17"/><text x="150" y="28" font-size="12" text-anchor="middle">prompt <tspan class="ver" id="rel-v">v13</tspan></text></g>
+      <g class="node" data-node="g"><rect x="10" y="56" width="280" height="36" rx="6"/><text x="150" y="72" font-size="11.5" text-anchor="middle">golden set</text><text x="150" y="86" font-size="10" text-anchor="middle" class="sub">replay recorded conversations</text></g>
+      <g class="node" data-node="j"><rect x="10" y="108" width="280" height="36" rx="6"/><text x="150" y="124" font-size="11.5" text-anchor="middle">judge</text><text x="150" y="138" font-size="10" text-anchor="middle" class="sub">score every rubric dimension</text></g>
+      <g class="node" data-node="c"><rect x="10" y="160" width="280" height="36" rx="6"/><text x="150" y="176" font-size="11.5" text-anchor="middle">canary</text><text x="150" y="190" font-size="10" text-anchor="middle" class="sub">5% of live sessions, dashboard watched</text></g>
+      <g class="node" data-node="a"><rect x="10" y="212" width="280" height="44" rx="8"/><text x="150" y="232" font-size="12" font-weight="700" text-anchor="middle">live alias → <tspan class="ver" id="rel-live" data-reset="v12">v12</tspan></text><text x="150" y="247" font-size="10" text-anchor="middle" class="sub">rollback = flip it back</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a prompt to ship.</li></ol></div>
+  </div>
 </div>
-<figcaption>Golden conversations, a judge, a canary and an alias: the same release discipline as code.</figcaption>
-</figure>
 
 <div class="section-title" id="s-guard"><span class="dot"></span><span class="n">12</span><span class="section-line"></span><span class="pill">reliability</span></div>
 <h2>Guardrails both ways</h2>
@@ -934,55 +986,63 @@ html{scroll-padding-top:16px;}
 <line class="ln" x1="84" y1="95" x2="96" y2="95" marker-end="url(#gd)"/><line class="ln" x1="248" y1="95" x2="260" y2="95" marker-end="url(#gd)"/><line class="ln" x1="330" y1="95" x2="342" y2="95" marker-end="url(#gd)"/>
 </svg>
 </div>
-<figcaption>Content and PII checks with <a href="https://aws.amazon.com/bedrock/guardrails/" target="_blank" rel="noopener">Bedrock Guardrails</a>; the no-diagnosis rule is its own check, because a guessed cause is a liability, not a feature.</figcaption>
+<figcaption>Content and PII checks with <a href="https://aws.amazon.com/bedrock/guardrails/" target="_blank" rel="noopener">Bedrock Guardrails</a>; no-diagnosis is its own check.</figcaption>
 </figure>
 
+<div class="widget" id="guard">
+  <div class="widget-title">Animation · one message in, one reply out</div>
+  <div class="btns"><button class="btn" type="button" id="g-run">Send it</button></div>
+  <div class="g-row"><span class="g-tag">in</span><span class="g-text" id="g-in">Hi, I'm Sam Rivera, 555-0142. My brakes squeal.</span></div>
+  <div class="g-row"><span class="g-tag">out</span><span class="g-text" id="g-out">—</span></div>
+  <p class="readout" id="g-say" aria-live="polite">Press send.</p>
+</div>
+
 <div class="interrupt"><span class="tag">Sorry to interrupt, again</span>
-<p>The hardest thing to teach a diagnostic agent is to not diagnose. It's like asking me not to recommend a beer on a Brew Miles trip. Possible, but you have to check every single time.</p>
+<p>The hardest thing to teach a diagnostic agent is to not diagnose. It's like asking me not to recommend a beer on a brewery tour. Possible, but you have to check every single time.</p>
 </div>
 
 <div class="section-title" id="s-decisions"><span class="dot"></span><span class="n">13</span><span class="section-line"></span></div>
 <h2>Ten decisions, one page</h2>
 
-<p>The options I'd weigh, the one I'd pick, and why. All of them are my calls for this recreation.</p>
+<p>My calls for this recreation, with what each one costs.</p>
 
 <ol class="dec-list">
   <li><div class="dq">How do the agents work together?</div>
     <div class="chips"><span class="chip">group chat</span><span class="chip">one big agent</span><span class="chip won">one talker, three tools</span></div>
-    <p class="why">One caller and typed outputs keep every turn explainable. <span class="cost"><b>Cost:</b> the talker is a bottleneck you must keep fast.</span></p></li>
+    <p class="why">Every turn stays explainable. <span class="cost"><b>Cost:</b> the talker must stay fast.</span></p></li>
   <li><div class="dq">Who decides what happens next?</div>
     <div class="chips"><span class="chip">the model</span><span class="chip won">a state machine</span></div>
-    <p class="why">"Confirmed" and "done" are facts, not opinions. <span class="cost"><b>Cost:</b> new flows need code, not just a prompt.</span></p></li>
+    <p class="why">“Done” is a fact, not an opinion. <span class="cost"><b>Cost:</b> new flows need code.</span></p></li>
   <li><div class="dq">How do messages travel?</div>
     <div class="chips"><span class="chip">polling</span><span class="chip">server-sent events</span><span class="chip won">WebSocket</span></div>
-    <p class="why">Two-way and streaming, managed by <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html" target="_blank" rel="noopener">API Gateway</a>. <span class="cost"><b>Cost:</b> idle timeouts and reconnects to handle.</span></p></li>
+    <p class="why">Two-way, streaming, managed. <span class="cost"><b>Cost:</b> reconnects to handle.</span></p></li>
   <li><div class="dq">Where does session state live?</div>
     <div class="chips"><span class="chip">in memory</span><span class="chip">a relational database</span><span class="chip won">DynamoDB, saved every turn</span></div>
-    <p class="why">Key-value by session, global tables for failover. <span class="cost"><b>Cost:</b> a write on every turn.</span></p></li>
+    <p class="why">Resumable, and global for failover. <span class="cost"><b>Cost:</b> a write per turn.</span></p></li>
   <li><div class="dq">How do tools run?</div>
     <div class="chips"><span class="chip">one after another</span><span class="chip won">in parallel, with a deadline</span></div>
-    <p class="why">The turn takes as long as the slowest tool, capped. <span class="cost"><b>Cost:</b> sometimes a summary without history.</span></p></li>
+    <p class="why">The turn waits for the slowest, capped. <span class="cost"><b>Cost:</b> sometimes no history.</span></p></li>
   <li><div class="dq">What does the model remember?</div>
     <div class="chips"><span class="chip">the full transcript</span><span class="chip won">facts + recent turns, tiered</span></div>
-    <p class="why">Smaller prompts are faster and cheaper. <span class="cost"><b>Cost:</b> extraction has to be right.</span></p></li>
+    <p class="why">Small prompts are fast and cheap. <span class="cost"><b>Cost:</b> extraction must be right.</span></p></li>
   <li><div class="dq">What happens at the quota?</div>
     <div class="chips"><span class="chip">let it throttle</span><span class="chip">buy more quota</span><span class="chip won">token bucket, queue, shed</span></div>
-    <p class="why">Live conversations never fail because of new ones. <span class="cost"><b>Cost:</b> some customers wait, or get a text later.</span></p></li>
+    <p class="why">Live chats never fail for new ones. <span class="cost"><b>Cost:</b> some wait, or get a text.</span></p></li>
   <li><div class="dq">What if the model is down?</div>
     <div class="chips"><span class="chip">show an error</span><span class="chip">wait it out</span><span class="chip won">the failover ladder</span></div>
-    <p class="why">The bottom rung needs no model at all. <span class="cost"><b>Cost:</b> scripted questions feel plainer.</span></p></li>
+    <p class="why">The last rung needs no model. <span class="cost"><b>Cost:</b> plainer questions.</span></p></li>
   <li><div class="dq">How does a summary reach the dealership?</div>
     <div class="chips"><span class="chip">call it inline</span><span class="chip won">Step Functions + retries + DLQ</span></div>
-    <p class="why">A slow dealership system never blocks a customer. <span class="cost"><b>Cost:</b> delivery is asynchronous.</span></p></li>
+    <p class="why">A slow dealer system never blocks a customer. <span class="cost"><b>Cost:</b> delivery is async.</span></p></li>
   <li><div class="dq">How do prompts ship?</div>
     <div class="chips"><span class="chip">edit in place</span><span class="chip">manual spot checks</span><span class="chip won">golden set, judge, canary, alias</span></div>
-    <p class="why">A regression stops before a customer sees it. <span class="cost"><b>Cost:</b> a golden set to curate and keep fresh.</span></p></li>
+    <p class="why">Regressions stop before customers see them. <span class="cost"><b>Cost:</b> a golden set to curate.</span></p></li>
 </ol>
 
 <div class="section-title" id="s-drink"><span class="dot"></span><span class="n">14</span><span class="section-line"></span></div>
 <h2>The well-earned drink</h2>
 
-<p>Every Brew Miles trip ends with a well-earned drink. Here's this one's:</p>
+<p>Every Brew Miles trip ends with one:</p>
 
 <ol class="plain">
   <li><strong>Let models talk and let code decide;</strong> the most important agent is a state machine.</li>
@@ -1420,11 +1480,13 @@ html{scroll-padding-top:16px;}
       const run = ++token;
       press(btns, btn);
       root.querySelectorAll('.node').forEach(n => n.classList.remove(...states));
+      root.querySelectorAll('[data-reset]').forEach(e => { e.textContent = e.dataset.reset; });
       log.innerHTML = '';
-      for (const [names, cls, text] of scenarios[btn.dataset.s]) {
+      for (const [names, cls, text, set] of scenarios[btn.dataset.s]) {
         await sleep(log.children.length ? 800 : 0);
         if (run !== token) return;
         names.split(' ').forEach(n => { const e = root.querySelector(`[data-node="${n}"]`); e.classList.remove(...states); e.classList.add(cls); });
+        for (const id in set || {}) root.querySelector('#' + id).textContent = set[id];
         const li = document.createElement('li'); li.innerHTML = text; log.appendChild(li);
       }
     }));
@@ -1450,6 +1512,67 @@ html{scroll-padding-top:16px;}
              ['small script later', 'lit', 'If models are down everywhere: a smaller model, then scripted questions, then “we’ll text you the link again”.'],
              ['cust', 'stop', '<b>The customer never sees a stack trace.</b>']],
   });
+
+  story(document.getElementById('release'), {
+    good: [['p', 'lit', 'Prompt v13 is ready.'],
+           ['g', 'lit', 'Replayed against the golden set of recorded conversations.'],
+           ['j', 'stop', 'Judge: every rubric dimension at or above v12. ✓'],
+           ['c', 'stop', 'Canary: 5% of live sessions for an hour. Completion and turns hold steady. ✓'],
+           ['a', 'stop', '<b>The alias flips to v13.</b> Everyone gets it.', {'rel-live': 'v13'}]],
+    bad: [['p', 'lit', 'Prompt v13 is ready.'],
+          ['g', 'lit', 'Replayed against the golden set.'],
+          ['j', 'bad', 'Judge: “no diagnosis” drops from 5.0 to 3.1. ✕'],
+          ['a', 'stop', '<b>Blocked.</b> v12 stays live, and no customer ever saw v13.']],
+    subtle: [['p', 'lit', 'Prompt v13 is ready.'],
+             ['g j', 'lit', 'The golden set and the judge both pass.'],
+             ['c', 'bad', 'Canary: on real traffic, completion drops from 89% to 74%. ✕'],
+             ['a', 'stop', '<b>Automatic rollback:</b> the alias flips back to v12 within minutes.']],
+  });
+
+  // The failover ladder: each outage falls down the rungs until one holds.
+  const ladder = document.getElementById('ladder');
+  if (ladder) {
+    const rungs = [...ladder.querySelectorAll('.ladder li')], out = ladder.querySelector('#l-out'), btns = [...ladder.querySelectorAll('[data-l]')];
+    const say = {1: 'A busy region: the retries fail, and the same model in another region answers. The customer sees a one-second pause.',
+                 3: 'Every model is down: retries, other regions and the smaller model all fail, so scripted questions carry on. Plainer, but the intake finishes.',
+                 4: 'Total outage: even the script can’t run, so progress is saved and the link goes out again later. Nothing is lost.'};
+    let token = 0;
+    btns.forEach(b => b.addEventListener('click', async () => {
+      const run = ++token, holds = +b.dataset.l;
+      press(btns, b);
+      rungs.forEach(r => { r.className = ''; r.querySelector('i').textContent = ''; });
+      out.textContent = '';
+      for (let i = 0; i <= holds; i++) {
+        if (run !== token) return;
+        rungs[i].className = 'try'; rungs[i].querySelector('i').textContent = 'trying…';
+        await sleep(650);
+        if (run !== token) return;
+        rungs[i].className = i < holds ? 'fail' : 'ok';
+        rungs[i].querySelector('i').textContent = i < holds ? '✕ failed' : '✓ holds';
+      }
+      out.textContent = say[holds];
+    }));
+  }
+
+  // Guardrails both ways: personal details out of the message, guesses out of the reply.
+  const guard = document.getElementById('guard');
+  if (guard) {
+    const inEl = guard.querySelector('#g-in'), outEl = guard.querySelector('#g-out'), say = guard.querySelector('#g-say');
+    let run = 0;
+    guard.querySelector('#g-run').addEventListener('click', async () => {
+      const me = ++run;
+      inEl.textContent = 'Hi, I’m Sam Rivera, 555-0142. My brakes squeal.'; outEl.textContent = '—'; say.textContent = 'Checking the message…';
+      await sleep(700); if (me !== run) return;
+      inEl.innerHTML = 'Hi, I’m <mark>[NAME]</mark>, <mark>[PHONE]</mark>. My brakes squeal.';
+      say.textContent = 'Name and phone number redacted before any model sees it. Content check: fine.';
+      await sleep(1200); if (me !== run) return;
+      outEl.innerHTML = '<s>Sounds like your brake pads are worn.</s>';
+      say.textContent = 'The draft reply guesses a cause, so the no-diagnosis check blocks it…';
+      await sleep(1200); if (me !== run) return;
+      outEl.textContent = 'Thanks! I’ve noted a squeal when braking. Is it every stop, or only some?';
+      say.innerHTML = '<b>…and the agent asks a question instead.</b> No guesses, no personal data.';
+    });
+  }
 })();
 </script>
 </body>
