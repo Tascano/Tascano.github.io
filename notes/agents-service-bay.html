@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Four Agents Walk Into a Service Bay</title>
+<meta name="description" content="How I&#x27;d build a multi-agent car-diagnostic intake system to stay fast, scale on a Monday morning, survive a model outage and stay visible: agents as tools, a state machine in charge, a token bucket in front of the model, and a failover ladder. A recreation in my own words, not Nissan&#x27;s system.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Four Agents Walk Into a Service Bay">
+<meta property="og:description" content="Building a multi-agent diagnostic intake system for scale, speed, reliability, visibility and failover. My own recreation, in pictures.">
+<meta property="og:image" content="https://tascano.github.io/images/og-image.jpg">
+<meta name="theme-color" content="#fdb515">
+<link rel="icon" href="../favicon.ico?v=3" sizes="any">
+<script>
+  // Same key as the main page, so the reader's light/dark choice carries over.
+  try { const t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+:root{
+  --accent:#fdb515;
+  --accent-ink:#9a6700;          /* the brand gold, deepened for small text on white (4.9:1) */
+  --accent-wash:rgba(253,181,21,.14);
+  --bg:#fff;
+  --text:#111;
+  --text-secondary:#333;
+  --text-muted:#555;
+  --card-bg:#fafafa;
+  --card-border:#eee;
+  --skill-bg:#f3f3f3;
+  --code-bg:#15171b;
+  --code-border:#15171b;
+  --demand:#C26A00;
+  --capacity:#00826F;
+  --capacity-wash:rgba(0,130,111,.10);
+  --demand-wash:rgba(194,106,0,.10);
+  --mute:#8a8a8a;
+  --track:#dcdcdc;
+  --buffer:#d4d4d4;
+  --buffer-ink:#111;
+  --rec-ink:#fff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+[data-theme="dark"]{
+  --accent-ink:#fdb515;
+  --accent-wash:rgba(253,181,21,.12);
+  --bg:#0f0f0f;
+  --text:#e8e8e8;
+  --text-secondary:#d0d0d0;
+  --text-muted:#a0a0a0;
+  --card-bg:#1a1a1a;
+  --card-border:#2a2a2a;
+  --skill-bg:#262626;
+  --code-bg:#161616;
+  --code-border:#2a2a2a;
+  --demand:#C27E00;
+  --capacity:#22A08B;
+  --capacity-wash:rgba(34,160,139,.14);
+  --demand-wash:rgba(194,126,0,.14);
+  --mute:#737373;
+  --track:#383838;
+  --buffer:#4d4d4d;
+  --buffer-ink:#fff;
+  --rec-ink:#111;
+}
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.7;color:var(--text);background:var(--bg);transition:background .3s ease,color .3s ease;}
+a{color:var(--accent-ink);text-underline-offset:3px;text-decoration-thickness:1px;}
+a:hover{color:var(--text);}
+::selection{background:var(--accent);color:#111;}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px;}
+.scroll-progress{position:fixed;top:0;left:0;width:0;height:4px;background:var(--accent);z-index:1000;}
+.theme-toggle{position:fixed;top:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--card-bg);border:2px solid var(--card-border);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:999;transition:transform .3s ease,border-color .3s ease;}
+.theme-toggle:hover{transform:scale(1.1);border-color:var(--accent);}
+.theme-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+
+/* top bar, like the main page header */
+.topbar{display:flex;align-items:center;gap:12px;padding:28px 0 18px;border-bottom:1px solid var(--card-border);}
+.topbar img{width:44px;height:44px;border-radius:8px;object-fit:cover;}
+.topbar a{text-decoration:none;color:var(--text);font-weight:700;font-size:18px;letter-spacing:.2px;}
+.topbar .last{color:var(--accent);}
+.topbar .home{margin-left:auto;margin-right:64px;font-size:14px;font-weight:600;color:var(--accent-ink);}
+
+/* hero */
+.hero{padding:44px 0 6px;}
+.kicker{display:inline-block;font:700 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:7px 11px;margin-bottom:18px;}
+.hero h1{font-size:clamp(36px,7.4vw,56px);line-height:1.06;letter-spacing:-.015em;margin:0 0 10px;font-weight:800;}
+.hero .alt{font-size:18px;font-style:italic;color:var(--text-muted);margin:0 0 20px;}
+.hero .dek{font-size:19.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 22px;}
+.byline{display:flex;flex-wrap:wrap;gap:6px 16px;font:14px var(--mono);color:var(--text-muted);margin-bottom:30px;}
+.byline b{color:var(--text);}
+
+/* section titles: the main page's dot + gold line */
+.section-title{display:flex;align-items:center;gap:12px;margin:72px 0 6px;}
+.section-title .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.section-title .section-line{flex:1;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+.section-title .n{font:700 13px var(--mono);color:var(--accent-ink);}
+h2{font-size:clamp(25px,4.8vw,32px);line-height:1.2;letter-spacing:-.01em;margin:0 0 18px;font-weight:800;}
+h3{font-size:20px;margin:36px 0 10px;font-weight:700;}
+p{margin:0 0 20px;}
+strong{font-weight:700;}
+.lede{font-size:19.5px;}
+code{font-family:var(--mono);font-size:.86em;background:var(--skill-bg);border-radius:4px;padding:.12em .36em;white-space:nowrap;}
+ul.plain,ol.plain{padding-left:22px;margin:0 0 22px;}
+ul.plain li,ol.plain li{margin-bottom:9px;}
+.note{font-size:15px;color:var(--text-muted);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 26px;}
+
+/* cards */
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:20px 22px;margin:26px 0 32px;}
+.tldr{border-left:4px solid var(--accent);}
+.tldr h2{font-size:21px;margin-bottom:12px;}
+.tldr ol{margin:0;padding-left:20px;}
+.tldr li{margin-bottom:8px;}
+.tldr-foot{margin:14px 0 12px;font-size:15.5px;}
+.tldr details.log{margin:0;}
+
+/* the video's interruptions, on the page */
+.interrupt{border:2px dashed var(--accent);border-radius:14px;padding:18px 18px 4px;margin:34px 0 34px;background:var(--bg);position:relative;}
+.interrupt .tag{position:absolute;top:-12px;left:16px;background:var(--accent);color:#111;font:700 12px var(--mono);letter-spacing:.04em;padding:4px 10px;border-radius:999px;}
+.interrupt p{font-size:16.5px;}
+
+/* code */
+.code{background:var(--code-bg);border:1px solid var(--code-border);border-radius:12px;overflow:hidden;margin:20px 0 8px;}
+.code-bar{display:flex;align-items:center;gap:6px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.07);}
+.term-dot{width:10px;height:10px;border-radius:50%;background:#3b3f46;}
+.term-dot:first-child{background:#fdb515;}
+.code-name{margin-left:8px;font:12.5px var(--mono);color:#9aa0a6;}
+.code pre{margin:0;padding:16px 18px 18px;overflow-x:auto;font:13.5px/1.6 var(--mono);color:#e6e6e6;tab-size:4;}
+.code pre code{background:none;padding:0;border-radius:0;font-size:inherit;color:inherit;white-space:pre;}
+.code .k{color:#fdb515;}
+.code .s{color:#a8d59f;}
+.code .c{color:#8b929a;font-style:italic;}
+.code .n{color:#f2c88d;}
+.code .f,.code .b{color:#86c5f0;}
+details.more + .out{margin-top:22px;}
+.out{position:relative;margin:0 0 30px;background:var(--card-bg);border:1px solid var(--card-border);border-left:4px solid var(--accent);border-radius:0 10px 10px 0;}
+.out pre{margin:0;padding:14px 16px 12px;overflow-x:auto;font:13px/1.55 var(--mono);color:var(--text);}
+.out-label{position:absolute;top:-9px;right:12px;background:var(--bg);padding:0 6px;font:700 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+.term-body{padding:16px 20px 18px;font:14.5px/1.75 var(--mono);color:#e6e6e6;}
+.term-body .p{color:#fdb515;}
+.term-body .dim{color:#9aa0a6;}
+.cursor{display:inline-block;width:8px;height:16px;background:#fdb515;vertical-align:-3px;animation:blink 1.1s steps(1) infinite;}
+@keyframes blink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+
+/* collapsibles */
+details.more.flat{margin-top:0;}
+details.more{margin:-14px 0 30px;border:1px solid var(--card-border);border-radius:10px;background:var(--card-bg);}
+details.more summary{cursor:pointer;padding:10px 14px;font:600 13.5px var(--mono);color:var(--text-muted);list-style:none;}
+details.more summary::-webkit-details-marker{display:none;}
+details.more summary::before{content:"+ ";color:var(--accent-ink);font-weight:800;}
+details.more[open] summary::before{content:"− ";}
+details.more > .code,details.more > .out,details.more > .table-scroll{margin-left:12px;margin-right:12px;}
+details.more > .out{margin-bottom:14px;}
+
+/* formula */
+.formula{font:14.5px/1.9 var(--mono);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 22px;overflow-x:auto;white-space:nowrap;}
+
+/* figures and tables */
+figure{margin:28px 0 36px;}
+figure svg{width:100%;height:auto;display:block;}
+figcaption{font:13px/1.5 var(--mono);color:var(--text-muted);margin-top:10px;}
+.fig-frame{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:16px 12px;}
+.fig-frame svg{max-width:580px;margin:0 auto;}
+.arch text{font-family:var(--mono);}
+.arch .t{fill:var(--text);} .arch .tm{fill:var(--text-muted);} .arch .ta{fill:var(--accent-ink);}
+.arch .bx{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;}
+.arch .bx-main{fill:var(--bg);stroke:var(--text);stroke-width:1.5;}
+.arch .pipe{fill:#15171b;stroke:var(--card-border);stroke-width:1.5;}
+.arch .pipe-t{fill:#e6e6e6;font-family:system-ui,sans-serif;font-weight:700;} .arch .pipe-a{fill:#fdb515;}
+.arch .chip{fill:var(--accent-wash);stroke:var(--accent-ink);stroke-width:1.2;}
+.arch .chip-teal{fill:var(--capacity-wash);stroke:var(--capacity);stroke-width:1.2;}
+.arch .ln{stroke:var(--text-muted);stroke-width:1.5;fill:none;}
+.arch .la{stroke:var(--accent-ink);stroke-width:2;fill:none;}
+.arch .mk{fill:var(--text-muted);} .arch .mka{fill:var(--accent-ink);}
+.arch .rule{stroke:var(--card-border);}
+.table-scroll{overflow-x:auto;margin:0 0 30px;}
+.spec-table{width:100%;border-collapse:collapse;font-size:15px;}
+.spec-table th,.spec-table td{text-align:left;padding:10px;border-bottom:1px solid var(--card-border);vertical-align:top;}
+.spec-table thead th{font:700 12px var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--accent);}
+.spec-table td:first-child{font-weight:600;}
+.spec-table.num td{font-family:var(--mono);text-align:right;padding:5px 10px;font-size:13px;font-weight:400;}
+.spec-table.num th{text-align:right;}
+.spec-table.fail td{font-size:14.5px;}
+.spec-table.fail td:first-child{width:30%;}
+
+/* widgets */
+.widget{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:16px;margin:26px 0 34px;}
+.widget-title{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.btn{font:600 14px system-ui,sans-serif;padding:8px 14px;min-height:38px;border-radius:999px;border:2px solid var(--card-border);background:var(--bg);color:var(--text);cursor:pointer;transition:border-color .2s;}
+.btn:hover{border-color:var(--accent);}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#111;}
+.btn:focus-visible,.bf-input:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+.journey{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
+.journey svg{width:100%;height:auto;display:block;max-width:360px;margin:0 auto;}
+.journey text{font-family:var(--mono);fill:var(--text);}
+.journey .sub{fill:var(--text-muted);}
+.journey .node rect{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;transition:fill .25s,stroke .25s;}
+.journey .node.lit rect{fill:var(--accent-wash);stroke:var(--accent);}
+.journey .node.stop rect{fill:var(--capacity-wash);stroke:var(--capacity);stroke-width:2.5;}
+.journey #dot{fill:var(--accent);stroke:var(--bg);}
+.log{list-style:none;margin:0;padding:0;font:13px/1.55 var(--mono);min-height:150px;}
+.log li{padding:6px 0;border-bottom:1px dashed var(--card-border);}
+.log li b{color:var(--accent-ink);}
+.meters{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font:13px var(--mono);color:var(--text-muted);}
+.meters b{color:var(--text);}
+.bf-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.bf-input{flex:1 1 180px;min-width:0;min-height:40px;padding:8px 10px;font:15px var(--mono);border:2px solid var(--card-border);border-radius:10px;background:var(--bg);color:var(--text);}
+.bits{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;margin:12px 0 6px;}
+.bit{aspect-ratio:1;border-radius:6px;background:var(--bg);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;font:600 11px var(--mono);color:var(--text-muted);transition:background .2s;}
+.bit.on{background:var(--accent);border-color:var(--accent);color:#111;}
+.bit.probe{outline:2px solid var(--text);outline-offset:1px;}
+.bit.probe.zero{outline:3px solid var(--capacity);}
+.bf-result{font-size:15.5px;margin:10px 0 4px;min-height:48px;}
+.bf-items,.bf-stats{font:12.5px var(--mono);color:var(--text-muted);word-break:break-word;}
+.bf-stats{margin-top:6px;}
+
+/* charts */
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:26px 0 10px;font-size:14px;color:var(--text-muted);}
+.legend span{display:inline-flex;align-items:center;gap:7px;}
+.lk{display:inline-block;width:16px;height:2px;border-radius:1px;}
+.lk-dem{background:var(--demand);} .lk-cap{background:var(--capacity);}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;}
+.sw-gap{background:var(--demand);opacity:.25;}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+.chart{position:relative;margin:0;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:10px 8px 4px;}
+.chart-title{font-size:14.5px;font-weight:700;margin:0 0 4px 6px;}
+.chart .ax{font:10.5px var(--mono);fill:var(--text-muted);}
+.chart .grid{stroke:var(--card-border);}
+.chart .note{stroke:var(--text-muted);}
+.chart .s-dem{stroke:var(--demand);} .chart .s-cap{stroke:var(--capacity);}
+.chart .s-gap{fill:var(--demand);fill-opacity:.2;}
+.chart .xhair{stroke:var(--text);}
+.chart .hit{cursor:crosshair;}
+.tip{position:absolute;pointer-events:none;z-index:2;background:#111;color:#f2f2f2;border-radius:6px;padding:7px 9px;font:12px/1.5 var(--mono);white-space:nowrap;}
+[data-theme="dark"] .tip{background:#f2f2f2;color:#111;}
+.tip .row{display:flex;align-items:center;gap:7px;}
+.tip i{display:inline-block;width:12px;height:2px;}
+
+footer{border-top:1px solid var(--card-border);margin-top:30px;padding:30px 0 70px;}
+footer p{font-size:15px;color:var(--text-muted);}
+.bye-fig{margin:0 0 22px;}
+.bye-photo{display:block;width:100%;max-width:420px;height:auto;border-radius:16px;border:1px solid var(--card-border);background:#fff;}
+
+@media (max-width:640px){
+  body{font-size:16.5px;}
+  .theme-toggle{top:14px;right:14px;width:44px;height:44px;font-size:18px;}
+  .topbar .home{margin-right:52px;}
+  .hero{padding-top:30px;}
+  .journey,.charts{grid-template-columns:1fr;}
+  .bits{grid-template-columns:repeat(8,minmax(0,1fr));}
+  .code pre{font-size:12.5px;}
+}
+@media (max-width:420px){ .topbar .home{display:none;} }
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  .cursor{animation:none;}
+}
+
+/* pick your hat */
+.hats .btns{margin:2px 0 14px;}
+.hat ul{margin:0;padding-left:20px;}
+.hat li{margin-bottom:8px;}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0 10px;}
+.stat{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px;}
+.stat .v{font:600 30px/1.1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:-.01em;margin-bottom:6px;}
+.stat .l{font-size:14.5px;line-height:1.45;color:var(--text-secondary);}
+.stat .src{display:block;margin-top:8px;font:12px/1.4 var(--mono);}
+.stats-cap{font:13px/1.5 var(--mono);color:var(--text-muted);margin:0 0 30px;}
+
+/* charts drawn as plain HTML bars, and shared chart chrome */
+.viz{position:relative;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px 12px;margin:24px 0 30px;}
+.viz-title{font-size:14.5px;font-weight:700;margin:0 0 12px;}
+.viz-cap{font:13px/1.5 var(--mono);color:var(--text-muted);margin:12px 0 0;}
+.hb{display:grid;gap:10px;}
+.hb-row{font-size:14px;border-radius:6px;outline-offset:3px;}
+.hb-row:focus-visible{outline:2px solid var(--accent);}
+.hb-label{color:var(--text-secondary);margin-bottom:3px;line-height:1.3;}
+.hb-track{display:flex;align-items:center;gap:8px;}
+.hb-bar{flex:none;height:14px;border-radius:0 4px 4px 0;width:calc((100% - 92px) * var(--f));min-width:3px;background:var(--demand);transition:background .2s;}
+.hb-bar.teal{background:var(--capacity);} .hb-bar.mute{background:var(--mute);}
+.hb-val{font:600 13px var(--mono);color:var(--text);white-space:nowrap;}
+.hb-row.sel .hb-bar{background:var(--demand);} .gcbars .hb-bar{background:var(--mute);}
+.gcbars .hb-row.sel .hb-label{color:var(--text);font-weight:700;}
+.plot svg{width:100%;height:auto;display:block;max-width:560px;margin:0 auto;}
+.plot .ax{font:10.5px var(--mono);fill:var(--text-muted);}
+.plot .lab{font:600 11px var(--mono);fill:var(--text);}
+.plot .grid{stroke:var(--card-border);}
+.plot .base{stroke:var(--text-muted);}
+.plot .s-dem{fill:var(--demand);} .plot .s-mute{fill:var(--mute);}
+.plot .s-line{stroke:var(--demand);fill:none;} .plot .s-wash{fill:var(--demand-wash);}
+.plot .band{fill:var(--text-muted);fill-opacity:.14;}
+.plot .hl{fill:var(--text);}
+.plot .hit{cursor:crosshair;}
+.legend.tight{margin:4px 0 10px;}
+
+/* the budget, as one segmented bar */
+.seg{display:flex;gap:2px;height:28px;margin:4px 0 10px;}
+.seg span{display:flex;align-items:center;padding-left:8px;border-radius:4px;font:600 12.5px var(--mono);white-space:nowrap;}
+.seg .net{background:var(--mute);color:#111;}
+.seg .dec{background:var(--capacity);color:var(--rec-ink);}
+.seg .buf{background:var(--buffer);color:var(--buffer-ink);}
+.sw-net{background:var(--mute);} .sw-dec{background:var(--capacity);} .sw-buf{background:var(--buffer);}
+
+/* Little's law */
+.range{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font:13px var(--mono);color:var(--text-muted);}
+.range label b{color:var(--text);}
+.range input{flex:1 1 200px;accent-color:var(--accent-ink);min-height:32px;}
+.dots{display:grid;grid-template-columns:repeat(25,minmax(0,1fr));gap:3px;max-width:440px;margin:14px 0 12px;}
+.dots i{aspect-ratio:1;border-radius:50%;background:var(--track);transition:background .12s;}
+.dots i.on{background:var(--demand);}
+.readout{font-size:15.5px;margin:4px 0 0;min-height:50px;}
+
+/* search vs lookup grid */
+.rgrid{display:grid;grid-template-columns:auto repeat(10,minmax(0,1fr));gap:4px;align-items:center;font:11px var(--mono);margin:4px 0 12px;}
+.rgrid .rh{color:var(--text-muted);text-align:center;}
+.rgrid .rl{color:var(--text);padding-right:6px;white-space:nowrap;}
+.rgrid .rl.page{font-weight:700;color:var(--accent-ink);}
+.rgrid .cell{aspect-ratio:1;border-radius:4px;background:var(--bg);border:1px solid var(--card-border);position:relative;transition:outline-color .2s;}
+.rgrid .cell.s::before{content:"";position:absolute;inset:2px;border-radius:2px;background:var(--capacity);opacity:var(--a);}
+.rgrid .cell.scan{outline:2px solid var(--text);outline-offset:1px;}
+.rgrid .cell.hit{outline:3px solid var(--accent);outline-offset:1px;}
+.rgrid .cell.miss{outline:3px dashed var(--demand);outline-offset:1px;}
+.key{display:flex;flex-wrap:wrap;gap:6px 16px;font:12.5px var(--mono);color:var(--text-muted);margin:0 0 10px;}
+.key span{display:inline-flex;align-items:center;gap:6px;}
+.key i{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--card-border);background:var(--bg);}
+.key i.s{background:var(--capacity);border-color:var(--capacity);}
+
+/* the publish animation reuses the journey layout */
+.journey .node.bad rect{fill:var(--demand-wash);stroke:var(--demand);stroke-width:2.5;stroke-dasharray:6 4;}
+.journey .node.dim{opacity:.4;}
+.journey .ver{font-weight:700;}
+
+/* playbook */
+.checks{list-style:none;padding:0;margin:0 0 26px;}
+.checks li{padding:9px 0 9px 30px;border-top:1px solid var(--card-border);position:relative;font-size:16px;}
+.checks li::before{content:"✓";position:absolute;left:4px;top:8px;font-weight:800;color:var(--capacity);}
+.checks b{font-family:var(--mono);font-size:13.5px;letter-spacing:.02em;margin-right:6px;}
+
+/* nine decisions */
+.dec-list{list-style:none;margin:8px 0 30px;padding:0;counter-reset:d;}
+.dec-list > li{border-top:1px solid var(--card-border);padding:14px 0 12px;}
+.dec-list .dq{font-weight:700;margin-bottom:8px;line-height:1.4;}
+.dec-list .dq::before{counter-increment:d;content:counter(d) " · ";font:700 13px var(--mono);color:var(--accent-ink);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.chip{font:12.5px/1.4 var(--mono);padding:3px 10px;border-radius:999px;border:1px solid var(--card-border);color:var(--text-muted);background:var(--bg);}
+.chip.won{background:var(--accent);border-color:var(--accent);color:#111;font-weight:700;}
+.chip.won::before{content:"✓ ";}
+.chip.rec{background:var(--capacity);border-color:var(--capacity);color:var(--rec-ink);font-weight:700;}
+.chip.rec::before{content:"✓ ";}
+.chip.rec::after{content:" · recommended";font-weight:400;}
+.dec-list .why{font-size:15.5px;margin:0;line-height:1.5;}
+.dec-list .cost{font-size:14px;color:var(--text-muted);margin-left:4px;}
+.dec-list .cost b{color:var(--text-secondary);}
+
+/* the principles map */
+html{scroll-padding-top:16px;}
+.pmap{border-left:4px solid var(--accent);}
+.pmap .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:12px;}
+.pgroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:14px 18px;}
+.pgroups div{display:flex;flex-direction:column;gap:5px;}
+.pgroups b{font-size:14.5px;}
+.pgroups a{font:13px/1.35 var(--mono);text-decoration:none;color:var(--text-secondary);}
+.pgroups a::before{content:"→ ";color:var(--accent-ink);}
+.pgroups a:hover{color:var(--accent-ink);}
+
+/* fan-out */
+.calls{display:flex;flex-wrap:wrap;gap:4px;margin:14px 0 10px;}
+.calls i{width:14px;height:14px;border-radius:3px;background:var(--capacity);}
+.meter{height:10px;border-radius:5px;background:var(--track);overflow:hidden;margin:0 0 10px;max-width:440px;}
+.meter span{display:block;height:100%;width:0;background:var(--demand);border-radius:5px;transition:width .3s;}
+
+/* pipeline and failover diagrams */
+.journey .wire{stroke:var(--card-border);stroke-width:1.5;}
+.journey .hosts rect{fill:var(--mute);}
+.journey .node.host rect{fill:var(--mute);stroke:none;}
+.journey .node.host.bad rect{fill:var(--demand);stroke:none;}
+.arch .hotk{stroke:var(--demand);stroke-width:1.8;}
+.arch .hotp{fill:var(--demand-wash);stroke:var(--demand);stroke-width:2;stroke-dasharray:5 3;}
+
+/* three stat tiles in a row */
+.stats.three{grid-template-columns:repeat(3,minmax(0,1fr));}
+@media (max-width:640px){.stats.three .stat{padding:12px;} .stats.three .v{font-size:24px;} .stats.three .l{font-size:13px;}}
+
+/* the whole-system animation */
+.tour-cap{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;margin:0 0 12px;min-height:66px;font-size:15.5px;line-height:1.45;}
+.tour-n{flex:none;font:700 12px/1.9 var(--mono);color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:0 8px;}
+.journey.tour{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);}
+.journey.tour svg{max-width:400px;}
+.tour .fan line{stroke:var(--card-border);stroke-width:1.5;}
+.tour .fan.lit line,.tour .fan.stop line{stroke:var(--accent-ink);stroke-width:2;}
+.tour .tour-dot{fill:var(--accent);stroke:var(--bg);}
+.tour-steps{list-style:none;margin:0;padding:0;counter-reset:t;}
+.tour-steps li{counter-increment:t;}
+.tour-steps button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px dashed var(--card-border);padding:6px 0 6px 30px;position:relative;font:12.5px/1.45 var(--mono);color:var(--text-muted);cursor:pointer;}
+.tour-steps button::before{content:counter(t);position:absolute;left:0;top:6px;width:22px;text-align:right;font-weight:700;color:var(--accent-ink);}
+.tour-steps li.on button{color:var(--text);font-weight:700;}
+.tour-steps button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media (max-width:640px){.tour-steps{display:none;} .journey.tour{grid-template-columns:1fr;}}
+
+/* request timing */
+.plot .wf-bar{fill:var(--mute);}
+.plot .wf-bar.done{fill:var(--capacity);}
+.plot .wf-bar.drop{fill:var(--demand);}
+.plot .dl{stroke:var(--demand);}
+.plot .wf-x{font:700 11px var(--mono);fill:var(--text);}
+
+/* numbered safeguards */
+.arch .badge{fill:var(--accent);}
+.arch .badge-n{fill:#111;font-weight:700;font-family:var(--mono);}
+
+/* the video version, same player as the main page's intro */
+.watch{margin:0 0 26px;}
+.intro-video{border-radius:12px;overflow:hidden;border:1px solid var(--card-border);background:#000;box-shadow:0 10px 30px rgba(0,0,0,.12);transition:border-color .3s ease,box-shadow .3s ease;}
+.intro-video:hover{border-color:var(--accent);box-shadow:0 10px 30px rgba(253,181,21,.2);}
+.intro-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000;}
+.play-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;cursor:pointer;background:#000;}
+.play-facade img{display:block;width:100%;height:100%;object-fit:cover;}
+.play-btn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.play-btn svg{width:76px;height:76px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.35));transition:transform .2s ease;}
+.play-btn circle{fill:var(--accent);}
+.play-btn path{fill:#111;}
+.play-facade:hover .play-btn svg,.play-facade:focus-visible .play-btn svg{transform:scale(1.08);}
+.play-facade:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+.play-len{position:absolute;right:10px;bottom:10px;padding:2px 7px;border-radius:4px;font-size:13px;font-weight:600;color:#fff;background:rgba(0,0,0,.7);}
+.intro-note{font-size:14px;color:var(--text-muted);margin:10px 0 0;}
+
+/* the recreation callout: impossible to miss */
+.recreation{border-left:4px solid var(--demand);background:var(--demand-wash);}
+.recreation .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text);margin-bottom:8px;}
+.recreation p{margin:0;font-size:15.5px;}
+
+/* pillar tags on section titles */
+.section-title .pill{font:700 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);border:1px solid var(--accent-ink);border-radius:999px;padding:2px 8px;flex:none;}
+.term-body .p{display:inline-block;min-width:4ch;}
+
+/* the concern queue */
+.q-list{list-style:none;margin:6px 0 12px;padding:0;min-height:40px;display:grid;gap:6px;}
+.q-list li{display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--card-border);border-radius:10px;background:var(--bg);font-size:15px;transition:transform .3s ease,opacity .3s ease;}
+.q-list li b{font:700 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px;flex:none;}
+.q-list .safety b{background:var(--demand);color:#fff;} .q-list .drive b{background:var(--accent);color:#111;}
+.q-list .comfort b{background:var(--capacity);color:var(--rec-ink);} .q-list .conv b{background:var(--mute);color:#fff;}
+.q-list li.now{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-wash);}
+.q-list li.done{opacity:.45;}
+.q-list li .st{margin-left:auto;font:12px var(--mono);color:var(--text-muted);}
+[data-theme="dark"] .q-list .safety b{color:#111;}
+
+/* rubric tiles */
+.r-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:6px 0 10px;}
+.r-grid div{border:1px solid var(--card-border);border-radius:10px;padding:10px;background:var(--bg);transition:background .3s,border-color .3s;min-height:74px;}
+.r-grid div b{display:block;font:700 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px;}
+.r-grid div span{font-size:14px;line-height:1.35;color:var(--text-muted);}
+.r-grid div.got{background:var(--capacity-wash);border-color:var(--capacity);}
+.r-grid div.got span{color:var(--text);}
+.r-grid div.ask{border:2px dashed var(--accent-ink);}
+@media (max-width:640px){.r-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* charts in this post */
+.plot .bar-tool{fill:var(--capacity);} .plot .bar-llm{fill:var(--demand);} .plot .bar-io{fill:var(--mute);}
+.plot .first{stroke:var(--accent-ink);stroke-width:2;}
+.plot .s-dem-l{stroke:var(--demand);fill:none;stroke-width:2;} .plot .s-cap-l{stroke:var(--capacity);fill:none;stroke-width:2;}
+.plot .s-bad{fill:var(--demand);fill-opacity:.22;} .plot .s-wait{fill:var(--accent);fill-opacity:.28;}
+.sw-wait{background:var(--accent);opacity:.5;}
+
+/* the on-call dashboard */
+.d-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:4px 0 10px;}
+.d-tile{border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;background:var(--bg);}
+.d-tile .l{font-size:13px;color:var(--text-muted);}
+.d-tile .v{font:600 24px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:2px 0 4px;}
+.d-tile svg{display:block;width:100%;height:30px;}
+.d-tile svg path{fill:none;stroke:var(--capacity);stroke-width:2;}
+.d-tile.bad{border-color:var(--demand);}
+.d-tile.bad svg path{stroke:var(--demand);}
+.d-tile .t{font:12px var(--mono);color:var(--text-muted);}
+.d-alarm{min-height:44px;font-size:15px;padding:8px 12px;border-radius:10px;}
+.d-alarm.on{background:var(--demand-wash);border:1px solid var(--demand);}
+.d-alarm.ok{background:var(--capacity-wash);border:1px solid var(--capacity);}
+@media (max-width:640px){.d-tiles{grid-template-columns:repeat(2,minmax(0,1fr));}}
+</style>
+</head>
+<body>
+<div class="scroll-progress" aria-hidden="true"></div>
+<button class="theme-toggle" type="button" aria-label="Toggle dark mode">🌙</button>
+
+<div class="wrap">
+<nav class="topbar" aria-label="Site">
+  <img src="../images/avatar.webp?v=3" alt="" width="44" height="44">
+  <a href="../">Ambrose <span class="last">Tuscano</span></a>
+  <a class="home" href="../#intro">Watch my 3-min intro</a>
+</nav>
+
+<header class="hero">
+  <span class="kicker">Field notes · Agentic AI</span>
+  <h1>Four Agents Walk Into a Service Bay</h1>
+  <p class="alt">or: why the most important agent is a state machine</p>
+  
+  <p class="dek">A customer books a service appointment, gets a link, and a team of AI agents turns "it makes a noise sometimes" into something a technician can act on before the car even arrives. Here's how I'd build that to be fast, scale on a Monday morning, survive a model outage, and stay visible the whole time, mostly in pictures.</p>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>8 min read</span></div>
+</header>
+
+<div class="card recreation" role="note">
+  <div class="q">Before we start: this is not how it is at Nissan</div>
+  <p>At Nissan I designed and shipped <em>Tell Me More</em>, a multi-agent intake chatbot for dealership service appointments. <strong>This post is not that system.</strong> It's my own recreation of the idea, expanded with what I'd build next, in my own words. Every design, name, number and line of pseudocode here is mine and illustrative; none of it is Nissan's architecture, data, prompts or code.</p>
+</div>
+
+<div class="code" aria-label="An example intake conversation">
+  <div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the intake</span></div>
+  <div class="term-body">
+    <div><span class="p">agent</span> Hi! I'll help your technician get ready. What's going on with the car?</div>
+    <div><span class="p">you  </span> brakes squeal when I stop, and the AC smells weird</div>
+    <div class="dim">→ two concerns queued: brakes (safety, first), AC smell (comfort, next)</div>
+    <div><span class="p">agent</span> Got it, let's start with the brakes. Is it every stop, or only some?</div>
+    <div><span class="p">  </span> <span class="cursor"></span></div>
+  </div>
+</div>
+
+<article>
+<section class="card tldr hats" aria-labelledby="tldr">
+<h2 id="tldr">The short version, for whichever hat you're wearing</h2>
+<div class="btns" role="group" aria-label="Pick a role">
+  <button class="btn" type="button" data-hat="all" aria-pressed="true">Everyone</button>
+  <button class="btn" type="button" data-hat="eng" aria-pressed="false">Engineer</button>
+  <button class="btn" type="button" data-hat="arch" aria-pressed="false">Architect</button>
+  <button class="btn" type="button" data-hat="pe" aria-pressed="false">Principal</button>
+  <button class="btn" type="button" data-hat="em" aria-pressed="false">Manager</button>
+  <button class="btn" type="button" data-hat="pm" aria-pressed="false">Product</button>
+</div>
+<div class="hat" data-for="all">
+<ul>
+  <li><strong>One agent talks; three work as its tools,</strong> and a plain state machine decides what happens next.</li>
+  <li><strong>Every turn has a deadline,</strong> tools run in parallel, and the reply streams.</li>
+  <li><strong>When the model fails, the conversation doesn't:</strong> retry, another region, a smaller model, then scripted questions.</li>
+</ul>
+</div>
+<div class="hat" data-for="eng" hidden>
+<ul>
+  <li><strong>Agents as tools, not a group chat:</strong> one caller, typed outputs, schema-checked JSON.</li>
+  <li><strong>Save state every turn, keyed by turn ID,</strong> so a retry or a reconnect never duplicates or loses anything.</li>
+  <li><strong>Fan out tool calls with a deadline;</strong> a slow tool is skipped and flagged, never waited on.</li>
+</ul>
+</div>
+<div class="hat" data-for="arch" hidden>
+<ul>
+  <li><strong>Separate the conversation from the workflow:</strong> agents for language, a state machine for control, Step Functions for hand-off.</li>
+  <li><strong>Admission control in front of the model:</strong> a token bucket and a queue that favours live conversations.</li>
+  <li><strong>A failover ladder,</strong> ending in a deterministic script that needs no model at all.</li>
+</ul>
+</div>
+<div class="hat" data-for="pe" hidden>
+<ul>
+  <li><strong>The LLM is the least reliable component;</strong> design as if it will be slow, wrong or gone.</li>
+  <li><strong>Quality is a metric:</strong> rubric scores per dimension sit on the same dashboard as p99.</li>
+  <li><strong>Prompts are code:</strong> versioned, tested against golden conversations, shipped by canary, rolled back by alias.</li>
+</ul>
+</div>
+<div class="hat" data-for="em" hidden>
+<ul>
+  <li><strong>Plan for Monday 9 am:</strong> quotas are a capacity plan, like hosts.</li>
+  <li><strong>Page on symptoms:</strong> p99 turn time, errors, cost per session, completion rate.</li>
+  <li><strong>Every prompt change gets a golden-set run and a canary,</strong> with a one-command rollback.</li>
+</ul>
+</div>
+<div class="hat" data-for="pm" hidden>
+<ul>
+  <li><strong>The product is a better first visit:</strong> the technician knows what, where, when and how to reproduce before the car arrives.</li>
+  <li><strong>Safety concerns jump the queue,</strong> and the agent never guesses a diagnosis.</li>
+  <li><strong>Success is completed, confirmed summaries,</strong> in few turns, that a technician can act on without calling the customer.</li>
+</ul>
+</div>
+</section>
+
+<nav class="card pmap" aria-labelledby="pmap-t">
+<div class="q" id="pmap-t">The five things I care about, and where they show up</div>
+<div class="pgroups">
+  <div><b>Scale</b><a href="#s-scale">token buckets &amp; quotas</a><a href="#s-scale">admission control</a><a href="#s-queue">priority queues</a></div>
+  <div><b>Speed</b><a href="#s-speed">parallel fan-out</a><a href="#s-speed">deadlines &amp; streaming</a><a href="#s-memory">memory tiers</a></div>
+  <div><b>Reliability</b><a href="#s-agents">state machines</a><a href="#s-rubric">schema-checked output</a><a href="#s-break">idempotent turns</a></div>
+  <div><b>Visibility</b><a href="#s-visible">traces &amp; p99</a><a href="#s-visible">quality as a metric</a><a href="#s-ship">golden sets &amp; canaries</a></div>
+  <div><b>Failover</b><a href="#s-break">the failover ladder</a><a href="#s-break">cross-region inference</a><a href="#s-break">resumable sessions</a></div>
+</div>
+</nav>
+
+<div class="section-title" id="s-problem"><span class="dot"></span><span class="n">01</span><span class="section-line"></span></div>
+<h2>"It makes a noise sometimes"</h2>
+
+<p class="lede">That sentence is where most service visits start, and a technician can't do much with it. They need what, where, when, how to reproduce it, and whether it's safe to drive. Usually they get that by calling the customer, after the car is already on the lift.</p>
+
+<figure>
+<div class="fig-frame">
+<svg class="arch" viewBox="0 0 420 236" role="img" aria-labelledby="before-t">
+<title id="before-t">Before and after. Before: a note that says "makes a noise sometimes". After intake: a structured summary with what (high-pitched squeal), where (front left, braking), when (started two weeks ago, getting worse), how to reproduce (light braking under 20 mph, mornings), warning lights (none), and safety (drivable, flagged for priority).</title>
+<text x="10" y="16" font-size="11" class="tm">BEFORE</text>
+<rect class="bx" x="10" y="26" width="150" height="96" rx="8"/>
+<text x="85" y="62" text-anchor="middle" font-size="13" class="t">"makes a noise</text>
+<text x="85" y="82" text-anchor="middle" font-size="13" class="t">sometimes"</text>
+<text x="85" y="108" text-anchor="middle" font-size="10.5" class="tm">call the customer back</text>
+<text x="190" y="80" text-anchor="middle" font-size="22" class="ta">→</text>
+<text x="222" y="16" font-size="11" class="tm">AFTER INTAKE</text>
+<rect class="chip-teal" x="222" y="26" width="188" height="200" rx="8"/>
+<text x="234" y="48" font-size="11.5" font-weight="700" class="t">Concern 1 · brakes</text>
+<text x="234" y="70" font-size="10.5" class="tm">what</text><text x="292" y="70" font-size="10.5" class="t">high-pitched squeal</text>
+<text x="234" y="92" font-size="10.5" class="tm">where</text><text x="292" y="92" font-size="10.5" class="t">front left, braking</text>
+<text x="234" y="114" font-size="10.5" class="tm">when</text><text x="292" y="114" font-size="10.5" class="t">2 weeks, worse</text>
+<text x="234" y="136" font-size="10.5" class="tm">repro</text><text x="292" y="136" font-size="10.5" class="t">light braking, &lt;20 mph</text>
+<text x="234" y="158" font-size="10.5" class="tm">lights</text><text x="292" y="158" font-size="10.5" class="t">none</text>
+<text x="234" y="180" font-size="10.5" class="tm">safety</text><text x="292" y="180" font-size="10.5" class="ta">priority: brakes</text>
+<text x="234" y="208" font-size="10.5" class="tm">confirmed by the customer ✓</text>
+<text x="10" y="150" font-size="11" class="tm">the technician walks in</text>
+<text x="10" y="166" font-size="11" class="tm">knowing what to look for</text>
+</svg>
+</div>
+<figcaption>The whole product in one picture: a vague note in, a confirmed, structured summary out.</figcaption>
+</figure>
+
+<p>The idea: when a customer books an appointment, the dealership sends a personal link, and a short conversation collects everything before the visit. It sounds like a chatbot. The engineering is everything around the chatbot.</p>
+
+<div class="section-title" id="s-system"><span class="dot"></span><span class="n">02</span><span class="section-line"></span></div>
+<h2>The whole system, in one animation</h2>
+
+<p>Three acts: a booking creates a link, a conversation fills in the concern, and a hand-off delivers the summary. Every later section zooms into one box.</p>
+
+<div class="widget" id="tour2">
+  <div class="widget-title">Animation · a booking, a conversation, a hand-off</div>
+  <div class="btns" role="group" aria-label="Animation controls">
+    <button class="btn" type="button" data-t="play">▶ Play</button>
+    <button class="btn" type="button" data-t="prev" aria-label="Previous step">◀</button>
+    <button class="btn" type="button" data-t="next" aria-label="Next step">▶</button>
+    <button class="btn" type="button" data-t="0">1 · Booking</button>
+    <button class="btn" type="button" data-t="3">2 · A conversation</button>
+    <button class="btn" type="button" data-t="10">3 · Hand-off</button>
+  </div>
+  <div class="tour-cap" aria-live="polite"><span class="tour-n">0 / 14</span><span class="tour-t">Press play to follow one appointment from booking to the technician's screen.</span></div>
+  <div class="journey tour">
+    <svg viewBox="0 0 360 640" role="img" aria-labelledby="tour2-t">
+      <title id="tour2-t">The whole system. A booking asks the intake service for a signed link, which the dealership texts to the customer. The customer's browser connects over an API Gateway WebSocket to a chat service on ECS, which keeps session state in DynamoDB and passes every message through guardrails to the Conversation Agent on AgentCore. The agent calls three tools in parallel: the Rubric, Vehicle History and Dealership Internal agents. When the customer confirms a summary, it is saved and Step Functions delivers it to the dealership, with a dead-letter queue for failures. CloudWatch collects traces and metrics from every step.</title>
+      <text x="8" y="14" font-size="10.5" class="sub">BOOKING · once per appointment</text>
+      <g class="node" data-node="book"><rect x="8" y="22" width="108" height="30" rx="6"/><text x="62" y="41" font-size="11" text-anchor="middle">booking system</text></g>
+      <g class="node" data-node="link"><rect x="126" y="22" width="108" height="30" rx="6"/><text x="180" y="41" font-size="11" text-anchor="middle">signed link</text></g>
+      <g class="node" data-node="sms"><rect x="244" y="22" width="108" height="30" rx="6"/><text x="298" y="41" font-size="11" text-anchor="middle">text / email</text></g>
+      <line class="wire" x1="116" y1="37" x2="126" y2="37"/><line class="wire" x1="234" y1="37" x2="244" y2="37"/>
+      <line class="wire" x1="4" y1="68" x2="356" y2="68"/>
+      <text x="8" y="82" font-size="10.5" class="sub">CONVERSATION · every turn</text>
+      <g class="node" data-node="phone"><rect x="8" y="90" width="168" height="30" rx="6"/><text x="92" y="109" font-size="11.5" text-anchor="middle">customer's browser</text></g>
+      <g class="node" data-node="ws"><rect x="184" y="90" width="168" height="30" rx="6"/><text x="268" y="109" font-size="11.5" text-anchor="middle">API Gateway · WebSocket</text></g>
+      <line class="wire" x1="176" y1="105" x2="184" y2="105"/><line class="wire" x1="268" y1="120" x2="268" y2="136"/>
+      <g class="node" data-node="chat"><rect x="8" y="136" width="230" height="38" rx="6"/><text x="123" y="153" font-size="11.5" text-anchor="middle">chat service · FastAPI on ECS</text><text x="123" y="167" font-size="10" text-anchor="middle" class="sub">state machine per concern</text></g>
+      <g class="node" data-node="ddb"><rect x="246" y="136" width="106" height="38" rx="6"/><text x="299" y="153" font-size="11" text-anchor="middle">DynamoDB</text><text x="299" y="167" font-size="10" text-anchor="middle" class="sub">sessions</text></g>
+      <line class="wire" x1="238" y1="155" x2="246" y2="155"/><line class="wire" x1="123" y1="174" x2="123" y2="188"/>
+      <g class="node" data-node="guard"><rect x="8" y="188" width="344" height="28" rx="6"/><text x="180" y="206" font-size="11.5" text-anchor="middle">guardrails · PII redaction · content checks</text></g>
+      <line class="wire" x1="180" y1="216" x2="180" y2="230"/>
+      <g class="node" data-node="conv"><rect x="8" y="230" width="344" height="44" rx="8"/><text x="180" y="249" font-size="12" font-weight="700" text-anchor="middle">Conversation Agent · AgentCore</text><text x="180" y="265" font-size="10" text-anchor="middle" class="sub">the only one the customer talks to · memory</text></g>
+      <g class="node fan" data-node="fan"><line x1="62" y1="274" x2="62" y2="294"/><line x1="180" y1="274" x2="180" y2="294"/><line x1="298" y1="274" x2="298" y2="294"/></g>
+      <g class="node" data-node="rub"><rect x="8" y="294" width="108" height="40" rx="6"/><text x="62" y="311" font-size="11" text-anchor="middle">Rubric</text><text x="62" y="325" font-size="9.5" text-anchor="middle" class="sub">extract fields</text></g>
+      <g class="node" data-node="hist"><rect x="126" y="294" width="108" height="40" rx="6"/><text x="180" y="311" font-size="11" text-anchor="middle">Vehicle History</text><text x="180" y="325" font-size="9.5" text-anchor="middle" class="sub">past repairs</text></g>
+      <g class="node" data-node="deal"><rect x="244" y="294" width="108" height="40" rx="6"/><text x="298" y="311" font-size="11" text-anchor="middle">Dealership</text><text x="298" y="325" font-size="9.5" text-anchor="middle" class="sub">warranty · parts</text></g>
+      <line class="wire" x1="4" y1="352" x2="356" y2="352"/>
+      <text x="8" y="366" font-size="10.5" class="sub">HAND-OFF · once per concern</text>
+      <g class="node" data-node="sum"><rect x="8" y="374" width="168" height="38" rx="6"/><text x="92" y="391" font-size="11.5" text-anchor="middle">summary</text><text x="92" y="405" font-size="10" text-anchor="middle" class="sub">customer confirms<tspan class="ver" id="t2-ok"></tspan></text></g>
+      <g class="node" data-node="save"><rect x="184" y="374" width="168" height="38" rx="6"/><text x="268" y="391" font-size="11.5" text-anchor="middle">saved once</text><text x="268" y="405" font-size="10" text-anchor="middle" class="sub">idempotent key</text></g>
+      <line class="wire" x1="176" y1="393" x2="184" y2="393"/><line class="wire" x1="268" y1="412" x2="268" y2="426"/>
+      <g class="node" data-node="sfn"><rect x="8" y="426" width="230" height="38" rx="6"/><text x="123" y="443" font-size="11.5" text-anchor="middle">Step Functions · deliver</text><text x="123" y="457" font-size="10" text-anchor="middle" class="sub">retries with backoff</text></g>
+      <g class="node" data-node="dlq"><rect x="246" y="426" width="106" height="38" rx="6"/><text x="299" y="449" font-size="11" text-anchor="middle">dead letters</text></g>
+      <line class="wire" x1="238" y1="445" x2="246" y2="445"/><line class="wire" x1="123" y1="464" x2="123" y2="478"/>
+      <g class="node" data-node="tech"><rect x="8" y="478" width="230" height="38" rx="6"/><text x="123" y="495" font-size="11.5" text-anchor="middle">dealership system</text><text x="123" y="509" font-size="10" text-anchor="middle" class="sub">technician sees it before the visit</text></g>
+      <g class="node" data-node="next"><rect x="246" y="478" width="106" height="38" rx="6"/><text x="299" y="495" font-size="11" text-anchor="middle">next concern</text><text x="299" y="509" font-size="10" text-anchor="middle" class="sub">from the queue</text></g>
+      <g class="node" data-node="cw"><rect x="8" y="536" width="344" height="40" rx="8"/><text x="180" y="553" font-size="11.5" font-weight="700" text-anchor="middle">CloudWatch · traces · metrics · alarms</text><text x="180" y="567" font-size="10" text-anchor="middle" class="sub">every step above reports here</text></g>
+      <circle class="tour-dot" cx="340" cy="12" r="6" stroke-width="2" opacity="0"/>
+    </svg>
+    <ol class="tour-steps"></ol>
+  </div>
+</div>
+
+<div class="section-title" id="s-agents"><span class="dot"></span><span class="n">03</span><span class="section-line"></span><span class="pill">reliability</span></div>
+<h2>Four agents, one conductor</h2>
+
+<p>There are two ways to build "multi-agent". In a group chat, agents talk to each other freely: flexible, and almost impossible to reason about. I'd build the other way: <strong>one agent talks to the customer, and the other three are its tools</strong>, each with one job and a typed output.</p>
+
+<figure>
+<div class="fig-frame">
+<svg class="arch" viewBox="0 0 420 250" role="img" aria-labelledby="hub-t">
+<title id="hub-t">The Conversation Agent sits in the middle and is the only agent the customer sees. It calls three tools: the Rubric Agent, which extracts fields and decides what is still missing; the Vehicle History Agent, which pulls past repairs for the VIN; and the Dealership Internal Agent, which checks warranty, parts and advisories. Outside the agents, a state machine owns each concern's lifecycle: queued, intake, summary, confirmed, delivered.</title>
+<defs><marker id="hg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bx" x="140" y="8" width="140" height="30" rx="15"/><text x="210" y="27" text-anchor="middle" font-size="12" class="t">customer</text>
+<line class="ln" x1="210" y1="38" x2="210" y2="60" marker-start="url(#hg)" marker-end="url(#hg)"/>
+<rect class="bx-main" x="96" y="62" width="228" height="46" rx="10"/>
+<text x="210" y="82" text-anchor="middle" font-size="13" font-weight="700" class="t">Conversation Agent</text>
+<text x="210" y="99" text-anchor="middle" font-size="10.5" class="tm">talks · plans the next question</text>
+<line class="ln" x1="160" y1="108" x2="72" y2="138" marker-end="url(#hg)"/>
+<line class="ln" x1="210" y1="108" x2="210" y2="138" marker-end="url(#hg)"/>
+<line class="ln" x1="260" y1="108" x2="348" y2="138" marker-end="url(#hg)"/>
+<text x="98" y="118" text-anchor="end" font-size="10" class="ta">tool</text><text x="218" y="128" font-size="10" class="ta">tool</text><text x="322" y="118" font-size="10" class="ta">tool</text>
+<rect class="chip" x="10" y="140" width="124" height="44" rx="8"/><text x="72" y="159" text-anchor="middle" font-size="12" class="t">Rubric</text><text x="72" y="175" text-anchor="middle" font-size="10" class="tm">fields and gaps</text>
+<rect class="chip" x="148" y="140" width="124" height="44" rx="8"/><text x="210" y="159" text-anchor="middle" font-size="12" class="t">Vehicle History</text><text x="210" y="175" text-anchor="middle" font-size="10" class="tm">past repairs by VIN</text>
+<rect class="chip" x="286" y="140" width="124" height="44" rx="8"/><text x="348" y="159" text-anchor="middle" font-size="12" class="t">Dealership</text><text x="348" y="175" text-anchor="middle" font-size="10" class="tm">warranty · parts</text>
+<text x="10" y="210" font-size="10.5" class="tm">STATE MACHINE (no LLM)</text>
+<rect class="chip-teal" x="10" y="218" width="64" height="24" rx="6"/><text x="42" y="234" text-anchor="middle" font-size="10" class="t">queued</text>
+<rect class="chip-teal" x="92" y="218" width="64" height="24" rx="6"/><text x="124" y="234" text-anchor="middle" font-size="10" class="t">intake</text>
+<rect class="chip-teal" x="174" y="218" width="70" height="24" rx="6"/><text x="209" y="234" text-anchor="middle" font-size="10" class="t">summary</text>
+<rect class="chip-teal" x="262" y="218" width="72" height="24" rx="6"/><text x="298" y="234" text-anchor="middle" font-size="10" class="t">confirmed</text>
+<rect class="chip-teal" x="352" y="218" width="60" height="24" rx="6"/><text x="382" y="234" text-anchor="middle" font-size="10" class="t">sent</text>
+<line class="ln" x1="74" y1="230" x2="90" y2="230" marker-end="url(#hg)"/><line class="ln" x1="156" y1="230" x2="172" y2="230" marker-end="url(#hg)"/>
+<line class="ln" x1="244" y1="230" x2="260" y2="230" marker-end="url(#hg)"/><line class="ln" x1="334" y1="230" x2="350" y2="230" marker-end="url(#hg)"/>
+</svg>
+</div>
+<figcaption>Agents handle language; the state machine handles control. A model never decides whether a summary was confirmed.</figcaption>
+</figure>
+
+<p>That split is the reliability story in miniature. The model can phrase a question beautifully and still be wrong about whether we're done, so "done" is decided by code: the Rubric's typed output, checked against a schema, moves a concern from <em>intake</em> to <em>summary</em>.</p>
+
+<div class="section-title" id="s-queue"><span class="dot"></span><span class="n">04</span><span class="section-line"></span><span class="pill">scale</span></div>
+<h2>Safety first: the concern queue</h2>
+
+<p>Customers rarely have one problem. They mention three in one breath, and the most dangerous is often the last. Every concern goes into a <strong>priority queue</strong>, safety first, and each gets its own full intake cycle. Add a few:</p>
+
+<div class="widget" id="queue">
+  <div class="widget-title">Interactive · what the customer mentions, and what we ask about first</div>
+  <div class="btns" role="group" aria-label="Add a concern">
+    <button class="btn" type="button" data-c="radio">+ Radio keeps resetting</button>
+    <button class="btn" type="button" data-c="ac">+ AC smells musty</button>
+    <button class="btn" type="button" data-c="pull">+ Car pulls to the left</button>
+    <button class="btn" type="button" data-c="brakes">+ Brakes squeal</button>
+    <button class="btn" type="button" data-c="cel">+ Check-engine light flashing</button>
+  </div>
+  <ol class="q-list" aria-live="polite"></ol>
+  <div class="btns"><button class="btn" type="button" id="q-next">Start intake on the top one</button><button class="btn" type="button" id="q-reset">Reset</button></div>
+  <p class="readout" id="q-out">Mention a few problems, in any order.</p>
+</div>
+
+<p>The order is a lookup, not a judgement call: safety, then drivability, then comfort, then convenience. The agent acknowledges every concern ("I've noted the radio too"), so nothing is lost, but it never abandons the brakes halfway to talk about the radio.</p>
+
+<div class="section-title" id="s-rubric"><span class="dot"></span><span class="n">05</span><span class="section-line"></span><span class="pill">speed</span></div>
+<h2>Knowing when you're done</h2>
+
+<p>A technician needs a handful of facts per concern. The Rubric Agent's job is to pull <strong>as many as possible out of every answer</strong>, so the customer answers fewer questions. Pick an answer and watch what it fills:</p>
+
+<div class="widget" id="rubric">
+  <div class="widget-title">Interactive · one answer, many fields</div>
+  <div class="btns" role="group" aria-label="Pick an answer">
+    <button class="btn" type="button" data-a="vague">"It's noisy."</button>
+    <button class="btn" type="button" data-a="ok">"Squeals when I brake."</button>
+    <button class="btn" type="button" data-a="great">"Front left squeals on light braking in the mornings, for two weeks now."</button>
+  </div>
+  <div class="r-grid"></div>
+  <p class="readout" id="r-out">Each tile is a fact the technician needs. Pick an answer.</p>
+</div>
+
+<p>The rubric also chooses the next question: the most important field still missing. Fewer turns means a faster intake, fewer model calls and lower cost, which is why "fields per question" sits on the dashboard in section 10.</p>
+
+<div class="interrupt"><span class="tag">Sorry, sorry, quick interruption</span>
+<p>Every mechanic I've talked to says the most useful thing a customer can say is "I can make it happen again." That's the reproduction field. If you remember one thing from this post, make it that. Okay, back to it.</p>
+</div>
+
+<div class="section-title" id="s-memory"><span class="dot"></span><span class="n">06</span><span class="section-line"></span><span class="pill">speed</span></div>
+<h2>Memory is a cache with manners</h2>
+
+<p>An agent that forgets what you said three turns ago is annoying; one that sends the whole transcript every turn is slow and expensive. Memory works like layered caching, nearest first:</p>
+
+<figure>
+<div class="fig-frame">
+<svg class="arch" viewBox="0 0 420 214" role="img" aria-labelledby="mem-t">
+<title id="mem-t">Memory tiers. The model's context window holds only the current concern and recent turns. Session memory holds every extracted fact for this conversation, so nothing is asked twice. Long-term memory, per VIN, holds facts from earlier visits. Systems of record, like the vehicle history and dealership systems, are reached through tools. Each tier is larger and slower than the one above it, and PII is redacted before anything is written.</title>
+<rect class="chip" x="130" y="8" width="160" height="38" rx="8"/><text x="210" y="25" text-anchor="middle" font-size="11.5" font-weight="700" class="t">context window</text><text x="210" y="39" text-anchor="middle" font-size="10" class="tm">this concern + last turns</text>
+<rect class="chip" x="90" y="56" width="240" height="38" rx="8"/><text x="210" y="73" text-anchor="middle" font-size="11.5" font-weight="700" class="t">session memory</text><text x="210" y="87" text-anchor="middle" font-size="10" class="tm">every fact so far · never ask twice</text>
+<rect class="chip-teal" x="50" y="104" width="320" height="38" rx="8"/><text x="210" y="121" text-anchor="middle" font-size="11.5" font-weight="700" class="t">long-term memory, per VIN</text><text x="210" y="135" text-anchor="middle" font-size="10" class="tm">"last spring: rear brake pads replaced"</text>
+<rect class="bx" x="10" y="152" width="400" height="38" rx="8"/><text x="210" y="169" text-anchor="middle" font-size="11.5" font-weight="700" class="t">systems of record, via tools</text><text x="210" y="183" text-anchor="middle" font-size="10" class="tm">vehicle history · warranty · parts</text>
+<text x="210" y="208" text-anchor="middle" font-size="10.5" class="ta">smaller and faster at the top · PII redacted before any write</text>
+</svg>
+</div>
+<figcaption>Built on AgentCore's <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html" target="_blank" rel="noopener">short- and long-term memory</a>; the tiering is the same instinct as an ad server's local cache.</figcaption>
+</figure>
+
+<div class="section-title" id="s-speed"><span class="dot"></span><span class="n">07</span><span class="section-line"></span><span class="pill">speed</span></div>
+<h2>One turn, against the clock</h2>
+
+<p>A conversation feels broken after a few seconds of silence. One turn touches a guardrail, the agent and up to three tools, and the order you do that in decides how long the customer waits. Same work, three schedules:</p>
+
+<div class="widget" id="turn">
+  <div class="widget-title">Animation · time to the first word, three ways</div>
+  <div class="btns" role="group" aria-label="Pick a schedule">
+    <button class="btn" type="button" data-m="seq">One after another</button>
+    <button class="btn" type="button" data-m="par">Tools in parallel</button>
+    <button class="btn" type="button" data-m="stream">Parallel + streaming</button>
+  </div>
+  <div class="plot"><svg viewBox="0 0 340 214" role="img" aria-labelledby="turn-t"><title id="turn-t">Timeline of one conversational turn under the chosen schedule, with the moment the customer sees the first word marked</title><g class="t-axes"></g><g class="t-bars"></g></svg></div>
+  <p class="readout" id="turn-out" aria-live="polite">Pick a schedule.</p>
+  <div class="bf-stats">illustrative timings, in seconds</div>
+</div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">turn · pseudocode</span></div><pre><code><span class="k">async</span> <span class="k">def</span> <span class="f">handle_turn</span>(session, message):
+    message = guardrails.check(redact_pii(message))      <span class="c"># nothing raw reaches a model</span>
+    state = <span class="k">await</span> sessions.load(session.id)              <span class="c"># DynamoDB: the source of truth</span>
+    <span class="k">if</span> state.already_answered(message.turn_id):          <span class="c"># a retried or duplicate turn</span>
+        <span class="k">return</span> state.last_reply
+    concern = state.queue.current()                      <span class="c"># highest-priority open concern</span>
+    fields, history, dealer = <span class="k">await</span> gather_with_deadline(
+        rubric.extract(concern, message),                <span class="c"># what did that answer tell us?</span>
+        vehicle_history.lookup(state.vin),               <span class="c"># past repairs, cached per VIN</span>
+        dealership.check(state.vin, concern),            <span class="c"># warranty, parts, advisories</span>
+        deadline=<span class="n">2.0</span>)                                    <span class="c"># a slow tool is skipped, not waited on</span>
+    concern.merge(fields)
+    reply = <span class="k">await</span> conversation.next_turn(concern, history, dealer)   <span class="c"># streams to the browser</span>
+    <span class="k">await</span> sessions.save(state, turn_id=message.turn_id)  <span class="c"># saved every turn: resumable</span>
+    <span class="k">return</span> reply</code></pre></div>
+
+<p>Three rules fall out of that picture. <strong>Fan out:</strong> tools that don't depend on each other run at once. <strong>Deadlines:</strong> a tool that misses its two seconds is skipped and flagged, not waited on. <strong>Stream:</strong> the first words reach the customer while the rest is still being written. And every turn is saved before it's acknowledged, keyed by its turn ID, so a retried message can never produce two answers.</p>
+
+<div class="section-title" id="s-scale"><span class="dot"></span><span class="n">08</span><span class="section-line"></span><span class="pill">scale</span></div>
+<h2>Monday, 9 am</h2>
+
+<p>Appointments cluster, so links get opened in waves, and every model has a <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/quotas.html" target="_blank" rel="noopener">quota</a> on requests and tokens per minute. Quotas are a capacity plan, exactly like hosts. Without admission control, the wave overshoots the quota, calls get throttled, retries pile on, and live conversations fail. Drag the wave:</p>
+
+<div class="widget" id="rush">
+  <div class="widget-title">Interactive · a morning of model calls against the quota</div>
+  <div class="range"><label for="rush-n">peak, links opened per minute: <b id="rush-v">120</b></label><input id="rush-n" type="range" min="20" max="200" step="10" value="120"></div>
+  <div class="btns" role="group" aria-label="Admission control"><button class="btn" type="button" data-adm="off" aria-pressed="true">No admission control</button><button class="btn" type="button" data-adm="on" aria-pressed="false">Token bucket + queue</button></div>
+  <div class="plot"><svg viewBox="0 0 340 214" role="img" aria-labelledby="rush-t" preserveAspectRatio="xMidYMid meet"><title id="rush-t">Model calls per minute over a 90-minute morning, against the quota line, with failed or queued calls shaded</title><g class="r-axes"></g><g class="r-data"></g></svg></div>
+  <div class="legend tight"><span><i class="lk lk-dem"></i>calls wanted per minute</span><span><i class="lk lk-cap"></i>quota</span><span><i class="sw sw-gap"></i><span id="rush-key">throttled (errors)</span></span></div>
+  <p class="readout" id="rush-out" aria-live="polite"></p>
+</div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">admit · pseudocode</span></div><pre><code><span class="k">def</span> <span class="f">admit</span>(call, bucket, queue):
+    <span class="k">if</span> bucket.take(call.tokens):          <span class="c"># under quota: go now</span>
+        <span class="k">return</span> run(call)
+    <span class="k">if</span> call.session.is_active:            <span class="c"># mid-conversation beats new arrivals</span>
+        <span class="k">return</span> queue.push_front(call)
+    <span class="k">if</span> queue.wait_seconds() &lt; <span class="n">20</span>:         <span class="c"># a short wait is better than an error</span>
+        <span class="k">return</span> queue.push(call)
+    <span class="k">return</span> offer_callback(call.session)   <span class="c"># shed gracefully: &quot;we&#x27;ll text you when it&#x27;s quiet&quot;</span></code></pre></div>
+
+<p>A <a href="https://en.wikipedia.org/wiki/Token_bucket" target="_blank" rel="noopener">token bucket</a> spends the quota smoothly, a queue absorbs the burst, live conversations go to the front, and when the wait gets long, new sessions are <a href="https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/" target="_blank" rel="noopener">shed gracefully</a> with a "we'll text you" instead of an error. The chat service itself is the easy part: stateless containers on ECS, scaling on open connections.</p>
+
+<div class="section-title" id="s-break"><span class="dot"></span><span class="n">09</span><span class="section-line"></span><span class="pill">reliability</span><span class="pill">failover</span></div>
+<h2>When the model says no</h2>
+
+<p>The language model is the least reliable part of this system: it gets throttled, it times out, and now and then it returns JSON that isn't. Design as if it will be slow, wrong or gone. Break something:</p>
+
+<div class="widget" id="fail2">
+  <div class="widget-title">Animation · break something</div>
+  <div class="btns" role="group" aria-label="Pick a failure">
+    <button class="btn" type="button" data-s="throttle">The model throttles</button>
+    <button class="btn" type="button" data-s="tool">A tool is down</button>
+    <button class="btn" type="button" data-s="json">Bad JSON</button>
+    <button class="btn" type="button" data-s="drop">The customer drops off</button>
+    <button class="btn" type="button" data-s="region">A region goes dark</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 312" aria-hidden="true">
+      <g class="node" data-node="cust"><rect x="10" y="6" width="280" height="30" rx="6"/><text x="150" y="25" font-size="11.5" text-anchor="middle">customer's browser</text></g>
+      <g class="node" data-node="svc"><rect x="10" y="48" width="180" height="36" rx="6"/><text x="100" y="70" font-size="11.5" text-anchor="middle">chat service</text></g>
+      <g class="node" data-node="db"><rect x="198" y="48" width="92" height="36" rx="6"/><text x="244" y="64" font-size="10.5" text-anchor="middle">DynamoDB</text><text x="244" y="77" font-size="9.5" text-anchor="middle" class="sub">global table</text></g>
+      <g class="node" data-node="agent"><rect x="10" y="96" width="280" height="34" rx="6"/><text x="150" y="117" font-size="11.5" text-anchor="middle">Conversation Agent</text></g>
+      <g class="node" data-node="rub"><rect x="10" y="142" width="88" height="34" rx="6"/><text x="54" y="163" font-size="10.5" text-anchor="middle">Rubric</text></g>
+      <g class="node" data-node="hist"><rect x="106" y="142" width="88" height="34" rx="6"/><text x="150" y="163" font-size="10.5" text-anchor="middle">History</text></g>
+      <g class="node" data-node="deal"><rect x="202" y="142" width="88" height="34" rx="6"/><text x="246" y="163" font-size="10.5" text-anchor="middle">Dealership</text></g>
+      <g class="node" data-node="m1"><rect x="10" y="190" width="136" height="36" rx="6"/><text x="78" y="206" font-size="10.5" text-anchor="middle">model · region A</text><text x="78" y="219" font-size="9.5" text-anchor="middle" class="sub">primary</text></g>
+      <g class="node" data-node="m2"><rect x="154" y="190" width="136" height="36" rx="6"/><text x="222" y="206" font-size="10.5" text-anchor="middle">model · region B</text><text x="222" y="219" font-size="9.5" text-anchor="middle" class="sub">cross-region inference</text></g>
+      <g class="node" data-node="small"><rect x="10" y="238" width="136" height="32" rx="6"/><text x="78" y="258" font-size="10.5" text-anchor="middle">smaller model</text></g>
+      <g class="node" data-node="script"><rect x="154" y="238" width="136" height="32" rx="6"/><text x="222" y="258" font-size="10.5" text-anchor="middle">scripted questions</text></g>
+      <g class="node" data-node="later"><rect x="10" y="280" width="280" height="26" rx="6"/><text x="150" y="297" font-size="10.5" text-anchor="middle">"we'll text you the link again"</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a failure above.</li></ol></div>
+  </div>
+</div>
+
+<p>Every failure lands somewhere on one ladder. Each rung is slower or plainer than the one above, and the bottom rung needs no model at all:</p>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">ladder · pseudocode</span></div><pre><code>FAILOVER = [
+    retry_with_jitter(attempts=<span class="n">2</span>),          <span class="c"># most throttles clear in a second</span>
+    cross_region_inference(),               <span class="c"># same model, another region&#x27;s capacity</span>
+    smaller_model(),                        <span class="c"># faster and cheaper; still good at intake</span>
+    scripted_questions(),                   <span class="c"># deterministic: the rubric&#x27;s questions, in order</span>
+    text_me_later(),                        <span class="c"># save progress, send the link again</span>
+]</code></pre></div>
+
+<p><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html" target="_blank" rel="noopener">Cross-region inference</a> handles the common case, a busy region, with the same model. Session state in a <a href="https://aws.amazon.com/dynamodb/global-tables/" target="_blank" rel="noopener">DynamoDB global table</a> means a customer can reopen their link anywhere and pick up at the same question. And the hand-off to the dealership is a Step Functions workflow with <a href="https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html" target="_blank" rel="noopener">retries and a catch</a>, so a confirmed summary is never lost in transit.</p>
+
+<div class="section-title" id="s-visible"><span class="dot"></span><span class="n">10</span><span class="section-line"></span><span class="pill">visibility</span></div>
+<h2>Quality is a metric too</h2>
+
+<p>For an agent, "up" isn't enough. It can be fast, error-free and still asking terrible questions. So the dashboard puts <strong>quality next to latency</strong>: completion rate, turns per concern, fields per question, and the rubric's own scores. Ship a bad prompt and watch:</p>
+
+<div class="widget" id="dash">
+  <div class="widget-title">Interactive · the on-call dashboard</div>
+  <div class="btns" role="group" aria-label="Dashboard actions"><button class="btn" type="button" id="d-bad">Ship a bad prompt</button><button class="btn" type="button" id="d-roll">Roll back the alias</button></div>
+  <div class="d-tiles"></div>
+  <div class="d-alarm" aria-live="polite"></div>
+  <div class="bf-stats">simulated: one tick per minute; alarm when completion rate stays under target for 3 minutes</div>
+</div>
+
+<p>Every turn is a trace: guardrail, agent, each tool, with timings and token counts, through <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html" target="_blank" rel="noopener">AgentCore observability</a> into <a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/GenAI-observability.html" target="_blank" rel="noopener">CloudWatch</a>. Alarms fire on symptoms: p99 turn time, error rate, cost per session, and completion rate, because a prompt regression shows up there first.</p>
+
+<div class="section-title" id="s-ship"><span class="dot"></span><span class="n">11</span><span class="section-line"></span><span class="pill">visibility</span><span class="pill">reliability</span></div>
+<h2>Ship prompts like code</h2>
+
+<figure>
+<div class="fig-frame">
+<svg class="arch" viewBox="0 0 420 150" role="img" aria-labelledby="ship-t">
+<title id="ship-t">A prompt release pipeline. A new prompt version is replayed against a golden set of recorded conversations. A judge model scores each conversation on every rubric dimension, and any drop blocks the release. Then a canary sends a small share of live sessions to the new version while the dashboard is watched, and an alias flip promotes it. Rolling back is flipping the alias back.</title>
+<defs><marker id="sp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<rect class="bx-main" x="6" y="20" width="74" height="44" rx="8"/><text x="43" y="40" text-anchor="middle" font-size="11" class="t">prompt</text><text x="43" y="55" text-anchor="middle" font-size="10.5" class="ta">v13</text>
+<rect class="chip" x="96" y="20" width="96" height="44" rx="8"/><text x="144" y="40" text-anchor="middle" font-size="11" class="t">golden set</text><text x="144" y="55" text-anchor="middle" font-size="10" class="tm">replayed chats</text>
+<rect class="chip" x="208" y="20" width="96" height="44" rx="8"/><text x="256" y="40" text-anchor="middle" font-size="11" class="t">judge scores</text><text x="256" y="55" text-anchor="middle" font-size="10" class="tm">every dimension</text>
+<rect class="chip-teal" x="320" y="20" width="94" height="44" rx="8"/><text x="367" y="40" text-anchor="middle" font-size="11" class="t">canary 5%</text><text x="367" y="55" text-anchor="middle" font-size="10" class="tm">then alias flip</text>
+<line class="ln" x1="80" y1="42" x2="94" y2="42" marker-end="url(#sp)"/><line class="ln" x1="192" y1="42" x2="206" y2="42" marker-end="url(#sp)"/><line class="ln" x1="304" y1="42" x2="318" y2="42" marker-end="url(#sp)"/>
+<path class="la" d="M367,64 C367,118 43,118 43,66" fill="none" stroke-dasharray="5 4" marker-end="url(#sp)"/>
+<text x="210" y="112" text-anchor="middle" font-size="10.5" class="ta">rollback = flip the alias back</text>
+<text x="210" y="140" text-anchor="middle" font-size="10.5" class="tm">any dimension drops → the release stops before a customer sees it</text>
+</svg>
+</div>
+<figcaption>Golden conversations, a judge, a canary and an alias: the same release discipline as code.</figcaption>
+</figure>
+
+<div class="section-title" id="s-guard"><span class="dot"></span><span class="n">12</span><span class="section-line"></span><span class="pill">reliability</span></div>
+<h2>Guardrails both ways</h2>
+
+<figure>
+<div class="fig-frame">
+<svg class="arch" viewBox="0 0 420 116" role="img" aria-labelledby="guard-t">
+<title id="guard-t">Guardrails on the way in and out. Incoming messages are redacted for personal information, checked for harmful or off-topic content and for prompt injection before any agent sees them. Outgoing replies are checked for the no-diagnosis rule and for leaked personal information before the customer sees them.</title>
+<defs><marker id="gd" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="mk" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+<text x="6" y="14" font-size="10.5" class="tm">IN</text>
+<rect class="bx" x="6" y="20" width="78" height="30" rx="6"/><text x="45" y="39" text-anchor="middle" font-size="10.5" class="t">message</text>
+<rect class="chip" x="98" y="20" width="96" height="30" rx="6"/><text x="146" y="39" text-anchor="middle" font-size="10.5" class="t">redact PII</text>
+<rect class="chip" x="208" y="20" width="96" height="30" rx="6"/><text x="256" y="39" text-anchor="middle" font-size="10.5" class="t">content · injection</text>
+<rect class="bx-main" x="318" y="20" width="96" height="30" rx="6"/><text x="366" y="39" text-anchor="middle" font-size="10.5" class="t">agents</text>
+<line class="ln" x1="84" y1="35" x2="96" y2="35" marker-end="url(#gd)"/><line class="ln" x1="194" y1="35" x2="206" y2="35" marker-end="url(#gd)"/><line class="ln" x1="304" y1="35" x2="316" y2="35" marker-end="url(#gd)"/>
+<text x="6" y="74" font-size="10.5" class="tm">OUT</text>
+<rect class="bx-main" x="6" y="80" width="78" height="30" rx="6"/><text x="45" y="99" text-anchor="middle" font-size="10.5" class="t">reply</text>
+<rect class="chip-teal" x="98" y="80" width="150" height="30" rx="6"/><text x="173" y="99" text-anchor="middle" font-size="10.5" class="t">no diagnosis, ever</text>
+<rect class="chip" x="262" y="80" width="68" height="30" rx="6"/><text x="296" y="99" text-anchor="middle" font-size="10.5" class="t">no PII</text>
+<rect class="bx" x="344" y="80" width="70" height="30" rx="6"/><text x="379" y="99" text-anchor="middle" font-size="10.5" class="t">customer</text>
+<line class="ln" x1="84" y1="95" x2="96" y2="95" marker-end="url(#gd)"/><line class="ln" x1="248" y1="95" x2="260" y2="95" marker-end="url(#gd)"/><line class="ln" x1="330" y1="95" x2="342" y2="95" marker-end="url(#gd)"/>
+</svg>
+</div>
+<figcaption>Content and PII checks with <a href="https://aws.amazon.com/bedrock/guardrails/" target="_blank" rel="noopener">Bedrock Guardrails</a>; the no-diagnosis rule is its own check, because a guessed cause is a liability, not a feature.</figcaption>
+</figure>
+
+<div class="interrupt"><span class="tag">Sorry to interrupt, again</span>
+<p>The hardest thing to teach a diagnostic agent is to not diagnose. It's like asking me not to recommend a beer on a Brew Miles trip. Possible, but you have to check every single time.</p>
+</div>
+
+<div class="section-title" id="s-decisions"><span class="dot"></span><span class="n">13</span><span class="section-line"></span></div>
+<h2>Ten decisions, one page</h2>
+
+<p>The options I'd weigh, the one I'd pick, and why. All of them are my calls for this recreation.</p>
+
+<ol class="dec-list">
+  <li><div class="dq">How do the agents work together?</div>
+    <div class="chips"><span class="chip">group chat</span><span class="chip">one big agent</span><span class="chip won">one talker, three tools</span></div>
+    <p class="why">One caller and typed outputs keep every turn explainable. <span class="cost"><b>Cost:</b> the talker is a bottleneck you must keep fast.</span></p></li>
+  <li><div class="dq">Who decides what happens next?</div>
+    <div class="chips"><span class="chip">the model</span><span class="chip won">a state machine</span></div>
+    <p class="why">"Confirmed" and "done" are facts, not opinions. <span class="cost"><b>Cost:</b> new flows need code, not just a prompt.</span></p></li>
+  <li><div class="dq">How do messages travel?</div>
+    <div class="chips"><span class="chip">polling</span><span class="chip">server-sent events</span><span class="chip won">WebSocket</span></div>
+    <p class="why">Two-way and streaming, managed by <a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html" target="_blank" rel="noopener">API Gateway</a>. <span class="cost"><b>Cost:</b> idle timeouts and reconnects to handle.</span></p></li>
+  <li><div class="dq">Where does session state live?</div>
+    <div class="chips"><span class="chip">in memory</span><span class="chip">a relational database</span><span class="chip won">DynamoDB, saved every turn</span></div>
+    <p class="why">Key-value by session, global tables for failover. <span class="cost"><b>Cost:</b> a write on every turn.</span></p></li>
+  <li><div class="dq">How do tools run?</div>
+    <div class="chips"><span class="chip">one after another</span><span class="chip won">in parallel, with a deadline</span></div>
+    <p class="why">The turn takes as long as the slowest tool, capped. <span class="cost"><b>Cost:</b> sometimes a summary without history.</span></p></li>
+  <li><div class="dq">What does the model remember?</div>
+    <div class="chips"><span class="chip">the full transcript</span><span class="chip won">facts + recent turns, tiered</span></div>
+    <p class="why">Smaller prompts are faster and cheaper. <span class="cost"><b>Cost:</b> extraction has to be right.</span></p></li>
+  <li><div class="dq">What happens at the quota?</div>
+    <div class="chips"><span class="chip">let it throttle</span><span class="chip">buy more quota</span><span class="chip won">token bucket, queue, shed</span></div>
+    <p class="why">Live conversations never fail because of new ones. <span class="cost"><b>Cost:</b> some customers wait, or get a text later.</span></p></li>
+  <li><div class="dq">What if the model is down?</div>
+    <div class="chips"><span class="chip">show an error</span><span class="chip">wait it out</span><span class="chip won">the failover ladder</span></div>
+    <p class="why">The bottom rung needs no model at all. <span class="cost"><b>Cost:</b> scripted questions feel plainer.</span></p></li>
+  <li><div class="dq">How does a summary reach the dealership?</div>
+    <div class="chips"><span class="chip">call it inline</span><span class="chip won">Step Functions + retries + DLQ</span></div>
+    <p class="why">A slow dealership system never blocks a customer. <span class="cost"><b>Cost:</b> delivery is asynchronous.</span></p></li>
+  <li><div class="dq">How do prompts ship?</div>
+    <div class="chips"><span class="chip">edit in place</span><span class="chip">manual spot checks</span><span class="chip won">golden set, judge, canary, alias</span></div>
+    <p class="why">A regression stops before a customer sees it. <span class="cost"><b>Cost:</b> a golden set to curate and keep fresh.</span></p></li>
+</ol>
+
+<div class="section-title" id="s-drink"><span class="dot"></span><span class="n">14</span><span class="section-line"></span></div>
+<h2>The well-earned drink</h2>
+
+<p>Every Brew Miles trip ends with a well-earned drink. Here's this one's:</p>
+
+<ol class="plain">
+  <li><strong>Let models talk and let code decide;</strong> the most important agent is a state machine.</li>
+  <li><strong>Fan out with deadlines, stream the reply,</strong> and save every turn by its ID.</li>
+  <li><strong>Treat quota like capacity:</strong> a token bucket, a queue, and a graceful "later".</li>
+  <li><strong>Build a failover ladder</strong> whose last rung needs no model.</li>
+  <li><strong>Put quality on the dashboard,</strong> and ship prompts like code.</li>
+</ol>
+
+<div class="card reading"><div class="q">Further reading</div>
+<details class="more flat"><summary>Show the public sources this post links</summary>
+<ul class="plain" style="padding:0 18px 6px 34px">
+  <li><a href="https://aws.amazon.com/bedrock/agentcore/" target="_blank" rel="noopener">Amazon Bedrock AgentCore</a> and its <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html" target="_blank" rel="noopener">memory</a> and <a href="https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability.html" target="_blank" rel="noopener">observability</a> docs (AWS).</li>
+  <li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/agents-multi-agent-collaboration.html" target="_blank" rel="noopener">Multi-agent collaboration</a> on Amazon Bedrock (AWS docs).</li>
+  <li><a href="https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html" target="_blank" rel="noopener">Cross-region inference</a> and <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/quotas.html" target="_blank" rel="noopener">Bedrock quotas</a> (AWS docs).</li>
+  <li><a href="https://aws.amazon.com/bedrock/guardrails/" target="_blank" rel="noopener">Amazon Bedrock Guardrails</a> (AWS).</li>
+  <li><a href="https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html" target="_blank" rel="noopener">API Gateway WebSocket APIs</a> and <a href="https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html" target="_blank" rel="noopener">Step Functions error handling</a> (AWS docs).</li>
+  <li><a href="https://aws.amazon.com/dynamodb/global-tables/" target="_blank" rel="noopener">DynamoDB global tables</a> (AWS).</li>
+  <li><a href="https://aws.amazon.com/builders-library/using-load-shedding-to-avoid-overload/" target="_blank" rel="noopener">Using load shedding to avoid overload</a>, <a href="https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/" target="_blank" rel="noopener">timeouts, retries and backoff with jitter</a>, and <a href="https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/" target="_blank" rel="noopener">idempotent APIs</a> (AWS Builders' Library).</li>
+  <li><a href="https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/GenAI-observability.html" target="_blank" rel="noopener">Generative AI observability in CloudWatch</a> (AWS docs).</li>
+  <li><a href="https://en.wikipedia.org/wiki/Token_bucket" target="_blank" rel="noopener">Token bucket</a> (Wikipedia).</li>
+</ul>
+</details>
+</div>
+</article>
+</div>
+
+<footer>
+<div class="wrap">
+<figure class="bye-fig"><img class="bye-photo" src="../images/bye-wave.webp" width="960" height="587" alt="Ambrose, sitting on the floor in a black hoodie, waving goodbye" loading="lazy" decoding="async"></figure>
+<p><strong>This is not how it is at Nissan.</strong> It's my own recreation and expansion of the idea behind a product I worked on there, in my own words; the views are mine, not Nissan's. Nothing here is confidential: every architecture choice, name, number and line of pseudocode is mine and illustrative, not Nissan's system, data, prompts or code. AWS services are described from their public documentation, linked above.</p>
+<p>More field notes: <a href="scaling-ad-relevance-apis.html">A Million Questions a Second</a>, on scaling an ad-relevance API at Amazon.</p>
+<p>If your team is building agents that have to stay up, let's talk: <a href="../">tascano.github.io</a> · <a href="../#intro">watch my 3-minute intro</a></p>
+</div>
+</footer>
+
+<script>
+(() => {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+  const press = (group, btn) => group.forEach(b => b.setAttribute('aria-pressed', b === btn));
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const el = (parent, tag, attrs, text) => {
+    const e = document.createElementNS(svgNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    parent.appendChild(e);
+    return e;
+  };
+
+  // Theme toggle and reading progress, same behaviour as the main page.
+  const html = document.documentElement, toggle = document.querySelector('.theme-toggle');
+  const setIcon = () => { toggle.textContent = html.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'; };
+  setIcon();
+  toggle.addEventListener('click', () => {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    setIcon();
+  });
+  const bar = document.querySelector('.scroll-progress');
+  addEventListener('scroll', () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+  }, {passive: true});
+
+  // The video version: load the player only when someone presses play (phones and slow connections get 720p).
+  document.querySelectorAll('.play-facade').forEach(facade => {
+    facade.addEventListener('click', () => {
+      const player = document.createElement('video');
+      const conn = navigator.connection || {};
+      const small = window.matchMedia('(max-width: 900px)').matches || conn.saveData || /(^|-)(2g|3g)$/.test(conn.effectiveType || '');
+      player.src = (small && facade.dataset.srcSmall) || facade.dataset.src;
+      player.controls = true;
+      player.playsInline = true;
+      player.autoplay = true;
+      player.setAttribute('aria-label', facade.getAttribute('aria-label'));
+      facade.replaceWith(player);
+      player.play().catch(() => {});
+      player.focus();
+    }, {once: true});
+  });
+
+  // Pick your hat: one short version per role.
+  document.querySelectorAll('.hats').forEach(box => {
+    const btns = [...box.querySelectorAll('[data-hat]')], panels = box.querySelectorAll('.hat');
+    btns.forEach(b => b.addEventListener('click', () => {
+      press(btns, b);
+      panels.forEach(p => { p.hidden = p.dataset.for !== b.dataset.hat; });
+    }));
+  });
+
+  // The whole system: fourteen steps in three acts, a token moving between boxes, one caption per step.
+  const tour = document.getElementById('tour2');
+  if (tour) {
+    const svg = tour.querySelector('svg'), dot = svg.querySelector('.tour-dot'), cap = tour.querySelector('.tour-t'), num = tour.querySelector('.tour-n');
+    const list = tour.querySelector('.tour-steps'), ok = svg.querySelector('#t2-ok');
+    const at = {book: [112, 24], link: [230, 24], sms: [348, 24], ws: [348, 92], chat: [234, 138], guard: [348, 190], conv: [348, 232],
+                fan: [180, 284], sum: [172, 376], save: [348, 376], sfn: [234, 428], tech: [234, 480], cw: [348, 538]};
+    const steps = [
+      [0, 'book', 'book', 'lit', 'A customer books a service appointment.'],
+      [0, 'link', 'link', 'lit', 'The booking asks the intake service for a personal link: signed, single-use, and it expires.'],
+      [0, 'sms', 'sms', 'stop', 'The dealership texts or emails it to the customer.'],
+      [1, 'ws', 'phone ws', 'lit', 'The customer opens it, and the browser connects over a WebSocket.'],
+      [1, 'chat', 'chat ddb', 'lit', 'The chat service loads the session from DynamoDB, or starts a new one.'],
+      [1, 'guard', 'guard', 'lit', 'Every message is redacted for personal data and checked before any model sees it.'],
+      [1, 'conv', 'conv', 'lit', 'The Conversation Agent reads memory and plans the next question.'],
+      [1, 'fan', 'fan rub hist deal', 'lit', 'It calls its three tools at once: Rubric, Vehicle History and Dealership.'],
+      [1, 'chat', 'chat', 'stop', 'The reply streams back to the customer, and the turn is saved by its ID.'],
+      [2, 'sum', 'sum', 'lit', 'When the rubric is complete, the agent drafts a summary and the customer confirms it.'],
+      [2, 'save', 'save', 'lit', 'The confirmed summary is saved exactly once.'],
+      [2, 'sfn', 'sfn dlq', 'lit', 'Step Functions delivers it to the dealership, retrying with backoff; anything that still fails lands in dead letters.'],
+      [2, 'tech', 'tech next', 'stop', 'The technician sees it before the visit, and the next concern starts from the queue.'],
+      [2, 'cw', 'cw', 'stop', 'And every step reported traces and metrics to CloudWatch along the way.'],
+    ];
+    const playBtn = tour.querySelector('[data-t="play"]');
+    let cur = -1, timer = null, run = 0, pos = [340, 12];
+    const move = (to, animate) => {
+      const from = pos, me = ++run;
+      pos = to;
+      if (!animate) { dot.setAttribute('cx', to[0]); dot.setAttribute('cy', to[1]); return; }
+      const t0 = performance.now();
+      const frame = now => {
+        if (me !== run) return;
+        const k = Math.min(1, (now - t0) / 650), e = k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+        dot.setAttribute('cx', from[0] + (to[0] - from[0]) * e); dot.setAttribute('cy', from[1] + (to[1] - from[1]) * e);
+        if (k < 1) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    };
+    const go = i => {
+      i = Math.max(0, Math.min(steps.length - 1, i));
+      const prev = cur, act = steps[i][0];
+      cur = i;
+      svg.querySelectorAll('.node').forEach(n => n.classList.remove('lit', 'stop'));
+      steps.forEach(([a, , nodes, cls], j) => {
+        if (a === act && j <= i) nodes.split(' ').forEach(n => { const e = svg.querySelector(`[data-node="${n}"]`); e.classList.remove('lit', 'stop'); e.classList.add(cls); });
+      });
+      ok.textContent = act === 2 ? '  ✓' : '';
+      cap.textContent = steps[i][4];
+      num.textContent = `${i + 1} / ${steps.length}`;
+      [...list.children].forEach((li, j) => li.classList.toggle('on', j === i));
+      dot.setAttribute('opacity', 1);
+      move(at[steps[i][1]], prev === i - 1 && !reduce);
+    };
+    const stop = () => { clearTimeout(timer); timer = null; playBtn.textContent = '▶ Play'; playBtn.setAttribute('aria-pressed', 'false'); };
+    const tick = () => { go(cur + 1); if (cur >= steps.length - 1) return stop(); timer = setTimeout(tick, 2300); };
+    steps.forEach((step, i) => {
+      const li = document.createElement('li'), b = document.createElement('button');
+      b.type = 'button'; b.textContent = step[4];
+      b.addEventListener('click', () => { stop(); go(i); });
+      li.append(b); list.append(li);
+    });
+    playBtn.addEventListener('click', () => {
+      if (timer) return stop();
+      if (cur >= steps.length - 1) cur = -1;
+      playBtn.textContent = '❚❚ Pause'; playBtn.setAttribute('aria-pressed', 'true');
+      tick();
+    });
+    tour.querySelector('[data-t="prev"]').addEventListener('click', () => { stop(); go(cur - 1); });
+    tour.querySelector('[data-t="next"]').addEventListener('click', () => { stop(); go(cur + 1); });
+    tour.querySelectorAll('[data-t]').forEach(b => { if (/^\d+$/.test(b.dataset.t)) b.addEventListener('click', () => { stop(); go(+b.dataset.t); }); });
+  }
+
+  // The concern queue: a priority queue, safety first, ties in the order they were mentioned.
+  const queue = document.getElementById('queue');
+  if (queue) {
+    const kinds = {safety: [0, 'safety'], drive: [1, 'drivability'], comfort: [2, 'comfort'], conv: [3, 'convenience']};
+    const known = {radio: ['Radio keeps resetting', 'conv'], ac: ['AC smells musty', 'comfort'], pull: ['Car pulls to the left', 'drive'],
+                   brakes: ['Brakes squeal', 'safety'], cel: ['Check-engine light flashing', 'safety']};
+    const listEl = queue.querySelector('.q-list'), out = queue.querySelector('#q-out');
+    let items = [], seq = 0, busy = false;
+    const render = () => {
+      const order = [...items].sort((a, b) => a.done - b.done || kinds[a.kind][0] - kinds[b.kind][0] || a.seq - b.seq);
+      listEl.replaceChildren(...order.map(c => {
+        const li = document.createElement('li');
+        li.className = c.kind + (c.state === 'now' ? ' now' : '') + (c.done ? ' done' : '');
+        const tag = document.createElement('b'); tag.textContent = kinds[c.kind][1];
+        const name = document.createElement('span'); name.textContent = c.name;
+        const st = document.createElement('span'); st.className = 'st';
+        st.textContent = c.done ? 'confirmed ✓' : c.state === 'now' ? 'intake…' : `#${c.seq + 1} mentioned`;
+        li.append(tag, name, st);
+        return li;
+      }));
+    };
+    queue.querySelectorAll('[data-c]').forEach(b => b.addEventListener('click', () => {
+      const [name, kind] = known[b.dataset.c];
+      items.push({name, kind, seq: seq++, done: false, state: ''});
+      b.disabled = true;
+      render();
+      const top = [...items].filter(c => !c.done).sort((a, c) => kinds[a.kind][0] - kinds[c.kind][0] || a.seq - c.seq)[0];
+      out.textContent = `${top.name} goes first: ${kinds[top.kind][1]} outranks everything below it, whatever order it was mentioned in.`;
+    }));
+    queue.querySelector('#q-next').addEventListener('click', async () => {
+      if (busy) return;
+      const open = items.filter(c => !c.done).sort((a, b) => kinds[a.kind][0] - kinds[b.kind][0] || a.seq - b.seq);
+      if (!open.length) { out.textContent = 'Nothing waiting. Add a concern first.'; return; }
+      busy = true;
+      const c = open[0];
+      c.state = 'now'; render();
+      out.textContent = `Intake on "${c.name}": its own questions, its own summary. The others are acknowledged and wait.`;
+      await sleep(1400);
+      c.done = true; c.state = ''; render();
+      out.textContent = open.length > 1 ? `"${c.name}" confirmed. Next up: "${open[1].name}".` : 'Every concern confirmed. Session complete.';
+      busy = false;
+    });
+    queue.querySelector('#q-reset').addEventListener('click', () => {
+      items = []; seq = 0; render();
+      queue.querySelectorAll('[data-c]').forEach(b => { b.disabled = false; });
+      out.textContent = 'Mention a few problems, in any order.';
+    });
+    render();
+  }
+
+  // The rubric: one answer fills as many fields as it can; the next question targets the most important gap.
+  const rubric = document.getElementById('rubric');
+  if (rubric) {
+    const fields = [['what', 'What'], ['where', 'Where'], ['when', 'When it happens'], ['repro', 'Can it be repeated'],
+                    ['since', 'Since when'], ['lights', 'Warning lights'], ['safety', 'Safe to drive'], ['senses', 'Smell, feel, sound']];
+    const answers = {
+      vague: {what: 'a noise (what kind?)'},
+      ok: {what: 'a squeal', when: 'when braking', senses: 'high-pitched sound'},
+      great: {what: 'a squeal', where: 'front left', when: 'light braking', repro: 'yes, mornings', since: 'two weeks', senses: 'high-pitched sound'},
+    };
+    const ask = {where: 'Where does it seem to come from?', what: 'What kind of noise is it?', when: 'When does it happen?',
+                 repro: 'Can you make it happen again?', since: 'When did it start?', lights: 'Any warning lights on the dash?',
+                 safety: 'Does it feel safe to drive?', senses: 'Any smell, or a feel in the pedal?'};
+    const grid = rubric.querySelector('.r-grid'), out = rubric.querySelector('#r-out'), btns = [...rubric.querySelectorAll('[data-a]')];
+    const tiles = fields.map(([key, label]) => {
+      const d = document.createElement('div'), b = document.createElement('b'), s = document.createElement('span');
+      b.textContent = label; s.textContent = '—'; d.append(b, s); grid.append(d);
+      return {key, d, s};
+    });
+    btns.forEach(btn => btn.addEventListener('click', async () => {
+      press(btns, btn);
+      const got = answers[btn.dataset.a];
+      tiles.forEach(t => { t.d.classList.remove('got', 'ask'); t.s.textContent = '—'; });
+      let n = 0;
+      for (const t of tiles) {
+        if (got[t.key]) { await sleep(180); t.d.classList.add('got'); t.s.textContent = got[t.key]; n++; }
+      }
+      const gap = ['what', 'where', 'when', 'repro', 'since', 'lights', 'safety', 'senses'].find(k => !got[k] || got[k].endsWith('?)'));
+      const next = tiles.find(t => t.key === gap);
+      next.d.classList.add('ask');
+      out.innerHTML = `<b>${n} field${n === 1 ? '' : 's'}</b> from one answer. Next question goes after the biggest gap: “${ask[gap]}”`;
+    }));
+  }
+
+  // One turn, three schedules: the same work, a very different wait for the first word.
+  const turn = document.getElementById('turn');
+  if (turn) {
+    const axes = turn.querySelector('.t-axes'), barsG = turn.querySelector('.t-bars'), out = turn.querySelector('#turn-out');
+    const W = 340, L = 78, R = 12, T = 12, ROW = 24, XMAX = 6, H = T + 7 * ROW;
+    const X = s => L + s / XMAX * (W - L - R);
+    const rows = [['guardrails', 'io', 0.15], ['plan', 'llm', 0.8], ['Rubric', 'tool', 1.2], ['History', 'tool', 0.5],
+                  ['Dealership', 'tool', 0.9], ['reply', 'llm', 1.6], ['save', 'io', 0.06]];
+    for (let s = 0; s <= XMAX; s++) {
+      el(axes, 'line', {x1: X(s), x2: X(s), y1: T - 4, y2: H, class: s ? 'grid' : 'base', 'stroke-width': 1});
+      el(axes, 'text', {x: X(s), y: H + 14, 'text-anchor': 'middle', class: 'ax'}, String(s));
+    }
+    el(axes, 'text', {x: W - R, y: H + 26, 'text-anchor': 'end', class: 'ax'}, 'seconds');
+    rows.forEach(([name], i) => el(axes, 'text', {x: L - 6, y: T + i * ROW + 15, 'text-anchor': 'end', class: 'ax'}, name));
+    const rects = rows.map(([, kind], i) => el(barsG, 'rect', {x: L, y: T + i * ROW + 5, width: 0, height: 13, rx: 2, class: 'bar-' + kind}));
+    const first = el(barsG, 'line', {x1: 0, x2: 0, y1: T - 6, y2: H, class: 'first', visibility: 'hidden'});
+    const firstL = el(barsG, 'text', {x: 0, y: T + 14, class: 'lab', visibility: 'hidden'}, 'first word');
+    const plans = {
+      seq: () => { let t = 0; return rows.map(([, , d]) => { const s = t; t += d; return [s, d]; }); },
+      par: () => [[0, 0.15], [0.15, 0.8], [0.95, 1.2], [0.95, 0.5], [0.95, 0.9], [2.15, 1.6], [3.75, 0.06]],
+    };
+    plans.stream = plans.par;
+    const btns = [...turn.querySelectorAll('[data-m]')];
+    let run = 0;
+    btns.forEach(btn => btn.addEventListener('click', () => {
+      press(btns, btn);
+      const mode = btn.dataset.m, plan = plans[mode](), me = ++run;
+      const firstWord = mode === 'stream' ? plan[5][0] + 0.35 : plan[5][0] + plan[5][1];
+      const end = Math.max(...plan.map(([s, d]) => s + d)), t0 = performance.now();
+      first.setAttribute('visibility', 'hidden'); firstL.setAttribute('visibility', 'hidden');
+      const frame = now => {
+        if (me !== run) return;
+        const t = reduce ? end : (now - t0) / 700;
+        plan.forEach(([s, d], i) => { rects[i].setAttribute('x', X(s)); rects[i].setAttribute('width', Math.max(0, X(Math.min(d, Math.max(0, t - s))) - L)); });
+        if (t >= firstWord) {
+          first.setAttribute('x1', X(firstWord)); first.setAttribute('x2', X(firstWord)); first.setAttribute('visibility', 'visible');
+          firstL.setAttribute('x', Math.min(X(firstWord) + 4, W - 60)); firstL.setAttribute('visibility', 'visible');
+        }
+        if (t < end) return requestAnimationFrame(frame);
+        const say = {seq: 'Every step waits for the one before it.', par: 'The three tools overlap, so the turn takes as long as the slowest one.',
+                     stream: 'Same parallel tools, and the first words leave while the rest is still being written.'}[mode];
+        out.innerHTML = `${say} The customer waits <b>${firstWord.toFixed(1)} s</b> for the first word.`;
+      };
+      requestAnimationFrame(frame);
+    }));
+  }
+
+  // Monday 9 am: a wave of sessions against a per-minute quota, with and without admission control.
+  const rush = document.getElementById('rush');
+  if (rush) {
+    const axes = rush.querySelector('.r-axes'), data = rush.querySelector('.r-data'), out = rush.querySelector('#rush-out'), key = rush.querySelector('#rush-key');
+    const input = rush.querySelector('#rush-n'), label = rush.querySelector('#rush-v'), btns = [...rush.querySelectorAll('[data-adm]')];
+    const MIN = 90, LIFE = 8, PER = 5, Q = 3000, RETRY = 0.8, MAXWAIT = 20 / 60;
+    const W = 340, H = 210, L = 46, R = 14, T = 30, B = 28;
+    let adm = 'off';
+    const simulate = (peak, control) => {
+      const arrivals = Array.from({length: MIN}, (_, t) => 10 + (peak - 10) * Math.exp(-(((t - 30) / 12) ** 2)));
+      const admitted = Array(MIN).fill(0), demand = Array(MIN).fill(0), bad = Array(MIN).fill(0);
+      let backlog = 0, retries = 0, shed = 0, failed = 0, total = 0, maxWait = 0;
+      for (let t = 0; t < MIN; t++) {
+        let live = 0;
+        for (let k = Math.max(0, t - LIFE + 1); k < t; k++) live += admitted[k];
+        let fresh = arrivals[t];
+        if (control) {
+          const room = Math.max(0, (Q * (1 + MAXWAIT) - backlog - live * PER) / PER);
+          if (fresh > room) { shed += fresh - room; fresh = room; }
+        }
+        admitted[t] = fresh;
+        const want = (live + fresh) * PER + (control ? 0 : retries);
+        demand[t] = want; total += want;
+        if (control) {
+          backlog = Math.max(0, backlog + want - Q);
+          bad[t] = backlog; maxWait = Math.max(maxWait, backlog / Q * 60);
+        } else {
+          const throttled = Math.max(0, want - Q);
+          bad[t] = throttled; failed += throttled; retries = throttled * RETRY;
+        }
+      }
+      const totalArrivals = arrivals.reduce((a, b) => a + b, 0);
+      return {demand, bad, failed, total, shed, maxWait, shedPct: 100 * shed / totalArrivals};
+    };
+    const draw = () => {
+      const peak = +input.value, s = simulate(peak, adm === 'on');
+      label.textContent = peak;
+      const top = Math.max(6000, Math.ceil(Math.max(...s.demand, Q) / 2000) * 2000 + 1000);
+      const X = m => L + m / (MIN - 1) * (W - L - R), Y = v => T + (1 - v / top) * (H - T - B);
+      axes.replaceChildren(); data.replaceChildren();
+      for (let v = 0; v <= top; v += 2000) {
+        el(axes, 'line', {x1: L, x2: W - R, y1: Y(v), y2: Y(v), class: v ? 'grid' : 'base', 'stroke-width': 1});
+        el(axes, 'text', {x: L - 6, y: Y(v) + 4, 'text-anchor': 'end', class: 'ax'}, v ? `${v / 1000}k` : '0');
+      }
+      [0, 30, 60, 89].forEach(m => el(axes, 'text', {x: X(m), y: H - B + 15, 'text-anchor': m === 89 ? 'end' : m ? 'middle' : 'start', class: 'ax'}, m === 0 ? '8:30' : m === 30 ? '9:00' : m === 60 ? '9:30' : '10:00'));
+      if (adm === 'off') {
+        const area = s.demand.map((d, m) => `${X(m)},${Y(Math.max(d, Q))}`).join(' ') + ' ' + s.demand.map((d, m) => `${X(m)},${Y(Q)}`).reverse().join(' ');
+        el(data, 'polygon', {points: area, class: 's-bad'});
+      } else {
+        const area = s.bad.map((b, m) => `${X(m)},${Y(Q + b)}`).join(' ') + ' ' + s.bad.map((b, m) => `${X(m)},${Y(Q)}`).reverse().join(' ');
+        el(data, 'polygon', {points: area, class: 's-wait'});
+      }
+      el(data, 'line', {x1: L, x2: W - R, y1: Y(Q), y2: Y(Q), class: 's-cap-l'});
+      el(data, 'polyline', {points: s.demand.map((d, m) => `${X(m)},${Y(d)}`).join(' '), class: 's-dem-l'});
+      el(data, 'text', {x: W - R, y: Y(Q) - 5, 'text-anchor': 'end', class: 'ax'}, `quota ${Q.toLocaleString('en-US')}/min`);
+      el(axes, 'text', {x: 4, y: 12, class: 'ax'}, 'model calls per minute');
+      key.textContent = adm === 'off' ? 'throttled (errors)' : 'waiting in the queue';
+      key.previousElementSibling.className = 'sw ' + (adm === 'off' ? 'sw-gap' : 'sw-wait');
+      out.innerHTML = adm === 'off'
+        ? (s.failed > 0 ? `At the peak the morning wants <b>${Math.round(Math.max(...s.demand)).toLocaleString('en-US')}</b> calls a minute. <b>${(100 * s.failed / s.total).toFixed(0)}%</b> of calls are throttled, retries pile on top, and live conversations fail mid-sentence.`
+                        : 'Under the quota all morning: nothing to protect yet. Push the peak higher.')
+        : (s.maxWait > 0.5 ? `<b>No errors.</b> At the peak, calls wait up to <b>${s.maxWait.toFixed(0)} s</b>, and <b>${s.shedPct.toFixed(0)}%</b> of new sessions get “we'll text you when it's quiet” instead. Live conversations always go first.`
+                           : '<b>No errors, no waiting:</b> the morning fits inside the quota.');
+    };
+    input.addEventListener('input', draw);
+    btns.forEach(b => b.addEventListener('click', () => { press(btns, b); adm = b.dataset.adm; draw(); }));
+    draw();
+  }
+
+  // The on-call dashboard: quality metrics move when latency and errors don't.
+  const dash = document.getElementById('dash');
+  if (dash) {
+    const tilesEl = dash.querySelector('.d-tiles'), alarm = dash.querySelector('.d-alarm');
+    const metrics = [
+      ['p99 turn time', 's', 1, [3.1, 0.15], [3.2, 0.15], v => v > 6],
+      ['error rate', '%', 1, [0.6, 0.15], [0.7, 0.15], v => v > 2],
+      ['cost per session', '¢', 1, [4.2, 0.2], [5.9, 0.3], v => v > 8],
+      ['completion rate', '%', 0, [89, 1.2], [71, 2], v => v < 85],
+      ['turns per concern', '', 1, [6.1, 0.3], [9.4, 0.5], v => v > 8],
+      ['rubric score', '/5', 1, [4.7, 0.05], [3.9, 0.1], v => v < 4.3],
+    ];
+    let seed = 11;
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const hist = metrics.map(m => Array.from({length: 30}, () => m[3][0] + (rnd() - .5) * 2 * m[3][1]));
+    const tiles = metrics.map(([name]) => {
+      const d = document.createElement('div'); d.className = 'd-tile';
+      d.innerHTML = '<div class="l"></div><div class="v"></div><svg viewBox="0 0 100 30" preserveAspectRatio="none"><path/></svg><div class="t"></div>';
+      d.querySelector('.l').textContent = name;
+      tilesEl.append(d);
+      return d;
+    });
+    let mode = 'good', under = 0, version = 'v12', firing = false;
+    const draw = () => {
+      metrics.forEach(([name, unit, dp, , , breach], i) => {
+        const h = hist[i], v = h[h.length - 1], lo = Math.min(...h), hi = Math.max(...h), span = hi - lo || 1;
+        tiles[i].querySelector('.v').textContent = v.toFixed(dp) + unit;
+        tiles[i].querySelector('path').setAttribute('d', 'M' + h.map((x, k) => `${(k / (h.length - 1) * 100).toFixed(1)},${(27 - (x - lo) / span * 24).toFixed(1)}`).join(' L'));
+        const bad = breach(v);
+        tiles[i].classList.toggle('bad', bad);
+        tiles[i].querySelector('.t').textContent = bad ? 'outside target' : 'normal';
+      });
+    };
+    const step = () => {
+      metrics.forEach((m, i) => {
+        const [mu, sd] = mode === 'bad' ? m[4] : m[3], h = hist[i], last = h[h.length - 1];
+        h.push(last + (mu - last) * 0.35 + (rnd() - .5) * 2 * sd); h.shift();
+      });
+      const completion = hist[3][hist[3].length - 1];
+      under = completion < 85 ? under + 1 : 0;
+      if (under >= 3 && !firing) {
+        firing = true;
+        alarm.className = 'd-alarm on';
+        alarm.innerHTML = `⚠ <b>ALARM · completion rate ${completion.toFixed(0)}% &lt; 85% for 3 minutes.</b> p99 and errors look normal: this is a quality regression, not an outage. Prompt ${version} is live.`;
+      }
+      if (firing && completion >= 85) {
+        firing = false;
+        alarm.className = 'd-alarm ok';
+        alarm.innerHTML = '✓ <b>OK · completion back above target.</b> The alias points at v12 again.';
+      }
+      draw();
+    };
+    dash.querySelector('#d-bad').addEventListener('click', () => {
+      mode = 'bad'; version = 'v13';
+      if (!firing) { alarm.className = 'd-alarm'; alarm.textContent = 'Prompt v13 shipped to everyone (no canary). Watching…'; }
+    });
+    dash.querySelector('#d-roll').addEventListener('click', () => {
+      mode = 'good'; version = 'v12';
+      if (!firing) { alarm.className = 'd-alarm'; alarm.textContent = 'Alias points at v12.'; }
+    });
+    draw();
+    setInterval(step, 700);
+  }
+
+  // Story widgets: each step lights parts of a diagram and adds a line to the log.
+  const story = (root, scenarios) => {
+    if (!root) return;
+    const log = root.querySelector('.log'), btns = [...root.querySelectorAll('[data-s]')], states = ['lit', 'stop', 'bad', 'dim'];
+    let token = 0;
+    btns.forEach(btn => btn.addEventListener('click', async () => {
+      const run = ++token;
+      press(btns, btn);
+      root.querySelectorAll('.node').forEach(n => n.classList.remove(...states));
+      log.innerHTML = '';
+      for (const [names, cls, text] of scenarios[btn.dataset.s]) {
+        await sleep(log.children.length ? 800 : 0);
+        if (run !== token) return;
+        names.split(' ').forEach(n => { const e = root.querySelector(`[data-node="${n}"]`); e.classList.remove(...states); e.classList.add(cls); });
+        const li = document.createElement('li'); li.innerHTML = text; log.appendChild(li);
+      }
+    }));
+  };
+  story(document.getElementById('fail2'), {
+    throttle: [['agent', 'lit', 'A turn calls the model in region A.'],
+               ['m1', 'bad', '429: throttled. Two retries with jittered backoff.'],
+               ['m2', 'stop', 'Cross-region inference sends the same request to region B. The turn completes, a second slower.'],
+               ['cust', 'stop', '<b>The customer sees a short pause, not an error.</b>']],
+    tool: [['agent', 'lit', 'The agent fans out to its three tools, with a two-second deadline.'],
+           ['hist', 'bad', 'Vehicle History times out.'],
+           ['rub deal', 'lit', 'Rubric and Dealership answer in time.'],
+           ['agent', 'stop', '<b>The turn goes on without history,</b> and the summary is flagged “history unavailable”. A circuit breaker rests History for a while.']],
+    json: [['rub', 'bad', 'The Rubric returns JSON that fails the schema.'],
+           ['rub', 'lit', 'One repair retry, with the validation error included.'],
+           ['svc', 'stop', '<b>Still broken? The state machine falls back</b> to the next scripted question. Bad data never reaches the conversation.']],
+    drop: [['cust', 'bad', 'The customer closes the tab halfway through a concern.'],
+           ['db', 'lit', 'Nothing is lost: state was saved after every turn.'],
+           ['cust', 'stop', '<b>They reopen the link tomorrow</b> and pick up at the same question.']],
+    region: [['m1 agent svc', 'bad', 'Region A goes dark.'],
+             ['db', 'lit', 'The session lives in a DynamoDB global table, so region B already has it.'],
+             ['m2', 'lit', 'Region B carries the conversation on.'],
+             ['small script later', 'lit', 'If models are down everywhere: a smaller model, then scripted questions, then “we’ll text you the link again”.'],
+             ['cust', 'stop', '<b>The customer never sees a stack trace.</b>']],
+  });
+})();
+</script>
+</body>
+</html>
