@@ -459,6 +459,7 @@ html{scroll-padding-top:16px;}
 .g-in li.go{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-wash);}
 .g-bins{display:grid;gap:10px;}
 .g-bin{border:1px solid var(--card-border);border-radius:10px;padding:8px;min-height:95px;}
+.g-bin.ok{min-height:196px;} .g-bin.ask{min-height:140px;}
 .g-h{font:700 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;}
 .g-bin.ok{border-color:var(--capacity);} .g-bin.ok .g-h{color:var(--capacity);}
 .g-bin.ask{border-color:var(--demand);} .g-bin.ask .g-h{color:var(--demand);}
@@ -520,7 +521,18 @@ html{scroll-padding-top:16px;}
   <span class="kicker">Field notes · Claude Code</span>
   <h1>The Teammate in My Terminal</h1>
   <p class="alt">or: how one sentence becomes a merged pull request</p>
-  
+  <section class="watch" id="watch" aria-label="The video version of this post">
+    <div class="intro-video">
+      <button class="play-facade" type="button" data-src="../videos/teammate-in-my-terminal.mp4" data-src-small="../videos/teammate-in-my-terminal-720p.mp4"
+        aria-label="Play the video version of this post (about three minutes)">
+        <img src="../images/teammate-poster-960.webp" srcset="../images/teammate-poster-640.webp 640w, ../images/teammate-poster-960.webp 960w, ../images/teammate-poster-1280.webp 1280w" sizes="(max-width: 760px) 100vw, 716px" width="1280" height="720" loading="lazy" decoding="async"
+          alt="The Teammate in My Terminal, written on a dark canvas">
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
+        <span class="play-len" aria-hidden="true">3:06</span>
+      </button>
+    </div>
+    <p class="intro-note">Prefer to watch? Every animation in this post, narrated in about three minutes, with captions built in. The narration is a local AI clone of my voice.</p>
+  </section>
   <p class="dek">My last post, and its video, started as a few sentences from me and ended with one word: "Merge". This is the setup in between, told through the five things I care about: scale, speed, reliability, visibility and failover.</p>
   <div class="byline"><span><b>Ambrose Tuscano</b></span><span>October 2026</span><span>4 min read</span></div>
 </header>
