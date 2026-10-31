@@ -264,6 +264,14 @@
 			html{scroll-behavior:smooth}
 			#intro{scroll-margin-top:32px}
 			@media (max-width:700px){#intro{scroll-margin-top:96px}}  /* the parallax shifts sections further on long scrolls */
+			/* Phones: the intro video goes above the summary so it shows without scrolling. As flex items the sections keep
+			   their children's margins, which collapse into the 28px section gap elsewhere, so those are zeroed. */
+			@media (max-width:700px){
+				.lead{display:flex;flex-direction:column}
+				.lead #intro{order:-1}
+				.lead > section > :first-child{margin-top:0}
+				.lead > section > :last-child{margin-bottom:0}
+			}
 			.intro-video{
 				border-radius:10px;
 				overflow:hidden;
@@ -334,40 +342,42 @@
 				</div>		
 			</section>
 
-			<section>
-				<p style="margin-bottom: 12px; line-height: 1.6;">
-					Software Engineer II at <strong>Microsoft</strong> on <strong>Azure Resource Graph</strong>, building the distributed systems behind 12B+ unique Azure resources every day — and scaling to 20B+. Before that, I shipped production multi-agent AI at Nissan and high-throughput ad-tech data pipelines at Amazon. I build cloud-scale backends, distributed systems, and data pipelines that stay fast, reliable, and correct at massive scale.
-				</p>
+			<div class="lead">
+				<section>
+					<p style="margin-bottom: 12px; line-height: 1.6;">
+						Software Engineer II at <strong>Microsoft</strong> on <strong>Azure Resource Graph</strong>, building the distributed systems behind 12B+ unique Azure resources every day — and scaling to 20B+. Before that, I shipped production multi-agent AI at Nissan and high-throughput ad-tech data pipelines at Amazon. I build cloud-scale backends, distributed systems, and data pipelines that stay fast, reliable, and correct at massive scale.
+					</p>
 
 
-				<p>
-       				Also, while you are here, do you want to make your job search faster? Use the <a href="https://jobsfinder.streamlit.app/" target="_blank" rel="noopener noreferrer" style="text-decoration: underline;" class="primary">Job Search Tool</a> I created to query and filter opportunities quicker and more efficiently.
-                </p>
-			</section>
+					<p>
+	       				Also, while you are here, do you want to make your job search faster? Use the <a href="https://jobsfinder.streamlit.app/" target="_blank" rel="noopener noreferrer" style="text-decoration: underline;" class="primary">Job Search Tool</a> I created to query and filter opportunities quicker and more efficiently.
+	                </p>
+				</section>
 
-			<section id="intro">
-				<div class="section-title">
-					<div class="dot"></div>
-					<h2 class="accent">Watch First</h2>
-					<div class="section-line"></div>
-				</div>
-				<div class="intro-video">
-					<!-- Click-to-load: only the poster downloads with the page. Self-hosted so it never hits YouTube's
-					     "confirm you're not a bot" check: phones and slow connections get data-src-small (720p), others data-src
-					     (1080p). Setting data-youtube to a video ID plays it from YouTube instead. -->
-					<button class="play-facade" type="button" data-src="videos/ambrose-intro.mp4"
-						data-src-small="videos/ambrose-intro-720p.mp4" data-youtube=""
-						aria-label="Play the 3-minute intro video: Ambrose Tuscano, who I am and what I build">
-						<img src="images/intro-poster-960.webp"
-							srcset="images/intro-poster-640.webp 640w, images/intro-poster-960.webp 960w, images/intro-poster-1280.webp 1280w"
-							sizes="(max-width: 900px) 100vw, 780px" width="1280" height="720" loading="lazy" decoding="async"
-							alt="Ambrose in a leather jacket overlooking the sea at sunset">
-						<span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
-						<span class="play-len" aria-hidden="true">3:10</span>
-					</button>
-				</div>
-				<p class="intro-note">A 3-minute intro to who I am and what I build, with captions built in. Then dive into the details below. Also on <a class="primary" href="https://youtu.be/jKFsSyGyBek" target="_blank" rel="noopener">YouTube</a>.</p>
-			</section>
+				<section id="intro">
+					<div class="section-title">
+						<div class="dot"></div>
+						<h2 class="accent">Watch First</h2>
+						<div class="section-line"></div>
+					</div>
+					<div class="intro-video">
+						<!-- Click-to-load: only the poster downloads with the page. Self-hosted so it never hits YouTube's
+						     "confirm you're not a bot" check: phones and slow connections get data-src-small (720p), others data-src
+						     (1080p). Setting data-youtube to a video ID plays it from YouTube instead. -->
+						<button class="play-facade" type="button" data-src="videos/ambrose-intro.mp4"
+							data-src-small="videos/ambrose-intro-720p.mp4" data-youtube=""
+							aria-label="Play the 3-minute intro video: Ambrose Tuscano, who I am and what I build">
+							<img src="images/intro-poster-960.webp"
+								srcset="images/intro-poster-640.webp 640w, images/intro-poster-960.webp 960w, images/intro-poster-1280.webp 1280w"
+								sizes="(max-width: 900px) 100vw, 780px" width="1280" height="720" loading="lazy" decoding="async"
+								alt="Ambrose in a leather jacket overlooking the sea at sunset">
+							<span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
+							<span class="play-len" aria-hidden="true">3:10</span>
+						</button>
+					</div>
+					<p class="intro-note">A 3-minute intro to who I am and what I build, with captions built in. Then dive into the details below. Also on <a class="primary" href="https://youtu.be/jKFsSyGyBek" target="_blank" rel="noopener">YouTube</a>.</p>
+				</section>
+			</div>
 
 			<section>
 				<div class="section-title">
