@@ -6,6 +6,9 @@
 		<title>Ambrose Tuscano — Software Engineer II at Microsoft Azure | Distributed Systems</title>
 		<meta name="description" content="Ambrose Tuscano is a Software Engineer II at Microsoft on Azure Resource Graph, building cloud-scale distributed systems that handle 12B+ resources daily.">
 		<link rel="canonical" href="https://tascano.github.io/" />
+		<link rel="alternate" type="text/markdown" href="https://tascano.github.io/candidate.md" title="Ambrose Tuscano: candidate profile" />
+		<link rel="alternate" type="application/json" href="https://tascano.github.io/resume.json" title="Ambrose Tuscano: resume (JSON Resume)" />
+		<link rel="alternate" type="text/plain" href="https://tascano.github.io/llms.txt" title="llms.txt" />
 		<link rel="icon" href="favicon.ico?v=3" sizes="any" />
 		<link rel="icon" href="images/favicon-32.png?v=3" type="image/png" sizes="32x32" />
 		<link rel="apple-touch-icon" href="images/apple-touch-icon.png?v=2" />
@@ -31,16 +34,23 @@
 		{
 			"@context": "https://schema.org",
 			"@type": "Person",
+			"@id": "https://tascano.github.io/#person",
 			"name": "Ambrose Tuscano",
 			"url": "https://tascano.github.io/",
+			"email": "mailto:ambrosetuscanojobs@gmail.com",
 			"image": "https://tascano.github.io/images/og-image.jpg",
+			"description": "Software engineer building cloud-scale distributed systems: Azure Resource Graph at Microsoft, a production multi-agent system at Nissan, and high-throughput APIs and data pipelines at Amazon Ads.",
 			"jobTitle": "Software Engineer II",
-			"worksFor": {"@type": "Organization", "name": "Microsoft"},
+			"worksFor": {"@type": "Organization", "name": "Microsoft", "url": "https://www.microsoft.com/"},
 			"alumniOf": [
 				{"@type": "CollegeOrUniversity", "name": "University of Maryland, Baltimore County"},
 				{"@type": "CollegeOrUniversity", "name": "University of Mumbai"}
 			],
-			"knowsAbout": ["Distributed Systems", "Microsoft Azure", "AWS", "Data Pipelines", "Agentic AI", "Backend Engineering"],
+			"hasCredential": [
+				{"@type": "EducationalOccupationalCredential", "credentialCategory": "degree", "name": "Master of Science in Computer Science", "recognizedBy": {"@type": "CollegeOrUniversity", "name": "University of Maryland, Baltimore County"}},
+				{"@type": "EducationalOccupationalCredential", "credentialCategory": "degree", "name": "Bachelor of Engineering in Computer Science", "recognizedBy": {"@type": "CollegeOrUniversity", "name": "University of Mumbai"}}
+			],
+			"knowsAbout": ["Distributed Systems Design", "High-Throughput Data Pipelines", "Serverless Architecture", "API Development and Modeling", "ML/AI Integration", "Infrastructure and Performance Optimization", "Real-Time Event-Driven Systems", "Observability", "Multi-Agent System Design", "Prompt Engineering", "Backend Engineering", "Cloud Engineering", "Microsoft Azure", "AWS", "Agentic AI"],
 			"sameAs": [
 				"https://www.linkedin.com/in/ambrosetuscano/",
 				"https://github.com/Tascano",
@@ -489,6 +499,36 @@
 			<section>
 				<div class="section-title">
 					<div class="dot"></div>
+					<h2 class="accent">Blog</h2>
+					<div class="section-line"></div>
+				</div>
+				<div class="grid">
+					<a class="card card-link" href="notes/file-that-wouldnt-die.html">
+						<div class="role">The File That Wouldn't Die</div>
+						<div class="meta">Oct 2026 · Distributed systems · 6 min read · with a video</div>
+						<p>A grad-school peer-to-peer file system in Python sockets and threads, and how to grow it from one laptop to real traffic. The core computer science of distributed storage in animations: framing, locks, consistent hashing, quorums, versions, tombstones, gossip, Merkle trees, erasure codes and Raft.</p>
+					</a>
+					<a class="card card-link" href="notes/teammate-in-my-terminal.html">
+						<div class="role">The Teammate in My Terminal</div>
+						<div class="meta">Oct 2026 · Claude Code · 4 min read · with a video</div>
+						<p>How one sentence becomes a merged pull request: the Claude Code setup behind these posts and their videos, told in animations. Rules written down once, skills that load on demand, an allow list, a Stop hook, background work, a second pair of ears, and merge kept for me.</p>
+					</a>
+					<a class="card card-link" href="notes/agents-service-bay.html">
+						<div class="role">Four Agents Walk Into a Service Bay</div>
+						<div class="meta">Oct 2026 · Agentic AI · 5 min read · with a video</div>
+						<p>How I'd build a multi-agent car-diagnostic intake system to stay fast, scale on a Monday morning, survive a model outage and stay visible: one agent talking, three as its tools, a state machine in charge, and a failover ladder whose last rung needs no model. My own recreation, not Nissan's system.</p>
+					</a>
+					<a class="card card-link" href="notes/scaling-ad-relevance-apis.html">
+						<div class="role">A Million Questions a Second</div>
+						<div class="meta">Oct 2026 · Amazon Ads · 14 min read · with a video</div>
+						<p>How the ad-relevance API on Amazon's supply side answered over a million requests a second inside 20 ms, told mostly in diagrams and animations: weekly precompute, a Bloom filter, 17-way fan-out, an SNS and SQS pipeline that never loses data, failover across zones and regions, and the garbage collector that got in the way.</p>
+					</a>
+				</div>
+			</section>
+
+			<section>
+				<div class="section-title">
+					<div class="dot"></div>
 					<h2 class="accent">Technical Skills</h2>
 					<div class="section-line"></div>
 				</div>
@@ -558,36 +598,6 @@
 							<span class="skill">Kinesis</span><span class="skill">S3</span><span class="skill">CloudWatch</span><span class="skill">ElastiCache</span>
 						</div>
 					</div>
-				</div>
-			</section>
-
-			<section>
-				<div class="section-title">
-					<div class="dot"></div>
-					<h2 class="accent">Blog</h2>
-					<div class="section-line"></div>
-				</div>
-				<div class="grid">
-					<a class="card card-link" href="notes/file-that-wouldnt-die.html">
-						<div class="role">The File That Wouldn't Die</div>
-						<div class="meta">Oct 2026 · Distributed systems · 6 min read · with a video</div>
-						<p>A grad-school peer-to-peer file system in Python sockets and threads, and how to grow it from one laptop to real traffic. The core computer science of distributed storage in animations: framing, locks, consistent hashing, quorums, versions, tombstones, gossip, Merkle trees, erasure codes and Raft.</p>
-					</a>
-					<a class="card card-link" href="notes/teammate-in-my-terminal.html">
-						<div class="role">The Teammate in My Terminal</div>
-						<div class="meta">Oct 2026 · Claude Code · 4 min read · with a video</div>
-						<p>How one sentence becomes a merged pull request: the Claude Code setup behind these posts and their videos, told in animations. Rules written down once, skills that load on demand, an allow list, a Stop hook, background work, a second pair of ears, and merge kept for me.</p>
-					</a>
-					<a class="card card-link" href="notes/agents-service-bay.html">
-						<div class="role">Four Agents Walk Into a Service Bay</div>
-						<div class="meta">Oct 2026 · Agentic AI · 5 min read · with a video</div>
-						<p>How I'd build a multi-agent car-diagnostic intake system to stay fast, scale on a Monday morning, survive a model outage and stay visible: one agent talking, three as its tools, a state machine in charge, and a failover ladder whose last rung needs no model. My own recreation, not Nissan's system.</p>
-					</a>
-					<a class="card card-link" href="notes/scaling-ad-relevance-apis.html">
-						<div class="role">A Million Questions a Second</div>
-						<div class="meta">Oct 2026 · Amazon Ads · 14 min read · with a video</div>
-						<p>How the ad-relevance API on Amazon's supply side answered over a million requests a second inside 20 ms, told mostly in diagrams and animations: weekly precompute, a Bloom filter, 17-way fan-out, an SNS and SQS pipeline that never loses data, failover across zones and regions, and the garbage collector that got in the way.</p>
-					</a>
 				</div>
 			</section>
 		</div>
