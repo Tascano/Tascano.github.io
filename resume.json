@@ -1,0 +1,292 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jsonresume/resume-schema/v1.0.0/schema.json",
+  "basics": {
+    "name": "Ambrose Tuscano",
+    "label": "Software Engineer: backend, cloud and distributed systems, agentic AI",
+    "email": "ambrosetuscanojobs@gmail.com",
+    "url": "https://tascano.github.io/",
+    "summary": "Software Engineer II at Microsoft on Azure Resource Graph (12B+ Azure resources a day). Previously Sr. Generative AI Engineer at Nissan (a production four-agent system on AWS Bedrock AgentCore) and Software Engineer at Amazon Ads (APIs at over 1M TPS, high-throughput data pipelines). Core expertise: distributed systems design, high-throughput data pipelines, serverless architecture, API development and modeling, ML/AI integration, infrastructure and performance optimization, real-time event-driven systems, observability, multi-agent system design, and prompt engineering. Open to backend engineering, cloud engineering, distributed systems and platform engineering, data infrastructure, and AI/agentic systems engineering roles.",
+    "location": {
+      "city": "Redmond",
+      "region": "WA",
+      "countryCode": "US"
+    },
+    "profiles": [
+      {
+        "network": "LinkedIn",
+        "username": "ambrosetuscano",
+        "url": "https://www.linkedin.com/in/ambrosetuscano/"
+      },
+      {
+        "network": "GitHub",
+        "username": "Tascano",
+        "url": "https://github.com/Tascano"
+      },
+      {
+        "network": "X",
+        "username": "ambrose_tuscano",
+        "url": "https://x.com/ambrose_tuscano"
+      }
+    ]
+  },
+  "work": [
+    {
+      "name": "Microsoft",
+      "position": "Software Engineer II, Azure Resource Graph",
+      "location": "Redmond, WA",
+      "startDate": "2026-04",
+      "summary": "Azure Resource Graph saves 12B+ unique Azure resources every day, aiming for 20B+.",
+      "highlights": [
+        "Designed, tested and rolled out new graph-relationship rules for Azure's cloud resource inventory graph, from implementation through region-by-region production rollout; the primary rule matched ~128K–150K resource snapshots a day after promotion.",
+        "Improved observability of a high-throughput relationship-processing pipeline: per-record metric dimensions, fixes across 7 telemetry signals in three microservices, and new operational dashboards.",
+        "Contributed to a five-region compute scale-out that roughly doubled processing capacity with no additional cloud spend, and drove the buildout of the same stack in a new Azure region (Australia East)."
+      ]
+    },
+    {
+      "name": "Nissan Motor Corporation",
+      "position": "Sr. Generative AI Engineer",
+      "location": "Franklin, TN",
+      "startDate": "2026-02",
+      "endDate": "2026-04",
+      "highlights": [
+        "Designed and shipped Tell Me More, Nissan's first AI product for the dealership business: a production multi-agent chatbot integrated into the dealership appointment pipeline.",
+        "Architected a four-agent system (Conversation, Rubric, Vehicle History, Dealership Internal) on AWS Bedrock AgentCore with persistent session memory.",
+        "Owned business engagement with dealership stakeholders, plus the AWS infrastructure, chat backend and partner integrations."
+      ]
+    },
+    {
+      "name": "Amazon Ads",
+      "position": "Software Engineer, Publisher Technology",
+      "location": "Arlington, VA",
+      "startDate": "2022-05",
+      "endDate": "2026-02",
+      "highlights": [
+        "Designed and built a scalable Ad Labeling Service with 5x the throughput of the legacy system.",
+        "Engineered a serverless data lake (DynamoDB exports to Apache Iceberg, AWS Glue, Athena) with a 30-minute data freshness SLA.",
+        "Built an agent-based label validation framework using MCP, and a Slack-integrated Bedrock RAG chatbot over Amazon Kendra.",
+        "Built Step Functions workflows for real-time ad evaluation at 5K+ TPS with sub-second latency.",
+        "Built Ad Registration Service APIs under 15 ms at 1,000+ TPS, with an ElastiCache-based ingestion system.",
+        "Supported the launch and A/B testing of the Ad Relevance API and infrastructure for Amazon Retail at over 1 million TPS.",
+        "Root-caused and fixed a 10% request drop by optimizing infrastructure scaling policies; improved alarms, monitoring and CI/CD.",
+        "Tripled BrandSafety pipeline throughput (17M to 52M products a day), cutting a critical backfill from 45 days to under 14.",
+        "Transitioned a service with six interdependent subsystems to a new team with 100% uptime."
+      ]
+    },
+    {
+      "name": "Openprise",
+      "position": "Software Engineer",
+      "startDate": "2022-02",
+      "endDate": "2022-03",
+      "highlights": [
+        "Python integrations with the Google Calendar API and ETL into PostgreSQL."
+      ]
+    },
+    {
+      "name": "NXP Semiconductors",
+      "position": "Software Engineering Intern, ML",
+      "location": "San Jose, CA",
+      "startDate": "2021-05",
+      "endDate": "2021-08",
+      "highlights": [
+        "Revamped an ML test suite in Python and Keras, cutting runtime by 30% and manual intervention by 60%."
+      ]
+    },
+    {
+      "name": "University of Maryland, Baltimore County",
+      "position": "Graduate Teaching and Research Assistant",
+      "location": "Baltimore, MD",
+      "startDate": "2020-08",
+      "endDate": "2021-12",
+      "highlights": [
+        "Fine-tuned BERT models for multimodal fake-news classification; mentored students in Information Retrieval, Computer Security, Discrete Structures and Numerical Computations."
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "University of Maryland, Baltimore County",
+      "area": "Computer Science",
+      "studyType": "Master of Science",
+      "startDate": "2020-01",
+      "endDate": "2021-12"
+    },
+    {
+      "institution": "University of Mumbai",
+      "area": "Computer Science",
+      "studyType": "Bachelor of Engineering",
+      "startDate": "2015-05",
+      "endDate": "2019-05"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Core expertise",
+      "keywords": [
+        "Distributed systems design",
+        "High-throughput data pipelines",
+        "Serverless architecture",
+        "API development and modeling",
+        "ML/AI integration",
+        "Infrastructure and performance optimization",
+        "Real-time event-driven systems",
+        "Observability",
+        "Multi-agent system design",
+        "Prompt engineering"
+      ]
+    },
+    {
+      "name": "Languages",
+      "keywords": [
+        "Java",
+        "Python",
+        "SQL",
+        "TypeScript",
+        "JavaScript"
+      ]
+    },
+    {
+      "name": "Azure",
+      "keywords": [
+        "Azure Resource Graph",
+        "Azure Resource Manager",
+        "Azure Resource Notifications",
+        "Service Fabric",
+        "VM Scale Sets",
+        "Azure Functions",
+        "Event Grid",
+        "Event Hubs",
+        "Cosmos DB",
+        "Azure Managed Redis",
+        "Azure Storage",
+        "Azure Data Explorer (Kusto)",
+        "KQL",
+        "Azure Monitor",
+        "Azure DevOps"
+      ]
+    },
+    {
+      "name": "AWS",
+      "keywords": [
+        "Lambda",
+        "Step Functions",
+        "ECS",
+        "Fargate",
+        "EC2",
+        "API Gateway",
+        "DynamoDB",
+        "RDS",
+        "S3",
+        "SNS",
+        "SQS",
+        "Kinesis Firehose",
+        "Amazon MSK (Kafka)",
+        "Glue",
+        "Athena",
+        "Redshift",
+        "ElastiCache",
+        "CloudWatch",
+        "CloudFormation",
+        "Bedrock",
+        "Bedrock AgentCore",
+        "SageMaker",
+        "Kendra"
+      ]
+    },
+    {
+      "name": "Data",
+      "keywords": [
+        "Apache Iceberg",
+        "PostgreSQL",
+        "MySQL",
+        "MongoDB",
+        "Redis",
+        "Memcached"
+      ]
+    },
+    {
+      "name": "Frameworks",
+      "keywords": [
+        "Spring Boot",
+        "Guice",
+        "Dagger",
+        "Vert.x",
+        "GraphQL",
+        "Hibernate",
+        "FastAPI",
+        "Flask",
+        "Django",
+        "React",
+        "TensorFlow",
+        "Keras"
+      ]
+    },
+    {
+      "name": "AI",
+      "keywords": [
+        "Multi-agent systems",
+        "MCP (FastMCP)",
+        "LangChain",
+        "LangGraph",
+        "AutoGen",
+        "Strands",
+        "RAG",
+        "Prompt engineering",
+        "Claude Code",
+        "GitHub Copilot"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Tell Me More: agentic car-diagnostic chatbot",
+      "description": "Nissan's first AI product for dealerships: a production four-agent intake system on AWS Bedrock AgentCore.",
+      "url": "https://tascano.github.io/notes/agents-service-bay.html",
+      "keywords": [
+        "AWS Bedrock AgentCore",
+        "Strands",
+        "Multi-agent systems",
+        "FastAPI",
+        "Python"
+      ]
+    },
+    {
+      "name": "Multimodal AI system for ad similarity detection",
+      "description": "Transcribe, Rekognition and Bedrock turn ads into text embeddings in OpenSearch for k-NN and pairwise duplicate detection.",
+      "keywords": [
+        "AWS Bedrock",
+        "LangChain",
+        "OpenSearch"
+      ]
+    },
+    {
+      "name": "Enterprise GenAI knowledge and search platform",
+      "description": "RAG over Amazon Kendra with Bedrock, MCP servers (FastMCP) for enterprise data sources, and multi-agent orchestration.",
+      "keywords": [
+        "MCP",
+        "FastMCP",
+        "LangChain",
+        "LangGraph",
+        "AutoGen",
+        "AWS Bedrock",
+        "Kendra"
+      ]
+    },
+    {
+      "name": "Peer-to-peer distributed file system",
+      "description": "Python sockets and multi-threading with replication and versioning, plus a write-up on scaling it from one laptop to the internet.",
+      "url": "https://tascano.github.io/notes/file-that-wouldnt-die.html",
+      "keywords": [
+        "Python",
+        "Sockets",
+        "Multi-threading",
+        "Distributed systems"
+      ]
+    }
+  ],
+  "meta": {
+    "canonical": "https://tascano.github.io/resume.json",
+    "version": "v1.0.0",
+    "lastModified": "2026-11-01",
+    "pdf": "https://tascano.github.io/assets/Ambrose_Tuscano_Resume.pdf"
+  }
+}

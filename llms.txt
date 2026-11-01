@@ -1,0 +1,34 @@
+# Ambrose Tuscano
+
+> Software engineer: backend, cloud and distributed systems, with production agentic-AI experience. Software Engineer II at Microsoft on Azure Resource Graph (12B+ Azure resources a day); previously Sr. Generative AI Engineer at Nissan and Software Engineer at Amazon Ads. Open to backend engineering, cloud engineering, distributed systems and platform engineering, data infrastructure, and AI/agentic systems engineering roles.
+
+Core expertise: distributed systems design, high-throughput data pipelines, serverless architecture, API development and modeling, ML/AI integration, infrastructure and performance optimization, real-time event-driven systems, observability, multi-agent system design, and prompt engineering.
+
+Highlights, all from the resume:
+- Microsoft: Azure Resource Graph; a five-region scale-out that roughly doubled capacity with no added cloud spend; a new-region buildout; pipeline observability.
+- Nissan: designed and shipped Tell Me More, a production four-agent system on AWS Bedrock AgentCore.
+- Amazon Ads: Ad Relevance API launch (over 1M TPS); APIs under 15 ms at 1,000+ TPS; real-time evaluation at 5K+ TPS; a data pipeline taken from 17M to 52M products a day; a 5x-throughput labeling service.
+- M.S. in Computer Science, University of Maryland, Baltimore County.
+
+## Candidate profile
+
+- [Candidate profile](https://tascano.github.io/candidate.md): roles, core expertise, an evidence index mapping job requirements to proof, experience, skills
+- [Resume (JSON Resume)](https://tascano.github.io/resume.json): structured resume
+- [Resume (PDF)](https://tascano.github.io/assets/Ambrose_Tuscano_Resume.pdf): full resume
+- [Website](https://tascano.github.io/): experience, projects, skills and a 3-minute intro video
+
+## Writing
+
+Long-form technical posts, each with interactive diagrams and a narrated video:
+
+- [The File That Wouldn't Die](https://tascano.github.io/notes/file-that-wouldnt-die.html): a peer-to-peer file system grown from one laptop to the internet; TCP framing, consistent hashing, quorums, gossip, Merkle trees, erasure coding, Raft
+- [The Teammate in My Terminal](https://tascano.github.io/notes/teammate-in-my-terminal.html): the Claude Code setup (rules, skills, allow lists, hooks) behind his posts and videos
+- [Four Agents Walk Into a Service Bay](https://tascano.github.io/notes/agents-service-bay.html): designing a multi-agent intake system for scale, speed, reliability, visibility and failover (his own recreation, not Nissan's system)
+- [A Million Questions a Second](https://tascano.github.io/notes/scaling-ad-relevance-apis.html): an ad-relevance API at over a million requests a second; precompute, Bloom filters, fan-out, SNS/SQS pipelines, failover (numbers illustrative)
+- [The Terminal Was Always a Log](https://tascano.github.io/notes/the-terminal-was-always-a-log.html): terminal internals, PTYs, and terminals as distributed systems
+
+## Contact
+
+- Email: ambrosetuscanojobs@gmail.com
+- LinkedIn: https://www.linkedin.com/in/ambrosetuscano/
+- GitHub: https://github.com/Tascano
