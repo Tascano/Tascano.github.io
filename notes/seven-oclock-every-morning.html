@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Seven O'Clock, Every Morning</title>
+<meta name="description" content="How I built Daily Bible, a microservices service that sends the day&#x27;s reading, a saint&#x27;s quote, an AI image and a video in four languages on WhatsApp or email at 7 AM local time: tested locally with docker compose, then ported to AWS, with idempotent runs, paced senders, circuit breakers, dead letters and a fallback ladder.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Seven O'Clock, Every Morning">
+<meta property="og:description" content="A daily scripture service as microservices, from docker compose to AWS: scale, speed, reliability and failover, in animations.">
+<meta property="og:image" content="https://tascano.github.io/images/og-image.jpg">
+<meta name="theme-color" content="#fdb515">
+<link rel="icon" href="../favicon.ico?v=3" sizes="any">
+<script>
+  // Same key as the main page, so the reader's light/dark choice carries over.
+  try { const t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+:root{
+  --accent:#fdb515;
+  --accent-ink:#9a6700;          /* the brand gold, deepened for small text on white (4.9:1) */
+  --accent-wash:rgba(253,181,21,.14);
+  --bg:#fff;
+  --text:#111;
+  --text-secondary:#333;
+  --text-muted:#555;
+  --card-bg:#fafafa;
+  --card-border:#eee;
+  --skill-bg:#f3f3f3;
+  --code-bg:#15171b;
+  --code-border:#15171b;
+  --demand:#C26A00;
+  --capacity:#00826F;
+  --capacity-wash:rgba(0,130,111,.10);
+  --demand-wash:rgba(194,106,0,.10);
+  --mute:#8a8a8a;
+  --track:#dcdcdc;
+  --buffer:#d4d4d4;
+  --buffer-ink:#111;
+  --rec-ink:#fff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+[data-theme="dark"]{
+  --accent-ink:#fdb515;
+  --accent-wash:rgba(253,181,21,.12);
+  --bg:#0f0f0f;
+  --text:#e8e8e8;
+  --text-secondary:#d0d0d0;
+  --text-muted:#a0a0a0;
+  --card-bg:#1a1a1a;
+  --card-border:#2a2a2a;
+  --skill-bg:#262626;
+  --code-bg:#161616;
+  --code-border:#2a2a2a;
+  --demand:#C27E00;
+  --capacity:#22A08B;
+  --capacity-wash:rgba(34,160,139,.14);
+  --demand-wash:rgba(194,126,0,.14);
+  --mute:#737373;
+  --track:#383838;
+  --buffer:#4d4d4d;
+  --buffer-ink:#fff;
+  --rec-ink:#111;
+}
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.7;color:var(--text);background:var(--bg);transition:background .3s ease,color .3s ease;}
+a{color:var(--accent-ink);text-underline-offset:3px;text-decoration-thickness:1px;}
+a:hover{color:var(--text);}
+::selection{background:var(--accent);color:#111;}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px;}
+.scroll-progress{position:fixed;top:0;left:0;width:0;height:4px;background:var(--accent);z-index:1000;}
+.theme-toggle{position:fixed;top:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--card-bg);border:2px solid var(--card-border);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:999;transition:transform .3s ease,border-color .3s ease;}
+.theme-toggle:hover{transform:scale(1.1);border-color:var(--accent);}
+.theme-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+
+/* top bar, like the main page header */
+.topbar{display:flex;align-items:center;gap:12px;padding:28px 0 18px;border-bottom:1px solid var(--card-border);}
+.topbar img{width:44px;height:44px;border-radius:8px;object-fit:cover;}
+.topbar a{text-decoration:none;color:var(--text);font-weight:700;font-size:18px;letter-spacing:.2px;}
+.topbar .last{color:var(--accent);}
+.topbar .home{margin-left:auto;margin-right:64px;font-size:14px;font-weight:600;color:var(--accent-ink);}
+
+/* hero */
+.hero{padding:44px 0 6px;}
+.kicker{display:inline-block;font:700 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:7px 11px;margin-bottom:18px;}
+.hero h1{font-size:clamp(36px,7.4vw,56px);line-height:1.06;letter-spacing:-.015em;margin:0 0 10px;font-weight:800;}
+.hero .alt{font-size:18px;font-style:italic;color:var(--text-muted);margin:0 0 20px;}
+.hero .dek{font-size:19.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 22px;}
+.byline{display:flex;flex-wrap:wrap;gap:6px 16px;font:14px var(--mono);color:var(--text-muted);margin-bottom:30px;}
+.byline b{color:var(--text);}
+
+/* section titles: the main page's dot + gold line */
+.section-title{display:flex;align-items:center;gap:12px;margin:72px 0 6px;}
+.section-title .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.section-title .section-line{flex:1;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+.section-title .n{font:700 13px var(--mono);color:var(--accent-ink);}
+h2{font-size:clamp(25px,4.8vw,32px);line-height:1.2;letter-spacing:-.01em;margin:0 0 18px;font-weight:800;}
+h3{font-size:20px;margin:36px 0 10px;font-weight:700;}
+p{margin:0 0 20px;}
+strong{font-weight:700;}
+.lede{font-size:19.5px;}
+code{font-family:var(--mono);font-size:.86em;background:var(--skill-bg);border-radius:4px;padding:.12em .36em;white-space:nowrap;}
+ul.plain,ol.plain{padding-left:22px;margin:0 0 22px;}
+ul.plain li,ol.plain li{margin-bottom:9px;}
+.note{font-size:15px;color:var(--text-muted);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 26px;}
+
+/* cards */
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:20px 22px;margin:26px 0 32px;}
+.tldr{border-left:4px solid var(--accent);}
+.tldr h2{font-size:21px;margin-bottom:12px;}
+.tldr ol{margin:0;padding-left:20px;}
+.tldr li{margin-bottom:8px;}
+.tldr-foot{margin:14px 0 12px;font-size:15.5px;}
+.tldr details.log{margin:0;}
+
+/* the video's interruptions, on the page */
+.interrupt{border:2px dashed var(--accent);border-radius:14px;padding:18px 18px 4px;margin:34px 0 34px;background:var(--bg);position:relative;}
+.interrupt .tag{position:absolute;top:-12px;left:16px;background:var(--accent);color:#111;font:700 12px var(--mono);letter-spacing:.04em;padding:4px 10px;border-radius:999px;}
+.interrupt p{font-size:16.5px;}
+
+/* code */
+.code{background:var(--code-bg);border:1px solid var(--code-border);border-radius:12px;overflow:hidden;margin:20px 0 8px;}
+.code-bar{display:flex;align-items:center;gap:6px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.07);}
+.term-dot{width:10px;height:10px;border-radius:50%;background:#3b3f46;}
+.term-dot:first-child{background:#fdb515;}
+.code-name{margin-left:8px;font:12.5px var(--mono);color:#9aa0a6;}
+.code pre{margin:0;padding:16px 18px 18px;overflow-x:auto;font:13.5px/1.6 var(--mono);color:#e6e6e6;tab-size:4;}
+.code pre code{background:none;padding:0;border-radius:0;font-size:inherit;color:inherit;white-space:pre;}
+.code .k{color:#fdb515;}
+.code .s{color:#a8d59f;}
+.code .c{color:#8b929a;font-style:italic;}
+.code .n{color:#f2c88d;}
+.code .f,.code .b{color:#86c5f0;}
+details.more + .out{margin-top:22px;}
+.out{position:relative;margin:0 0 30px;background:var(--card-bg);border:1px solid var(--card-border);border-left:4px solid var(--accent);border-radius:0 10px 10px 0;}
+.out pre{margin:0;padding:14px 16px 12px;overflow-x:auto;font:13px/1.55 var(--mono);color:var(--text);}
+.out-label{position:absolute;top:-9px;right:12px;background:var(--bg);padding:0 6px;font:700 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+.term-body{padding:16px 20px 18px;font:14.5px/1.75 var(--mono);color:#e6e6e6;}
+.term-body .p{color:#fdb515;}
+.term-body .dim{color:#9aa0a6;}
+.cursor{display:inline-block;width:8px;height:16px;background:#fdb515;vertical-align:-3px;animation:blink 1.1s steps(1) infinite;}
+@keyframes blink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+
+/* collapsibles */
+details.more.flat{margin-top:0;}
+details.more{margin:-14px 0 30px;border:1px solid var(--card-border);border-radius:10px;background:var(--card-bg);}
+details.more summary{cursor:pointer;padding:10px 14px;font:600 13.5px var(--mono);color:var(--text-muted);list-style:none;}
+details.more summary::-webkit-details-marker{display:none;}
+details.more summary::before{content:"+ ";color:var(--accent-ink);font-weight:800;}
+details.more[open] summary::before{content:"− ";}
+details.more > .code,details.more > .out,details.more > .table-scroll{margin-left:12px;margin-right:12px;}
+details.more > .out{margin-bottom:14px;}
+
+/* formula */
+.formula{font:14.5px/1.9 var(--mono);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 22px;overflow-x:auto;white-space:nowrap;}
+
+/* figures and tables */
+figure{margin:28px 0 36px;}
+figure svg{width:100%;height:auto;display:block;}
+figcaption{font:13px/1.5 var(--mono);color:var(--text-muted);margin-top:10px;}
+.fig-frame{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:16px 12px;}
+.fig-frame svg{max-width:580px;margin:0 auto;}
+.arch text{font-family:var(--mono);}
+.arch .t{fill:var(--text);} .arch .tm{fill:var(--text-muted);} .arch .ta{fill:var(--accent-ink);}
+.arch .bx{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;}
+.arch .bx-main{fill:var(--bg);stroke:var(--text);stroke-width:1.5;}
+.arch .pipe{fill:#15171b;stroke:var(--card-border);stroke-width:1.5;}
+.arch .pipe-t{fill:#e6e6e6;font-family:system-ui,sans-serif;font-weight:700;} .arch .pipe-a{fill:#fdb515;}
+.arch .chip{fill:var(--accent-wash);stroke:var(--accent-ink);stroke-width:1.2;}
+.arch .chip-teal{fill:var(--capacity-wash);stroke:var(--capacity);stroke-width:1.2;}
+.arch .ln{stroke:var(--text-muted);stroke-width:1.5;fill:none;}
+.arch .la{stroke:var(--accent-ink);stroke-width:2;fill:none;}
+.arch .mk{fill:var(--text-muted);} .arch .mka{fill:var(--accent-ink);}
+.arch .rule{stroke:var(--card-border);}
+.table-scroll{overflow-x:auto;margin:0 0 30px;}
+.spec-table{width:100%;border-collapse:collapse;font-size:15px;}
+.spec-table th,.spec-table td{text-align:left;padding:10px;border-bottom:1px solid var(--card-border);vertical-align:top;}
+.spec-table thead th{font:700 12px var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--accent);}
+.spec-table td:first-child{font-weight:600;}
+.spec-table.num td{font-family:var(--mono);text-align:right;padding:5px 10px;font-size:13px;font-weight:400;}
+.spec-table.num th{text-align:right;}
+.spec-table.fail td{font-size:14.5px;}
+.spec-table.fail td:first-child{width:30%;}
+
+/* widgets */
+.widget{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:16px;margin:26px 0 34px;}
+.widget-title{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.btn{font:600 14px system-ui,sans-serif;padding:8px 14px;min-height:38px;border-radius:999px;border:2px solid var(--card-border);background:var(--bg);color:var(--text);cursor:pointer;transition:border-color .2s;}
+.btn:hover{border-color:var(--accent);}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#111;}
+.btn:focus-visible,.bf-input:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+.journey{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
+.journey svg{width:100%;height:auto;display:block;max-width:360px;margin:0 auto;}
+.journey text{font-family:var(--mono);fill:var(--text);}
+.journey .sub{fill:var(--text-muted);}
+.journey .node rect{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;transition:fill .25s,stroke .25s;}
+.journey .node.lit rect{fill:var(--accent-wash);stroke:var(--accent);}
+.journey .node.stop rect{fill:var(--capacity-wash);stroke:var(--capacity);stroke-width:2.5;}
+.journey #dot{fill:var(--accent);stroke:var(--bg);}
+.log{list-style:none;margin:0;padding:0;font:13px/1.55 var(--mono);min-height:150px;}
+.log li{padding:6px 0;border-bottom:1px dashed var(--card-border);}
+.log li b{color:var(--accent-ink);}
+.meters{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font:13px var(--mono);color:var(--text-muted);}
+.meters b{color:var(--text);}
+.bf-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.bf-input{flex:1 1 180px;min-width:0;min-height:40px;padding:8px 10px;font:15px var(--mono);border:2px solid var(--card-border);border-radius:10px;background:var(--bg);color:var(--text);}
+.bits{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;margin:12px 0 6px;}
+.bit{aspect-ratio:1;border-radius:6px;background:var(--bg);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;font:600 11px var(--mono);color:var(--text-muted);transition:background .2s;}
+.bit.on{background:var(--accent);border-color:var(--accent);color:#111;}
+.bit.probe{outline:2px solid var(--text);outline-offset:1px;}
+.bit.probe.zero{outline:3px solid var(--capacity);}
+.bf-result{font-size:15.5px;margin:10px 0 4px;min-height:48px;}
+.bf-items,.bf-stats{font:12.5px var(--mono);color:var(--text-muted);word-break:break-word;}
+.bf-stats{margin-top:6px;}
+
+/* charts */
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:26px 0 10px;font-size:14px;color:var(--text-muted);}
+.legend span{display:inline-flex;align-items:center;gap:7px;}
+.lk{display:inline-block;width:16px;height:2px;border-radius:1px;}
+.lk-dem{background:var(--demand);} .lk-cap{background:var(--capacity);}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;}
+.sw-gap{background:var(--demand);opacity:.25;}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+.chart{position:relative;margin:0;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:10px 8px 4px;}
+.chart-title{font-size:14.5px;font-weight:700;margin:0 0 4px 6px;}
+.chart .ax{font:10.5px var(--mono);fill:var(--text-muted);}
+.chart .grid{stroke:var(--card-border);}
+.chart .note{stroke:var(--text-muted);}
+.chart .s-dem{stroke:var(--demand);} .chart .s-cap{stroke:var(--capacity);}
+.chart .s-gap{fill:var(--demand);fill-opacity:.2;}
+.chart .xhair{stroke:var(--text);}
+.chart .hit{cursor:crosshair;}
+.tip{position:absolute;pointer-events:none;z-index:2;background:#111;color:#f2f2f2;border-radius:6px;padding:7px 9px;font:12px/1.5 var(--mono);white-space:nowrap;}
+[data-theme="dark"] .tip{background:#f2f2f2;color:#111;}
+.tip .row{display:flex;align-items:center;gap:7px;}
+.tip i{display:inline-block;width:12px;height:2px;}
+
+footer{border-top:1px solid var(--card-border);margin-top:30px;padding:30px 0 70px;}
+footer p{font-size:15px;color:var(--text-muted);}
+.bye-fig{margin:0 0 22px;}
+.bye-photo{display:block;width:100%;max-width:420px;height:auto;border-radius:16px;border:1px solid var(--card-border);background:#fff;}
+
+@media (max-width:640px){
+  body{font-size:16.5px;}
+  .theme-toggle{top:14px;right:14px;width:44px;height:44px;font-size:18px;}
+  .topbar .home{margin-right:52px;}
+  .hero{padding-top:30px;}
+  .journey,.charts{grid-template-columns:1fr;}
+  .bits{grid-template-columns:repeat(8,minmax(0,1fr));}
+  .code pre{font-size:12.5px;}
+}
+@media (max-width:420px){ .topbar .home{display:none;} }
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  .cursor{animation:none;}
+}
+
+/* pick your hat */
+.hats .btns{margin:2px 0 14px;}
+.hat ul{margin:0;padding-left:20px;}
+.hat li{margin-bottom:8px;}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0 10px;}
+.stat{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px;}
+.stat .v{font:600 30px/1.1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:-.01em;margin-bottom:6px;}
+.stat .l{font-size:14.5px;line-height:1.45;color:var(--text-secondary);}
+.stat .src{display:block;margin-top:8px;font:12px/1.4 var(--mono);}
+.stats-cap{font:13px/1.5 var(--mono);color:var(--text-muted);margin:0 0 30px;}
+
+/* charts drawn as plain HTML bars, and shared chart chrome */
+.viz{position:relative;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px 12px;margin:24px 0 30px;}
+.viz-title{font-size:14.5px;font-weight:700;margin:0 0 12px;}
+.viz-cap{font:13px/1.5 var(--mono);color:var(--text-muted);margin:12px 0 0;}
+.hb{display:grid;gap:10px;}
+.hb-row{font-size:14px;border-radius:6px;outline-offset:3px;}
+.hb-row:focus-visible{outline:2px solid var(--accent);}
+.hb-label{color:var(--text-secondary);margin-bottom:3px;line-height:1.3;}
+.hb-track{display:flex;align-items:center;gap:8px;}
+.hb-bar{flex:none;height:14px;border-radius:0 4px 4px 0;width:calc((100% - 92px) * var(--f));min-width:3px;background:var(--demand);transition:background .2s;}
+.hb-bar.teal{background:var(--capacity);} .hb-bar.mute{background:var(--mute);}
+.hb-val{font:600 13px var(--mono);color:var(--text);white-space:nowrap;}
+.hb-row.sel .hb-bar{background:var(--demand);} .gcbars .hb-bar{background:var(--mute);}
+.gcbars .hb-row.sel .hb-label{color:var(--text);font-weight:700;}
+.plot svg{width:100%;height:auto;display:block;max-width:560px;margin:0 auto;}
+.plot .ax{font:10.5px var(--mono);fill:var(--text-muted);}
+.plot .lab{font:600 11px var(--mono);fill:var(--text);}
+.plot .grid{stroke:var(--card-border);}
+.plot .base{stroke:var(--text-muted);}
+.plot .s-dem{fill:var(--demand);} .plot .s-mute{fill:var(--mute);}
+.plot .s-line{stroke:var(--demand);fill:none;} .plot .s-wash{fill:var(--demand-wash);}
+.plot .band{fill:var(--text-muted);fill-opacity:.14;}
+.plot .hl{fill:var(--text);}
+.plot .hit{cursor:crosshair;}
+.legend.tight{margin:4px 0 10px;}
+
+/* the budget, as one segmented bar */
+.seg{display:flex;gap:2px;height:28px;margin:4px 0 10px;}
+.seg span{display:flex;align-items:center;padding-left:8px;border-radius:4px;font:600 12.5px var(--mono);white-space:nowrap;}
+.seg .net{background:var(--mute);color:#111;}
+.seg .dec{background:var(--capacity);color:var(--rec-ink);}
+.seg .buf{background:var(--buffer);color:var(--buffer-ink);}
+.sw-net{background:var(--mute);} .sw-dec{background:var(--capacity);} .sw-buf{background:var(--buffer);}
+
+/* Little's law */
+.range{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font:13px var(--mono);color:var(--text-muted);}
+.range label b{color:var(--text);}
+.range input{flex:1 1 200px;accent-color:var(--accent-ink);min-height:32px;}
+.dots{display:grid;grid-template-columns:repeat(25,minmax(0,1fr));gap:3px;max-width:440px;margin:14px 0 12px;}
+.dots i{aspect-ratio:1;border-radius:50%;background:var(--track);transition:background .12s;}
+.dots i.on{background:var(--demand);}
+.readout{font-size:15.5px;margin:4px 0 0;min-height:50px;}
+
+/* search vs lookup grid */
+.rgrid{display:grid;grid-template-columns:auto repeat(10,minmax(0,1fr));gap:4px;align-items:center;font:11px var(--mono);margin:4px 0 12px;}
+.rgrid .rh{color:var(--text-muted);text-align:center;}
+.rgrid .rl{color:var(--text);padding-right:6px;white-space:nowrap;}
+.rgrid .rl.page{font-weight:700;color:var(--accent-ink);}
+.rgrid .cell{aspect-ratio:1;border-radius:4px;background:var(--bg);border:1px solid var(--card-border);position:relative;transition:outline-color .2s;}
+.rgrid .cell.s::before{content:"";position:absolute;inset:2px;border-radius:2px;background:var(--capacity);opacity:var(--a);}
+.rgrid .cell.scan{outline:2px solid var(--text);outline-offset:1px;}
+.rgrid .cell.hit{outline:3px solid var(--accent);outline-offset:1px;}
+.rgrid .cell.miss{outline:3px dashed var(--demand);outline-offset:1px;}
+.key{display:flex;flex-wrap:wrap;gap:6px 16px;font:12.5px var(--mono);color:var(--text-muted);margin:0 0 10px;}
+.key span{display:inline-flex;align-items:center;gap:6px;}
+.key i{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--card-border);background:var(--bg);}
+.key i.s{background:var(--capacity);border-color:var(--capacity);}
+
+/* the publish animation reuses the journey layout */
+.journey .node.bad rect{fill:var(--demand-wash);stroke:var(--demand);stroke-width:2.5;stroke-dasharray:6 4;}
+.journey .node.dim{opacity:.4;}
+.journey .ver{font-weight:700;}
+
+/* playbook */
+.checks{list-style:none;padding:0;margin:0 0 26px;}
+.checks li{padding:9px 0 9px 30px;border-top:1px solid var(--card-border);position:relative;font-size:16px;}
+.checks li::before{content:"✓";position:absolute;left:4px;top:8px;font-weight:800;color:var(--capacity);}
+.checks b{font-family:var(--mono);font-size:13.5px;letter-spacing:.02em;margin-right:6px;}
+
+/* nine decisions */
+.dec-list{list-style:none;margin:8px 0 30px;padding:0;counter-reset:d;}
+.dec-list > li{border-top:1px solid var(--card-border);padding:14px 0 12px;}
+.dec-list .dq{font-weight:700;margin-bottom:8px;line-height:1.4;}
+.dec-list .dq::before{counter-increment:d;content:counter(d) " · ";font:700 13px var(--mono);color:var(--accent-ink);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.chip{font:12.5px/1.4 var(--mono);padding:3px 10px;border-radius:999px;border:1px solid var(--card-border);color:var(--text-muted);background:var(--bg);}
+.chip.won{background:var(--accent);border-color:var(--accent);color:#111;font-weight:700;}
+.chip.won::before{content:"✓ ";}
+.chip.rec{background:var(--capacity);border-color:var(--capacity);color:var(--rec-ink);font-weight:700;}
+.chip.rec::before{content:"✓ ";}
+.chip.rec::after{content:" · recommended";font-weight:400;}
+.dec-list .why{font-size:15.5px;margin:0;line-height:1.5;}
+.dec-list .cost{font-size:14px;color:var(--text-muted);margin-left:4px;}
+.dec-list .cost b{color:var(--text-secondary);}
+
+/* the principles map */
+html{scroll-padding-top:16px;}
+.pmap{border-left:4px solid var(--accent);}
+.pmap .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:12px;}
+.pgroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:14px 18px;}
+.pgroups div{display:flex;flex-direction:column;gap:5px;}
+.pgroups b{font-size:14.5px;}
+.pgroups a{font:13px/1.35 var(--mono);text-decoration:none;color:var(--text-secondary);}
+.pgroups a::before{content:"→ ";color:var(--accent-ink);}
+.pgroups a:hover{color:var(--accent-ink);}
+
+/* fan-out */
+.calls{display:flex;flex-wrap:wrap;gap:4px;margin:14px 0 10px;}
+.calls i{width:14px;height:14px;border-radius:3px;background:var(--capacity);}
+.meter{height:10px;border-radius:5px;background:var(--track);overflow:hidden;margin:0 0 10px;max-width:440px;}
+.meter span{display:block;height:100%;width:0;background:var(--demand);border-radius:5px;transition:width .3s;}
+
+/* pipeline and failover diagrams */
+.journey .wire{stroke:var(--card-border);stroke-width:1.5;}
+.journey .hosts rect{fill:var(--mute);}
+.journey .node.host rect{fill:var(--mute);stroke:none;}
+.journey .node.host.bad rect{fill:var(--demand);stroke:none;}
+.arch .hotk{stroke:var(--demand);stroke-width:1.8;}
+.arch .hotp{fill:var(--demand-wash);stroke:var(--demand);stroke-width:2;stroke-dasharray:5 3;}
+
+/* three stat tiles in a row */
+.stats.three{grid-template-columns:repeat(3,minmax(0,1fr));}
+@media (max-width:640px){.stats.three .stat{padding:12px;} .stats.three .v{font-size:24px;} .stats.three .l{font-size:13px;}}
+
+/* the whole-system animation */
+.tour-cap{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;margin:0 0 12px;min-height:66px;font-size:15.5px;line-height:1.45;}
+.tour-n{flex:none;font:700 12px/1.9 var(--mono);color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:0 8px;}
+.journey.tour{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);}
+.journey.tour svg{max-width:400px;}
+.tour .fan line{stroke:var(--card-border);stroke-width:1.5;}
+.tour .fan.lit line,.tour .fan.stop line{stroke:var(--accent-ink);stroke-width:2;}
+.tour .tour-dot{fill:var(--accent);stroke:var(--bg);}
+.tour-steps{list-style:none;margin:0;padding:0;counter-reset:t;}
+.tour-steps li{counter-increment:t;}
+.tour-steps button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px dashed var(--card-border);padding:6px 0 6px 30px;position:relative;font:12.5px/1.45 var(--mono);color:var(--text-muted);cursor:pointer;}
+.tour-steps button::before{content:counter(t);position:absolute;left:0;top:6px;width:22px;text-align:right;font-weight:700;color:var(--accent-ink);}
+.tour-steps li.on button{color:var(--text);font-weight:700;}
+.tour-steps button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media (max-width:640px){.tour-steps{display:none;} .journey.tour{grid-template-columns:1fr;}}
+
+/* request timing */
+.plot .wf-bar{fill:var(--mute);}
+.plot .wf-bar.done{fill:var(--capacity);}
+.plot .wf-bar.drop{fill:var(--demand);}
+.plot .dl{stroke:var(--demand);}
+.plot .wf-x{font:700 11px var(--mono);fill:var(--text);}
+
+/* numbered safeguards */
+.arch .badge{fill:var(--accent);}
+.arch .badge-n{fill:#111;font-weight:700;font-family:var(--mono);}
+
+/* the video version, same player as the main page's intro */
+.watch{margin:0 0 26px;}
+.intro-video{border-radius:12px;overflow:hidden;border:1px solid var(--card-border);background:#000;box-shadow:0 10px 30px rgba(0,0,0,.12);transition:border-color .3s ease,box-shadow .3s ease;}
+.intro-video:hover{border-color:var(--accent);box-shadow:0 10px 30px rgba(253,181,21,.2);}
+.intro-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000;}
+.play-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;cursor:pointer;background:#000;}
+.play-facade img{display:block;width:100%;height:100%;object-fit:cover;}
+.play-btn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.play-btn svg{width:76px;height:76px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.35));transition:transform .2s ease;}
+.play-btn circle{fill:var(--accent);}
+.play-btn path{fill:#111;}
+.play-facade:hover .play-btn svg,.play-facade:focus-visible .play-btn svg{transform:scale(1.08);}
+.play-facade:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+.play-len{position:absolute;right:10px;bottom:10px;padding:2px 7px;border-radius:4px;font-size:13px;font-weight:600;color:#fff;background:rgba(0,0,0,.7);}
+.intro-note{font-size:14px;color:var(--text-muted);margin:10px 0 0;}
+
+/* shared bits from the earlier posts */
+.origin{border-left:4px solid var(--capacity);background:var(--capacity-wash);}
+.origin .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text);margin-bottom:8px;}
+.origin p{margin:0;font-size:15.5px;}
+.section-title .pill{font:700 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);border:1px solid var(--accent-ink);border-radius:999px;padding:2px 8px;flex:none;}
+.term-body .p{display:inline-block;min-width:2ch;}
+.small-note{font:13px/1.5 var(--mono);color:var(--text-muted);margin:-6px 0 26px;}
+.journey .frame{fill:none;stroke:var(--card-border);stroke-width:1.5;stroke-dasharray:5 4;}
+.ringwrap svg{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;}
+:root{--c0:#2F6FD0;--c1:#00826F;--c2:#C26A00;--c3:#8E44AD;}
+[data-theme="dark"]{--c0:#5A9BF0;--c1:#22A08B;--c2:#D98B1C;--c3:#B67BD6;}
+
+/* 02 · framing */
+.bytes{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;min-height:44px;}
+.bytes .ck{display:inline-flex;border:1px solid var(--card-border);border-radius:7px;padding:3px;background:var(--bg);transition:background .25s,border-color .25s;}
+.bytes .ck span{font:600 14px/1.6 var(--mono);min-width:15px;text-align:center;border-radius:3px;white-space:pre;}
+.bytes .ck span.mk{color:var(--accent-ink);}
+.bytes .ck.hdr{background:var(--skill-bg);}
+.bytes .ck.rd{border-color:var(--accent);background:var(--accent-wash);}
+.bytes .ck.ok{border-color:var(--capacity);background:var(--capacity-wash);}
+.bytes .ck.bad{border-color:var(--demand);background:var(--demand-wash);border-style:dashed;}
+.bytes .ck.left{opacity:.45;border-style:dashed;}
+.bytes .wait{font:600 13px/2.1 var(--mono);color:var(--demand);}
+
+/* 03 · locks, 12 · speed */
+.plot .lk-wait{fill:var(--accent);fill-opacity:.28;}
+.plot .lk-r{fill:var(--capacity);} .plot .lk-w{fill:var(--demand);}
+.plot .b-A{fill:var(--c0);} .plot .b-B{fill:var(--c1);} .plot .b-C{fill:var(--c2);}
+.plot .b-slow{fill:var(--demand);} .plot .b-cut{fill:var(--demand);fill-opacity:.3;}
+.plot .hline{stroke:var(--accent-ink);stroke-width:1.5;stroke-dasharray:4 3;}
+.plot .bl{font:700 10px var(--mono);fill:#fff;}
+
+/* 04 · ring */
+.rg-base{fill:none;stroke:var(--card-border);stroke-width:2;}
+.rg-k{stroke:var(--bg);stroke-width:1;transition:fill .5s;}
+.rg-k.o0,.rg-t.o0{fill:var(--c0);stroke:var(--c0);} .rg-k.o1,.rg-t.o1{fill:var(--c1);stroke:var(--c1);}
+.rg-k.o2,.rg-t.o2{fill:var(--c2);stroke:var(--c2);} .rg-k.o3,.rg-t.o3{fill:var(--c3);stroke:var(--c3);}
+.rg-k{stroke:var(--bg) !important;}
+.rg-k.moved{stroke:var(--text) !important;stroke-width:2;}
+.rg-t{stroke-width:2;fill:none;opacity:.8;}
+.rg-c{font:600 12px var(--mono);fill:var(--text);}
+.rg-s{font:11px var(--mono);fill:var(--text-muted);}
+.rg-leg{font:600 11px var(--mono);}
+.rg-leg.o0{fill:var(--c0);} .rg-leg.o1{fill:var(--c1);} .rg-leg.o2{fill:var(--c2);} .rg-leg.o3{fill:var(--c3);}
+
+/* 05 · quorum */
+.q-ctl{display:flex;flex-wrap:wrap;gap:4px 22px;}
+.q-l{font:700 14px var(--mono);align-self:center;margin-right:4px;}
+.q-nodes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:6px 0 12px;}
+.q-node{font:inherit;color:var(--text);background:var(--bg);border:1.5px solid var(--card-border);border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;transition:background .25s,border-color .25s,opacity .25s;}
+.q-node b{display:block;font-size:15px;}
+.q-node .v{display:block;font:700 20px var(--mono);margin:4px 0 2px;}
+.q-node small{display:block;font:12px var(--mono);color:var(--text-muted);min-height:16px;}
+.q-node.down{opacity:.5;border-style:dashed;border-color:var(--demand);}
+.q-node.got{border-color:var(--capacity);background:var(--capacity-wash);}
+.q-node.asked{box-shadow:0 0 0 3px var(--accent);}
+.q-node.stale.asked{background:var(--demand-wash);}
+
+/* 08 · gossip */
+.gs-n circle{fill:var(--bg);stroke:var(--card-border);stroke-width:2;transition:fill .3s,stroke .3s;}
+.gs-n text{font:600 11px var(--mono);fill:var(--text);}
+.gs-n.dead circle{fill:var(--demand-wash);stroke:var(--demand);stroke-dasharray:4 3;}
+.gs-n.sus circle{stroke:var(--accent);stroke-width:3;}
+.gs-n.know circle{fill:var(--capacity-wash);stroke:var(--capacity);}
+.gs-l{stroke:var(--accent-ink);stroke-width:2;opacity:0;animation:gsl 1s ease-out;}
+@keyframes gsl{0%{opacity:0;}20%{opacity:.9;}100%{opacity:0;}}
+.gs-c{font:600 12px var(--mono);fill:var(--text);}
+
+/* 09 · merkle */
+.mk-n rect{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;transition:fill .3s,stroke .3s,opacity .3s;}
+.mk-n text{font:10px var(--mono);fill:var(--text);}
+.mk-n text.b{fill:var(--text-muted);}
+.mk-n.same rect{fill:var(--capacity-wash);stroke:var(--capacity);}
+.mk-n.diff rect{fill:var(--demand-wash);stroke:var(--demand);stroke-width:2.5;}
+.mk-n.fix rect{fill:var(--accent-wash);stroke:var(--accent);stroke-width:2.5;}
+.mk-n.skip{opacity:.35;}
+.mk-e{stroke:var(--card-border);stroke-width:1.2;}
+.mk-l{font:600 10.5px var(--mono);fill:var(--text-muted);}
+
+/* 10 · erasure coding */
+.ec-grid{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;min-height:76px;}
+.ec-s{width:54px;border:1.5px solid var(--card-border);border-radius:9px;padding:5px 4px;text-align:center;background:var(--bg);transition:opacity .3s,border-color .3s;}
+.ec-s small{display:block;font:10.5px var(--mono);color:var(--text-muted);}
+.ec-s b{display:block;font:700 12.5px var(--mono);border-radius:5px;padding:5px 0;margin-top:3px;}
+.ec-s b.f{background:var(--capacity-wash);color:var(--capacity);}
+.ec-s b.d{background:var(--accent-wash);color:var(--accent-ink);}
+.ec-s b.p{background:var(--demand-wash);color:var(--demand);}
+.ec-s.lost{opacity:.3;border-style:dashed;border-color:var(--demand);}
+.ec-bar{height:10px;border-radius:999px;background:var(--track);overflow:hidden;margin:2px 0 8px;}
+.ec-bar i{display:block;height:100%;background:var(--accent);transition:width .5s;}
+
+/* 15 · dashboard (as in the agents post) */
+.d-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:8px 0 10px;}
+.d-tile{border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;background:var(--bg);}
+.d-tile .l{font-size:13px;color:var(--text-muted);}
+.d-tile .v{font:600 24px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:2px 0 4px;}
+.d-tile svg{display:block;width:100%;height:30px;}
+.d-tile svg path{fill:none;stroke:var(--capacity);stroke-width:2;}
+.d-tile.bad{border-color:var(--demand);}
+.d-tile.bad svg path{stroke:var(--demand);}
+.d-tile.warn{border-color:var(--accent);}
+.d-alarm{min-height:46px;font-size:15px;padding:8px 12px;border-radius:10px;background:var(--capacity-wash);border:1px solid var(--capacity);}
+.d-alarm.on{background:var(--demand-wash);border-color:var(--demand);}
+@media (max-width:640px){.d-tiles{grid-template-columns:repeat(2,minmax(0,1fr));}.q-nodes{gap:6px;}}
+
+@media (prefers-reduced-motion:reduce){.gs-l{animation:none;}}
+
+/* 01 · the morning message */
+.phone{max-width:380px;margin:10px auto 4px;border:1.5px solid var(--card-border);border-radius:22px;background:var(--bg);padding:12px;box-shadow:0 6px 24px rgba(0,0,0,.08);}
+.phone.wa{background:linear-gradient(var(--capacity-wash),var(--capacity-wash)),var(--bg);}
+.pv-top{display:flex;justify-content:space-between;font:600 11.5px var(--mono);color:var(--text-muted);margin-bottom:8px;}
+.pv-art{height:170px;border-radius:12px;background:radial-gradient(circle at 50% 78%,#ffe7a3 0,#f6b94b 22%,#c96a2b 46%,#3b2a4a 80%);position:relative;overflow:hidden;margin-bottom:10px;}
+.pv-art::before{content:"";position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(transparent,rgba(30,40,20,.85));clip-path:polygon(0 60%,18% 35%,34% 55%,52% 25%,70% 50%,86% 32%,100% 52%,100% 100%,0 100%);}
+.pv-art::after{content:"✝";position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:34px;color:rgba(255,248,225,.9);}
+.pv-bubble{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:14.5px;line-height:1.5;}
+.pv-bubble b{display:block;font:700 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:4px;}
+.pv-video{display:flex;align-items:center;gap:10px;}
+.pv-video i{flex:none;width:38px;height:38px;border-radius:50%;background:var(--accent);color:#111;display:grid;place-items:center;font-style:normal;font-weight:700;}
+
+/* 03 · local vs AWS */
+.port{display:grid;gap:6px;margin:8px 0 10px;}
+.port div{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--card-border);border-radius:10px;background:var(--bg);transition:background .35s,border-color .35s;}
+.port div b{font:700 12.5px var(--mono);}
+.port div span{font-size:14px;transition:opacity .25s;}
+.port.aws div{border-color:var(--accent);background:var(--accent-wash);}
+.port span.fade{opacity:0;}
+@media (max-width:640px){.port div{grid-template-columns:1fr;gap:2px;}}
+
+/* 10 · quality gate */
+.gate-grid{display:grid;grid-template-columns:minmax(150px,1.4fr) repeat(4,minmax(0,1fr));gap:4px;margin:8px 0 10px;font-size:13.5px;}
+.gate-grid > div{padding:6px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--card-border);text-align:center;transition:background .3s,border-color .3s;}
+.gate-grid > div.h{font:700 11.5px var(--mono);background:none;border:0;}
+.gate-grid > div.l{text-align:left;}
+.gate-grid > div.ok{background:var(--capacity-wash);border-color:var(--capacity);}
+.gate-grid > div.bad{background:var(--demand-wash);border-color:var(--demand);font-weight:700;}
+.gate-grid > div.hold{background:var(--accent-wash);border-color:var(--accent);}
+@media (max-width:640px){.gate-grid{grid-template-columns:minmax(110px,1.3fr) repeat(4,minmax(0,1fr));font-size:12px;}}
+
+/* 06 · time zones, 07 · pacing */
+.plot .tz-bar{fill:var(--track);transition:fill .3s;}
+.plot .tz-bar.on{fill:var(--accent);}
+.plot .tz-bar.done{fill:var(--capacity);}
+.plot .cursor{stroke:var(--text);stroke-width:1.5;stroke-dasharray:3 3;}
+.plot .limit{stroke:var(--demand);stroke-width:2;stroke-dasharray:6 4;}
+.plot .sent{fill:var(--capacity);fill-opacity:.35;stroke:var(--capacity);stroke-width:2;}
+.plot .err{fill:var(--demand);fill-opacity:.45;}
+.plot .bar-r{fill:var(--c0);} .plot .bar-w{fill:var(--c1);} .plot .bar-t{fill:var(--c2);} .plot .bar-i{fill:var(--c3);} .plot .bar-o{fill:var(--mute);}
+
+/* 13 · rebuild steps */
+.steps{counter-reset:s;list-style:none;padding:0;margin:8px 0 22px;display:grid;gap:8px;}
+.steps li{counter-increment:s;position:relative;padding:10px 12px 10px 48px;border:1px solid var(--card-border);border-radius:10px;background:var(--card-bg);font-size:15px;}
+.steps li::before{content:counter(s);position:absolute;left:12px;top:10px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#111;font:700 13px/24px var(--mono);text-align:center;}
+/* 08 · the ladder */
+.ladder{list-style:none;margin:6px 0 12px;padding:0;counter-reset:l;display:grid;gap:6px;}
+.ladder li{counter-increment:l;display:grid;grid-template-columns:28px 1fr auto;column-gap:10px;align-items:center;padding:9px 12px;border:1px solid var(--card-border);border-radius:10px;background:var(--bg);transition:background .25s,border-color .25s;}
+.ladder li::before{content:counter(l);grid-row:span 2;font:700 15px var(--mono);color:var(--accent-ink);text-align:center;}
+.ladder li b{font-size:15px;}
+.ladder li span{grid-column:2;font-size:13px;color:var(--text-muted);}
+.ladder li i{grid-column:3;grid-row:1 / span 2;font:700 12.5px var(--mono);font-style:normal;}
+.ladder li.try{border-color:var(--accent);background:var(--accent-wash);}
+.ladder li.fail{border-color:var(--demand);background:var(--demand-wash);border-style:dashed;}
+.ladder li.ok{border-color:var(--capacity);background:var(--capacity-wash);}
+</style>
+</head>
+<body>
+<div class="scroll-progress" aria-hidden="true"></div>
+<button class="theme-toggle" type="button" aria-label="Toggle dark mode">🌙</button>
+
+<div class="wrap">
+<nav class="topbar" aria-label="Site">
+  <img src="../images/avatar.webp?v=3" alt="" width="44" height="44">
+  <a href="../">Ambrose <span class="last">Tuscano</span></a>
+  <a class="home" href="../#intro">Watch my 3-min intro</a>
+</nav>
+
+<header class="hero">
+  <span class="kicker">Field notes · Microservices</span>
+  <h1>Seven O'Clock, Every Morning</h1>
+  <p class="alt">or: building a daily scripture service, from docker compose to AWS</p>
+  
+  <p class="dek">Daily Bible sends every subscriber the day's reading, a saint's quote, an AI image and a video, in English, Hindi, Marathi or Spanish, on WhatsApp or email, at 7 AM their time. Here's how I built it as microservices, tested it all on my laptop, then moved it to AWS. Everything you need to rebuild it is in the diagrams.</p>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>5 min read</span></div>
+</header>
+
+<div class="card origin" role="note">
+  <div class="q">What this is</div>
+  <p>My own project, designed and built end to end. Latency, throughput and cost figures come from local load tests or are illustrative estimates, and are labelled that way.</p>
+</div>
+
+<article>
+<section class="card tldr hats" aria-labelledby="tldr">
+<h2 id="tldr">The short version, for whichever hat you're wearing</h2>
+<div class="btns" role="group" aria-label="Pick a role">
+  <button class="btn" type="button" data-hat="all" aria-pressed="true">Everyone</button>
+  <button class="btn" type="button" data-hat="eng" aria-pressed="false">Engineer</button>
+  <button class="btn" type="button" data-hat="arch" aria-pressed="false">Architect</button>
+  <button class="btn" type="button" data-hat="em" aria-pressed="false">Manager</button>
+</div>
+<div class="hat" data-for="all">
+<ul>
+  <li><strong>Make the day's content once, send it many times.</strong> Generation is a fixed daily cost; delivery is the only part that grows.</li>
+  <li><strong>Every step can fail and the morning still happens:</strong> retries, fallbacks, and a ladder that ends in plain text.</li>
+  <li><strong>Built and tested on a laptop first,</strong> then each piece swapped for its AWS twin.</li>
+</ul>
+</div>
+<div class="hat" data-for="eng" hidden>
+<ul>
+  <li><strong>One package per date, written with a conditional put:</strong> reruns are free, double-runs are impossible.</li>
+  <li><strong>Outbox + dedupe key (subscriber, date, channel):</strong> a crash never sends twice.</li>
+  <li><strong>Scripture is never generated:</strong> it's read from a stored, versioned text; models only write around it.</li>
+</ul>
+</div>
+<div class="hat" data-for="arch" hidden>
+<ul>
+  <li><strong>Small services behind queues,</strong> each with one job, its own data and its own failure budget.</li>
+  <li><strong>Same contracts locally and in the cloud:</strong> LocalStack, MinIO and Mailpit stand in for SQS, S3 and SES.</li>
+  <li><strong>Per-channel pacing and circuit breakers,</strong> so a slow WhatsApp never delays email.</li>
+</ul>
+</div>
+<div class="hat" data-for="em" hidden>
+<ul>
+  <li><strong>The promise is "7 AM, every day":</strong> on-time delivery rate is the headline metric.</li>
+  <li><strong>Four languages, one review gate,</strong> with a native-speaker check before any language goes live.</li>
+  <li><strong>Cost is mostly messaging,</strong> not AI; the slider in section 12 shows where it goes.</li>
+</ul>
+</div>
+</section>
+
+<nav class="card pmap" aria-labelledby="pmap-t">
+<div class="q" id="pmap-t">The five things I care about, and where they show up</div>
+<div class="pgroups">
+  <div><b>Scale</b><a href="#s-fan">fan-out by time zone</a><a href="#s-cost">cost per subscriber</a><a href="#s-arch">services behind queues</a></div>
+  <div><b>Speed</b><a href="#s-dag">a parallel pipeline</a><a href="#s-pace">pacing, not bursting</a><a href="#s-port">fast local loops</a></div>
+  <div><b>Reliability</b><a href="#s-idem">idempotent runs</a><a href="#s-outbox">outbox &amp; dedupe</a><a href="#s-gates">quality gates</a></div>
+  <div><b>Visibility</b><a href="#s-dash">on-time delivery</a><a href="#s-dash">dead letters</a><a href="#s-gates">per-language checks</a></div>
+  <div><b>Failover</b><a href="#s-ladder">the video ladder</a><a href="#s-pace">circuit breakers</a><a href="#s-outbox">redrive</a></div>
+</div>
+</nav>
+
+<div class="section-title" id="s-what"><span class="dot"></span><span class="n">01</span><span class="section-line"></span></div>
+<h2>What lands at 7 AM</h2>
+
+<div class="widget" id="preview">
+  <div class="widget-title">Interactive · one morning, four languages, two channels</div>
+  <div class="btns" role="group" aria-label="Language">
+    <button class="btn" type="button" data-lang="en" aria-pressed="true">English</button>
+    <button class="btn" type="button" data-lang="hi">हिन्दी</button>
+    <button class="btn" type="button" data-lang="mr">मराठी</button>
+    <button class="btn" type="button" data-lang="es">Español</button>
+  </div>
+  <div class="btns" role="group" aria-label="Channel">
+    <button class="btn" type="button" data-ch="wa" aria-pressed="true">WhatsApp</button>
+    <button class="btn" type="button" data-ch="email">Email</button>
+  </div>
+  <div class="phone" id="pv"></div>
+</div>
+
+<div class="section-title" id="s-arch"><span class="dot"></span><span class="n">02</span><span class="section-line"></span><span class="pill">scale</span></div>
+<h2>Eleven small services</h2>
+
+<p>Each does one job, owns its data, and talks through queues. Press play to follow one morning.</p>
+
+<div class="widget" id="arch">
+  <div class="widget-title">Animation · from the 18:00 UTC alarm to a message in your hand</div>
+  <div class="btns" role="group" aria-label="Animation controls">
+    <button class="btn" type="button" data-t="play">▶ Play</button>
+    <button class="btn" type="button" data-t="prev" aria-label="Previous step">◀</button>
+    <button class="btn" type="button" data-t="next" aria-label="Next step">▶</button>
+    <button class="btn" type="button" data-t="0">1 · Make</button>
+    <button class="btn" type="button" data-t="7">2 · Store</button>
+    <button class="btn" type="button" data-t="8">3 · Send</button>
+  </div>
+  <div class="tour-cap" aria-live="polite"><span class="tour-n">0 / 13</span><span class="tour-t">Press play to follow one morning through the system.</span></div>
+  <div class="journey tour">
+    <svg viewBox="0 0 360 600" role="img" aria-labelledby="arch-t">
+      <title id="arch-t">The Daily Bible services. A scheduler starts an orchestrator, which calls the reading, writer, translation, image, audio and video services in parallel, stores one package per date, and hands it to a fan-out service. Fan-out reads subscribers from the subscriber service and puts one message per subscriber on the email or WhatsApp queue, released at 7 AM local time. Email and WhatsApp senders deliver, and every service reports to observability.</title>
+      <g class="node" data-node="sched"><rect x="8" y="6" width="344" height="30" rx="15"/><text x="180" y="25" font-size="11" text-anchor="middle">scheduler · 18:00 UTC, the day before</text></g>
+      <line class="wire" x1="180" y1="36" x2="180" y2="46"/>
+      <g class="node" data-node="orch"><rect x="8" y="46" width="344" height="34" rx="6"/><text x="180" y="62" font-size="11.5" font-weight="700" text-anchor="middle">orchestrator</text><text x="180" y="74" font-size="9.5" text-anchor="middle" class="sub">a state machine · retries · checkpoints</text></g>
+      <line class="wire" x1="62" y1="80" x2="62" y2="92"/><line class="wire" x1="180" y1="80" x2="180" y2="92"/><line class="wire" x1="298" y1="80" x2="298" y2="92"/>
+      <g class="node" data-node="read"><rect x="8" y="92" width="108" height="42" rx="6"/><text x="62" y="109" font-size="11" text-anchor="middle">reading</text><text x="62" y="124" font-size="9.5" text-anchor="middle" class="sub">calendar + text</text></g>
+      <g class="node" data-node="write"><rect x="126" y="92" width="108" height="42" rx="6"/><text x="180" y="109" font-size="11" text-anchor="middle">writer</text><text x="180" y="124" font-size="9.5" text-anchor="middle" class="sub">quote + reflection</text></g>
+      <g class="node" data-node="trans"><rect x="244" y="92" width="108" height="42" rx="6"/><text x="298" y="109" font-size="11" text-anchor="middle">translate</text><text x="298" y="124" font-size="9.5" text-anchor="middle" class="sub">hi · mr · es</text></g>
+      <g class="node" data-node="img"><rect x="8" y="142" width="108" height="42" rx="6"/><text x="62" y="159" font-size="11" text-anchor="middle">image</text><text x="62" y="174" font-size="9.5" text-anchor="middle" class="sub">one painting</text></g>
+      <g class="node" data-node="audio"><rect x="126" y="142" width="108" height="42" rx="6"/><text x="180" y="159" font-size="11" text-anchor="middle">audio</text><text x="180" y="174" font-size="9.5" text-anchor="middle" class="sub">4 voices</text></g>
+      <g class="node" data-node="video"><rect x="244" y="142" width="108" height="42" rx="6"/><text x="298" y="159" font-size="11" text-anchor="middle">video</text><text x="298" y="174" font-size="9.5" text-anchor="middle" class="sub">find or render</text></g>
+      <line class="wire" x1="180" y1="184" x2="180" y2="196"/>
+      <g class="node" data-node="gate"><rect x="8" y="196" width="344" height="30" rx="6"/><text x="180" y="215" font-size="11" text-anchor="middle">quality gate · per language</text></g>
+      <line class="wire" x1="180" y1="226" x2="180" y2="238"/>
+      <g class="node" data-node="store"><rect x="8" y="238" width="344" height="40" rx="8"/><text x="180" y="255" font-size="11.5" font-weight="700" text-anchor="middle">package store</text><text x="180" y="270" font-size="9.5" text-anchor="middle" class="sub">one package per date · object storage + key-value</text></g>
+      <line class="wire" x1="180" y1="278" x2="180" y2="290"/>
+      <g class="node" data-node="subs"><rect x="8" y="290" width="150" height="42" rx="6"/><text x="83" y="307" font-size="11" text-anchor="middle">subscribers</text><text x="83" y="322" font-size="9.5" text-anchor="middle" class="sub">API + Postgres</text></g>
+      <g class="node" data-node="fan"><rect x="166" y="290" width="186" height="42" rx="6"/><text x="259" y="307" font-size="11" text-anchor="middle">fan-out</text><text x="259" y="322" font-size="9.5" text-anchor="middle" class="sub">released per zone at 7 AM</text></g>
+      <line class="wire" x1="158" y1="311" x2="166" y2="311"/>
+      <line class="wire" x1="259" y1="332" x2="259" y2="344"/><line class="wire" x1="92" y1="344" x2="268" y2="344"/><line class="wire" x1="92" y1="344" x2="92" y2="356"/><line class="wire" x1="268" y1="344" x2="268" y2="356"/>
+      <g class="node" data-node="qe"><rect x="8" y="356" width="168" height="36" rx="6"/><text x="92" y="372" font-size="11" text-anchor="middle">email queue</text><text x="92" y="385" font-size="9.5" text-anchor="middle" class="sub">one message per subscriber</text></g>
+      <g class="node" data-node="qw"><rect x="184" y="356" width="168" height="36" rx="6"/><text x="268" y="372" font-size="11" text-anchor="middle">WhatsApp queue</text><text x="268" y="385" font-size="9.5" text-anchor="middle" class="sub">one message per subscriber</text></g>
+      <g class="node" data-node="se"><rect x="8" y="402" width="168" height="36" rx="6"/><text x="92" y="418" font-size="11" text-anchor="middle">email sender</text><text x="92" y="431" font-size="9.5" text-anchor="middle" class="sub">paced · outbox</text></g>
+      <g class="node" data-node="sw"><rect x="184" y="402" width="168" height="36" rx="6"/><text x="268" y="418" font-size="11" text-anchor="middle">WhatsApp sender</text><text x="268" y="431" font-size="9.5" text-anchor="middle" class="sub">paced · breaker</text></g>
+      <line class="wire" x1="92" y1="392" x2="92" y2="402"/><line class="wire" x1="268" y1="392" x2="268" y2="402"/>
+      <g class="node" data-node="dlq"><rect x="8" y="448" width="344" height="30" rx="6"/><text x="180" y="467" font-size="11" text-anchor="middle">dead letters · alarm · one-click redrive</text></g>
+      <g class="node" data-node="user"><rect x="60" y="488" width="240" height="34" rx="17"/><text x="180" y="509" font-size="11.5" text-anchor="middle">a phone at 7:00 AM</text></g>
+      <g class="node" data-node="obs"><rect x="8" y="534" width="344" height="40" rx="8"/><text x="180" y="551" font-size="11.5" font-weight="700" text-anchor="middle">observability</text><text x="180" y="566" font-size="9.5" text-anchor="middle" class="sub">traces · metrics · on-time rate · alarms</text></g>
+      <circle class="tour-dot" cx="340" cy="8" r="6" stroke-width="2" opacity="0"/>
+    </svg>
+    <ol class="tour-steps"></ol>
+  </div>
+</div>
+
+<div class="section-title" id="s-port"><span class="dot"></span><span class="n">03</span><span class="section-line"></span><span class="pill">speed</span></div>
+<h2>Laptop first, then AWS</h2>
+
+<p>Every service talks to an interface, not a vendor. Locally, a container plays each AWS part. Flip it:</p>
+
+<div class="widget" id="port">
+  <div class="widget-title">Interactive · the same contracts, two homes</div>
+  <div class="btns" role="group" aria-label="Where">
+    <button class="btn" type="button" data-w="local" aria-pressed="true">💻 docker compose</button>
+    <button class="btn" type="button" data-w="aws">☁️ AWS</button>
+  </div>
+  <div class="port" id="port-rows"></div>
+  <p class="readout" id="port-out" aria-live="polite"></p>
+</div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">docker-compose.yml · the local stack (trimmed)</span></div><pre><code>services:
+  postgres:   { image: postgres:16 }
+  localstack: { image: localstack/localstack, environment: { SERVICES: sqs,sns,dynamodb,stepfunctions,events } }
+  minio:      { image: minio/minio, command: server /data }
+  mailpit:    { image: axllent/mailpit }          # every email lands here, viewable at :8025
+  wa-mock:    { image: wiremock/wiremock }        # fake WhatsApp Cloud API: records, can return 429s
+  reading:    { build: ./services/reading }
+  writer:     { build: ./services/writer, environment: { LLM_MODE: fixtures } }
+  # ... translate, image, audio, video, fanout, sender-email, sender-whatsapp, subscribers
+</code></pre></div>
+
+<div class="section-title" id="s-dag"><span class="dot"></span><span class="n">04</span><span class="section-line"></span><span class="pill">speed</span></div>
+<h2>Make it once, in parallel</h2>
+
+<div class="widget" id="dag">
+  <div class="widget-title">Interactive · the daily pipeline, two schedules</div>
+  <div class="btns" role="group" aria-label="Pick a schedule">
+    <button class="btn" type="button" data-m="seq">One after another</button>
+    <button class="btn" type="button" data-m="par">As a graph</button>
+  </div>
+  <div class="plot"><svg id="dag-svg" viewBox="0 0 560 260" role="img" aria-labelledby="dag-t"><title id="dag-t">A timeline of the pipeline stages.</title></svg></div>
+  <p class="readout" id="dag-out" aria-live="polite">Pick a schedule.</p>
+  <p class="small-note" style="margin:0">seconds, from local test runs with recorded model responses replaced by real calls · illustrative</p>
+</div>
+
+<div class="section-title" id="s-idem"><span class="dot"></span><span class="n">05</span><span class="section-line"></span><span class="pill">reliability</span></div>
+<h2>Run it twice, get one morning</h2>
+
+<div class="widget" id="idem">
+  <div class="widget-title">Animation · crashes and double triggers</div>
+  <div class="btns" role="group" aria-label="Pick a failure">
+    <button class="btn" type="button" data-s="crash">Crash during audio</button>
+    <button class="btn" type="button" data-s="twice">Scheduler fires twice</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 250" aria-hidden="true">
+      <g class="node" data-node="lock"><rect x="10" y="6" width="280" height="34" rx="6"/><text x="150" y="22" font-size="11" text-anchor="middle">claim the date</text><text x="150" y="34" font-size="9.5" text-anchor="middle" class="sub">put "2026-11-05" only if it doesn't exist</text></g>
+      <g class="node" data-node="s1"><rect x="10" y="52" width="86" height="34" rx="6"/><text x="53" y="73" font-size="10.5" text-anchor="middle">text ✓</text></g>
+      <g class="node" data-node="s2"><rect x="107" y="52" width="86" height="34" rx="6"/><text x="150" y="73" font-size="10.5" text-anchor="middle">image ✓</text></g>
+      <g class="node" data-node="s3"><rect x="204" y="52" width="86" height="34" rx="6"/><text x="247" y="73" font-size="10.5" text-anchor="middle" id="i-s3" data-reset="audio">audio</text></g>
+      <g class="node" data-node="ck"><rect x="10" y="98" width="280" height="34" rx="6"/><text x="150" y="114" font-size="11" text-anchor="middle">checkpoints</text><text x="150" y="126" font-size="9.5" text-anchor="middle" class="sub">each stage's output saved by content hash</text></g>
+      <g class="node" data-node="run2"><rect x="10" y="144" width="280" height="34" rx="6"/><text x="150" y="165" font-size="11" text-anchor="middle" id="i-run2" data-reset="the retry">the retry</text></g>
+      <g class="node" data-node="pkg"><rect x="40" y="196" width="220" height="40" rx="20"/><text x="150" y="220" font-size="11.5" text-anchor="middle">one package for the date</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a failure.</li></ol></div>
+  </div>
+</div>
+
+<div class="section-title" id="s-fan"><span class="dot"></span><span class="n">06</span><span class="section-line"></span><span class="pill">scale</span></div>
+<h2>Seven o'clock, everywhere</h2>
+
+<p>One package, sent in waves as 7 AM sweeps around the world. A schedule per time zone fires at 7 AM local and fans out only that zone's subscribers. (SQS can only delay a message 15 minutes, so the queue can't do the waiting.)</p>
+
+<div class="widget" id="tz">
+  <div class="widget-title">Animation · one day of sends, from 18:00 UTC</div>
+  <div class="btns"><button class="btn" type="button" id="tz-go">▶ Play 24 hours</button></div>
+  <div class="plot"><svg id="tz-svg" viewBox="0 0 560 250" role="img" aria-labelledby="tz-t"><title id="tz-t">Send windows for each time zone across one UTC day.</title></svg></div>
+  <p class="readout" id="tz-out" aria-live="polite">Press play.</p>
+</div>
+
+<div class="section-title" id="s-pace"><span class="dot"></span><span class="n">07</span><span class="section-line"></span><span class="pill">speed</span><span class="pill">failover</span></div>
+<h2>Pace, don't burst</h2>
+
+<p>WhatsApp and email providers cap messages per second. Blast them and you get throttled; pace them and nothing fails.</p>
+
+<div class="widget" id="pace">
+  <div class="widget-title">Interactive · 60,000 Indian subscribers at 7:00 IST</div>
+  <div class="btns" role="group" aria-label="Pick a sender">
+    <button class="btn" type="button" data-p="burst">Send as fast as possible</button>
+    <button class="btn" type="button" data-p="paced">Token bucket</button>
+    <button class="btn" type="button" data-p="down">Provider goes down</button>
+  </div>
+  <div class="plot"><svg id="pace-svg" viewBox="0 0 560 230" role="img" aria-labelledby="pace-t"><title id="pace-t">Messages sent per second against the provider's limit.</title></svg></div>
+  <p class="readout" id="pace-out" aria-live="polite">Pick a sender.</p>
+  <p class="small-note" style="margin:0">illustrative: a limit of 80 messages a second</p>
+</div>
+
+<div class="section-title" id="s-ladder"><span class="dot"></span><span class="n">08</span><span class="section-line"></span><span class="pill">failover</span></div>
+<h2>A video, no matter what</h2>
+
+<div class="widget" id="ladder">
+  <div class="widget-title">Animation · the video ladder</div>
+  <div class="btns" role="group" aria-label="Pick a day">
+    <button class="btn" type="button" data-l="0">Sunday, English</button>
+    <button class="btn" type="button" data-l="2">Weekday, Marathi</button>
+    <button class="btn" type="button" data-l="3">Renderer is down</button>
+  </div>
+  <ol class="ladder">
+    <li><b>a homily for today's reading</b><span>search trusted Catholic channels, in the subscriber's language, 3–20 minutes</span><i></i></li>
+    <li><b>a reading video</b><span>someone reading today's passage, same checks</span><i></i></li>
+    <li><b>render our own</b><span>the day's image + narration + captions, made in ~2 minutes</span><i></i></li>
+    <li><b>image + audio only</b><span>the voice note still goes out</span><i></i></li>
+    <li><b>text only</b><span>the reading and the quote, always</span><i></i></li>
+  </ol>
+  <p class="readout" id="l-out" aria-live="polite">Pick a day.</p>
+</div>
+
+<div class="section-title" id="s-outbox"><span class="dot"></span><span class="n">09</span><span class="section-line"></span><span class="pill">reliability</span></div>
+<h2>Never twice, never lost</h2>
+
+<div class="widget" id="outbox">
+  <div class="widget-title">Animation · one message through the sender</div>
+  <div class="btns" role="group" aria-label="Pick a failure">
+    <button class="btn" type="button" data-s="crash">Sender crashes after sending</button>
+    <button class="btn" type="button" data-s="poison">A message that always fails</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 260" aria-hidden="true">
+      <g class="node" data-node="q"><rect x="10" y="6" width="280" height="34" rx="6"/><text x="150" y="22" font-size="11" text-anchor="middle">queue message</text><text x="150" y="34" font-size="9.5" text-anchor="middle" class="sub">key: subscriber · date · channel</text></g>
+      <g class="node" data-node="check"><rect x="10" y="52" width="280" height="34" rx="6"/><text x="150" y="68" font-size="11" text-anchor="middle">seen this key?</text><text x="150" y="80" font-size="9.5" text-anchor="middle" class="sub">delivery log, conditional write</text></g>
+      <g class="node" data-node="send"><rect x="10" y="98" width="280" height="34" rx="6"/><text x="150" y="114" font-size="11" text-anchor="middle">send</text><text x="150" y="126" font-size="9.5" text-anchor="middle" class="sub">idempotency key passed to the provider</text></g>
+      <g class="node" data-node="mark"><rect x="10" y="144" width="280" height="34" rx="6"/><text x="150" y="165" font-size="11" text-anchor="middle">mark sent, then delete the message</text></g>
+      <g class="node" data-node="dlq"><rect x="10" y="190" width="136" height="40" rx="6"/><text x="78" y="207" font-size="11" text-anchor="middle">dead letters</text><text x="78" y="221" font-size="9.5" text-anchor="middle" class="sub">after 5 tries</text></g>
+      <g class="node" data-node="alarm"><rect x="154" y="190" width="136" height="40" rx="6"/><text x="222" y="207" font-size="11" text-anchor="middle">alarm + redrive</text><text x="222" y="221" font-size="9.5" text-anchor="middle" class="sub">after the fix</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a failure.</li></ol></div>
+  </div>
+</div>
+
+<div class="section-title" id="s-gates"><span class="dot"></span><span class="n">10</span><span class="section-line"></span><span class="pill">reliability</span><span class="pill">visibility</span></div>
+<h2>Checks before anything sends</h2>
+
+<p>The rule that matters most: models never write scripture. The text comes from a stored, versioned Bible; models only write around it.</p>
+
+<div class="widget" id="gates">
+  <div class="widget-title">Animation · the quality gate, per language</div>
+  <div class="btns" role="group" aria-label="Pick a day">
+    <button class="btn" type="button" data-g="good">A normal day</button>
+    <button class="btn" type="button" data-g="bad">A bad Marathi translation</button>
+  </div>
+  <div class="gate-grid" id="gate-grid"></div>
+  <p class="readout" id="gate-out" aria-live="polite">Pick a day.</p>
+</div>
+
+<div class="section-title" id="s-dash"><span class="dot"></span><span class="n">11</span><span class="section-line"></span><span class="pill">visibility</span></div>
+<h2>One number: on time</h2>
+
+<div class="widget" id="dash">
+  <div class="widget-title">Interactive · the morning dashboard, and a WhatsApp outage</div>
+  <div class="btns"><button class="btn" type="button" id="d-kill">⚡ Break the WhatsApp provider</button><button class="btn" type="button" id="d-back">Bring it back</button></div>
+  <div class="d-tiles" id="d-tiles"></div>
+  <div class="d-alarm" id="d-alarm" aria-live="polite">All channels healthy.</div>
+  <p class="small-note" style="margin:6px 0 0">simulated: one tick per minute during the India morning wave</p>
+</div>
+
+<div class="section-title" id="s-cost"><span class="dot"></span><span class="n">12</span><span class="section-line"></span><span class="pill">scale</span></div>
+<h2>Where the money goes</h2>
+
+<div class="widget" id="cost">
+  <div class="widget-title">Interactive · monthly cost as subscribers grow</div>
+  <label class="range"><span>subscribers: <b id="c-n">1,000</b></span><input id="c-r" type="range" min="0" max="100" value="30" aria-label="Subscribers"></label>
+  <div class="hb" id="c-rows"></div>
+  <p class="readout" id="c-out" aria-live="polite"></p>
+  <p class="small-note" style="margin:0">illustrative unit costs; half the subscribers on WhatsApp, half on email</p>
+</div>
+
+<div class="section-title" id="s-build"><span class="dot"></span><span class="n">13</span><span class="section-line"></span></div>
+<h2>Rebuild it yourself</h2>
+
+<ol class="steps">
+  <li><b>Load the Bible once.</b> Public-domain text per language into a <code>verses</code> table; a liturgical calendar maps each date to a reading.</li>
+  <li><b>Write each service against an interface:</b> <code>Queue</code>, <code>Blob</code>, <code>KV</code>, <code>Mailer</code>, <code>WhatsApp</code>, <code>LLM</code>. One local and one AWS implementation each.</li>
+  <li><b>Run the stack with compose,</b> models in fixture mode, then real calls. Mailpit shows every email; the WhatsApp mock can return 429s on demand.</li>
+  <li><b>Test the failures, not just the path:</b> kill containers mid-run, fire the scheduler twice, make the mock throttle.</li>
+  <li><b>Port one piece at a time:</b> containers to ECS Fargate, LocalStack to SQS/SNS/DynamoDB, MinIO to S3, Postgres to Aurora, Mailpit to SES, the mock to the WhatsApp Cloud API, all in CDK.</li>
+  <li><b>Canary first:</b> one time zone and one language for a week, watching the on-time rate, then everyone.</li>
+</ol>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the repository</span></div><pre><code>daily-bible/
+  services/   reading  writer  translate  image  audio  video
+              fanout  sender-email  sender-whatsapp  subscribers  orchestrator
+  libs/       ports/ (Queue, Blob, KV, Mailer, WhatsApp, LLM)  adapters/local  adapters/aws
+  infra/      docker-compose.yml  cdk/ (VPC, ECS, SQS, DynamoDB, Aurora, SES, Step Functions)
+  data/       bible/<lang>.sqlite  calendar/  quotes.yaml (saints, sourced)
+  tests/      contract/  chaos/  load/</code></pre></div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the one message every sender reads</span></div><pre><code>{ "key": "sub_8f2c:2026-11-05:whatsapp",
+  "package": "s3://daily/2026-11-05/",
+  "lang": "mr", "channel": "whatsapp",
+  "zone": "Asia/Kolkata" }</code></pre></div>
+
+<div class="interrupt"><span class="tag">Sorry, quick interruption</span>
+<p>Machine translation has opinions. Ask for "the Good Shepherd" in Marathi with no context, and you can get a shepherd who's simply good at his job. That's why every language has a native-speaker gate.</p>
+</div>
+
+<div class="section-title" id="s-decisions"><span class="dot"></span><span class="n">14</span><span class="section-line"></span></div>
+<h2>Decisions, one page</h2>
+
+<ol class="dec-list">
+  <li><div class="dq">One package or one per subscriber?</div><div class="chips"><span class="chip">per subscriber</span><span class="chip won">one per date</span></div><p class="why">AI cost stays flat. <span class="cost"><b>Cost:</b> no personalisation yet.</span></p></li>
+  <li><div class="dq">Monolith or services?</div><div class="chips"><span class="chip">one app</span><span class="chip won">small services + queues</span></div><p class="why">A slow renderer can't stall sending. <span class="cost"><b>Cost:</b> more to deploy.</span></p></li>
+  <li><div class="dq">Where does scripture come from?</div><div class="chips"><span class="chip">the model</span><span class="chip won">a stored, versioned text</span></div><p class="why">Never misquote the Bible. <span class="cost"><b>Cost:</b> one-time loading.</span></p></li>
+  <li><div class="dq">How do sends get timed?</div><div class="chips"><span class="chip">delayed queue messages</span><span class="chip won">a release schedule per time zone</span></div><p class="why">Queues only delay 15 minutes; schedules can wait hours. <span class="cost"><b>Cost:</b> ~40 schedules to manage.</span></p></li>
+  <li><div class="dq">How do retries stay safe?</div><div class="chips"><span class="chip">hope</span><span class="chip won">dedupe key + idempotency key</span></div><p class="why">Crashes never double-send. <span class="cost"><b>Cost:</b> a write per message.</span></p></li>
+  <li><div class="dq">What if there's no video?</div><div class="chips"><span class="chip">skip it</span><span class="chip won">the ladder</span></div><p class="why">Something always arrives. <span class="cost"><b>Cost:</b> a renderer to run.</span></p></li>
+  <li><div class="dq">How is it tested?</div><div class="chips"><span class="chip">in the cloud</span><span class="chip won">locally, failures included</span></div><p class="why">Fast loops, no bill. <span class="cost"><b>Cost:</b> keeping mocks honest.</span></p></li>
+</ol>
+
+<div class="section-title" id="s-drink"><span class="dot"></span><span class="n">15</span><span class="section-line"></span></div>
+<h2>The well-earned drink</h2>
+
+<p>Every Brew Miles trip ends with one:</p>
+
+<ol class="plain">
+  <li><strong>Make it once, send it many times.</strong></li>
+  <li><strong>Claim the date, checkpoint every stage,</strong> and reruns become free.</li>
+  <li><strong>Key every message,</strong> pace every channel, and keep a breaker per provider.</li>
+  <li><strong>Build a ladder</strong> whose last rung is plain text.</li>
+  <li><strong>Test it on a laptop,</strong> failures and all, then port one piece at a time.</li>
+</ol>
+
+<div class="card reading"><div class="q">Further reading</div>
+<details class="more flat"><summary>Show the docs this design leans on</summary>
+<ul class="plain" style="padding:0 18px 6px 34px">
+  <li><a href="https://docs.aws.amazon.com/step-functions/latest/dg/concepts-error-handling.html" target="_blank" rel="noopener">Step Functions error handling</a> and <a href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html" target="_blank" rel="noopener">SQS dead-letter queues</a> (AWS docs).</li>
+  <li><a href="https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/" target="_blank" rel="noopener">Making retries safe with idempotent APIs</a> and <a href="https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/" target="_blank" rel="noopener">timeouts, retries and backoff with jitter</a> (AWS Builders' Library).</li>
+  <li><a href="https://microservices.io/patterns/data/transactional-outbox.html" target="_blank" rel="noopener">The transactional outbox pattern</a> (microservices.io).</li>
+  <li><a href="https://developers.facebook.com/docs/whatsapp/cloud-api/" target="_blank" rel="noopener">WhatsApp Cloud API</a> (Meta) and <a href="https://docs.aws.amazon.com/ses/latest/dg/manage-sending-quotas.html" target="_blank" rel="noopener">SES sending quotas</a> (AWS docs).</li>
+  <li><a href="https://docs.localstack.cloud/" target="_blank" rel="noopener">LocalStack</a>, <a href="https://min.io/docs/minio/container/index.html" target="_blank" rel="noopener">MinIO</a> and <a href="https://mailpit.axllent.org/" target="_blank" rel="noopener">Mailpit</a>, for the local stack.</li>
+  <li><a href="https://martinfowler.com/bliki/CircuitBreaker.html" target="_blank" rel="noopener">Circuit breaker</a> (Martin Fowler).</li>
+</ul>
+</details>
+</div>
+</article>
+</div>
+
+<footer>
+<div class="wrap">
+<figure class="bye-fig"><img class="bye-photo" src="../images/bye-wave.webp" width="960" height="587" alt="Ambrose, sitting on the floor in a black hoodie, waving goodbye" loading="lazy" decoding="async"></figure>
+<p>Daily Bible is my own project. Scripture comes from public-domain translations; quotes come from public-domain writings of the saints, each with its source. Performance and cost figures are from local tests or are illustrative.</p>
+<p>More field notes: <a href="file-that-wouldnt-die.html">The File That Wouldn't Die</a>, <a href="teammate-in-my-terminal.html">The Teammate in My Terminal</a>, <a href="agents-service-bay.html">Four Agents Walk Into a Service Bay</a> and <a href="scaling-ad-relevance-apis.html">A Million Questions a Second</a>.</p>
+<p>Building something that has to arrive on time, every time? Let's talk: <a href="../">tascano.github.io</a> · <a href="../#intro">watch my 3-minute intro</a></p>
+</div>
+</footer>
+
+<script>
+(() => {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+  const press = (group, btn) => group.forEach(b => b.setAttribute('aria-pressed', b === btn));
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const el = (parent, tag, attrs, text) => {
+    const e = document.createElementNS(svgNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    parent.appendChild(e);
+    return e;
+  };
+
+  // Theme toggle and reading progress, same behaviour as the main page.
+  const html = document.documentElement, toggle = document.querySelector('.theme-toggle');
+  const setIcon = () => { toggle.textContent = html.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'; };
+  setIcon();
+  toggle.addEventListener('click', () => {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    setIcon();
+  });
+  const bar = document.querySelector('.scroll-progress');
+  addEventListener('scroll', () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+  }, {passive: true});
+
+  // The video version: load the player only when someone presses play (phones and slow connections get 720p).
+  document.querySelectorAll('.play-facade').forEach(facade => {
+    facade.addEventListener('click', () => {
+      const player = document.createElement('video');
+      const conn = navigator.connection || {};
+      const small = window.matchMedia('(max-width: 900px)').matches || conn.saveData || /(^|-)(2g|3g)$/.test(conn.effectiveType || '');
+      player.src = (small && facade.dataset.srcSmall) || facade.dataset.src;
+      player.controls = true;
+      player.playsInline = true;
+      player.autoplay = true;
+      player.setAttribute('aria-label', facade.getAttribute('aria-label'));
+      facade.replaceWith(player);
+      player.play().catch(() => {});
+      player.focus();
+    }, {once: true});
+  });
+
+  // Pick your hat: one short version per role.
+  document.querySelectorAll('.hats').forEach(box => {
+    const btns = [...box.querySelectorAll('[data-hat]')], panels = box.querySelectorAll('.hat');
+    btns.forEach(b => b.addEventListener('click', () => {
+      press(btns, b);
+      panels.forEach(p => { p.hidden = p.dataset.for !== b.dataset.hat; });
+    }));
+  });
+
+  // Small helpers: a 32-bit hash (FNV-1a, then mixed so similar names spread out) and a seeded random generator.
+  const hash = s => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+    return h >>> 0;
+  };
+  const hex = s => hash(s).toString(16).padStart(8, '0').slice(0, 4);
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+  // A step-through tour: a dot moves between boxes, one caption per step, steps listed beside it.
+  const tour = (root, at, steps) => {
+    if (!root) return;
+    const svg = root.querySelector('svg'), dot = svg.querySelector('.tour-dot'), cap = root.querySelector('.tour-t'), num = root.querySelector('.tour-n');
+    const list = root.querySelector('.tour-steps'), playBtn = root.querySelector('[data-t="play"]');
+    let cur = -1, timer = null, run = 0, pos = [+dot.getAttribute('cx'), +dot.getAttribute('cy')];
+    const move = (to, animate) => {
+      const from = pos, me = ++run;
+      pos = to;
+      if (!animate) { dot.setAttribute('cx', to[0]); dot.setAttribute('cy', to[1]); return; }
+      const t0 = performance.now();
+      const frame = now => {
+        if (me !== run) return;
+        const k = Math.min(1, (now - t0) / 650), e = k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+        dot.setAttribute('cx', from[0] + (to[0] - from[0]) * e); dot.setAttribute('cy', from[1] + (to[1] - from[1]) * e);
+        if (k < 1) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    };
+    const go = i => {
+      i = Math.max(0, Math.min(steps.length - 1, i));
+      const prev = cur;
+      cur = i;
+      svg.querySelectorAll('.node').forEach(n => n.classList.remove('lit', 'stop', 'bad'));
+      steps.forEach(([, nodes, cls], j) => {
+        if (j > i) return;
+        const state = j === i || cls === 'bad' ? cls : 'stop';
+        nodes.split(' ').forEach(n => { const e = svg.querySelector(`[data-node="${n}"]`); e.classList.remove('lit', 'stop', 'bad'); e.classList.add(state); });
+      });
+      cap.textContent = steps[i][3];
+      num.textContent = `${i + 1} / ${steps.length}`;
+      [...list.children].forEach((li, j) => li.classList.toggle('on', j === i));
+      dot.setAttribute('opacity', 1);
+      move(at[steps[i][0]], prev === i - 1 && !reduce);
+    };
+    const stop = () => { clearTimeout(timer); timer = null; playBtn.textContent = '▶ Play'; playBtn.setAttribute('aria-pressed', 'false'); };
+    const tick = () => { go(cur + 1); if (cur >= steps.length - 1) return stop(); timer = setTimeout(tick, 2400); };
+    steps.forEach((step, i) => {
+      const li = document.createElement('li'), b = document.createElement('button');
+      b.type = 'button'; b.textContent = step[3];
+      b.addEventListener('click', () => { stop(); go(i); });
+      li.append(b); list.append(li);
+    });
+    playBtn.addEventListener('click', () => {
+      if (timer) return stop();
+      if (cur >= steps.length - 1) cur = -1;
+      playBtn.textContent = '❚❚ Pause'; playBtn.setAttribute('aria-pressed', 'true');
+      tick();
+    });
+    root.querySelector('[data-t="prev"]').addEventListener('click', () => { stop(); go(cur - 1); });
+    root.querySelector('[data-t="next"]').addEventListener('click', () => { stop(); go(cur + 1); });
+    root.querySelectorAll('[data-t]').forEach(b => { if (/^\d+$/.test(b.dataset.t)) b.addEventListener('click', () => { stop(); go(+b.dataset.t); }); });
+  };
+
+  // Story widgets: each step lights parts of a diagram, can rewrite labels, and adds a line to the log.
+  const story = (root, scenarios) => {
+    if (!root) return;
+    const log = root.querySelector('.log'), btns = [...root.querySelectorAll('[data-s]')], states = ['lit', 'stop', 'bad', 'dim'];
+    let token = 0;
+    btns.forEach(btn => btn.addEventListener('click', async () => {
+      const run = ++token;
+      press(btns, btn);
+      root.querySelectorAll('.node').forEach(n => n.classList.remove(...states));
+      root.querySelectorAll('[data-reset]').forEach(e => { e.textContent = e.dataset.reset; });
+      log.innerHTML = '';
+      for (const [names, cls, text, set] of scenarios[btn.dataset.s]) {
+        await sleep(log.children.length ? 1100 : 0);
+        if (run !== token) return;
+        names.split(' ').forEach(n => { const e = root.querySelector(`[data-node="${n}"]`); e.classList.remove(...states); e.classList.add(cls); });
+        for (const id in set || {}) root.querySelector('#' + id).textContent = set[id];
+        const li = document.createElement('li'); li.innerHTML = text; log.appendChild(li);
+      }
+    }));
+  };
+
+
+  // 01 · The morning message, in four languages and two channels.
+  const pv = document.getElementById('preview');
+  if (pv) {
+    const box = pv.querySelector('#pv'), lb = [...pv.querySelectorAll('[data-lang]')], cb = [...pv.querySelectorAll('[data-ch]')];
+    const T = {
+      en: {read: "Today's reading", ref: 'Psalm 23 · The Lord is my shepherd', q: 'A word from the saints', quote: '“You have made us for yourself, and our heart is restless until it rests in you.” — St. Augustine',
+           r: 'Reflect', ref2: 'Where do you need rest today?', v: "Today's homily", vt: '6 min · in English', a: 'Voice note', at: '2 min reflection'},
+      hi: {read: 'आज का पाठ', ref: 'स्तोत्र 23 · प्रभु मेरा चरवाहा है', q: 'संतों का वचन', quote: '“तूने हमें अपने लिए बनाया है, और हमारा हृदय तब तक बेचैन है जब तक वह तुझमें विश्राम न पाए।” — संत ऑगस्टीन',
+           r: 'मनन करें', ref2: 'आज आपको कहाँ विश्राम चाहिए?', v: 'आज का प्रवचन', vt: '6 मिनट · हिन्दी में', a: 'वॉइस नोट', at: '2 मिनट का मनन'},
+      mr: {read: 'आजचे वाचन', ref: 'स्तोत्र 23 · प्रभू माझा मेंढपाळ आहे', q: 'संतांचे वचन', quote: '“तू आम्हाला तुझ्यासाठी निर्माण केलेस, आणि आमचे हृदय तुझ्यात विसावा मिळेपर्यंत अस्वस्थ राहते.” — संत ऑगस्टीन',
+           r: 'चिंतन करा', ref2: 'आज तुम्हाला कुठे विसावा हवा आहे?', v: 'आजचे वाचन व्हिडिओ', vt: '2 मिनिटे · आमच्याकडून तयार', a: 'व्हॉइस नोट', at: '2 मिनिटांचे चिंतन'},
+      es: {read: 'Lectura de hoy', ref: 'Salmo 23 · El Señor es mi pastor', q: 'Palabra de los santos', quote: '“Nos hiciste, Señor, para ti, y nuestro corazón está inquieto hasta que descanse en ti.” — San Agustín',
+           r: 'Reflexiona', ref2: '¿Dónde necesitas descanso hoy?', v: 'Homilía de hoy', vt: '8 min · en español', a: 'Nota de voz', at: 'reflexión de 2 min'},
+    };
+    let lang = 'en', ch = 'wa';
+    const draw = () => {
+      const t = T[lang];
+      box.className = 'phone' + (ch === 'wa' ? ' wa' : '');
+      box.innerHTML = `<div class="pv-top"><span>${ch === 'wa' ? '💬 Daily Bible' : '✉️ Daily Bible · inbox'}</span><span>7:00 AM</span></div>
+        <div class="pv-art" role="img" aria-label="The day's AI painting: a sunrise over hills"></div>
+        <div class="pv-bubble"><b>${t.read}</b>${t.ref}</div>
+        <div class="pv-bubble"><b>${t.q}</b>${t.quote}</div>
+        <div class="pv-bubble pv-video"><i>▶</i><div><b>${t.v}</b>${t.vt}</div></div>
+        ${ch === 'wa' ? `<div class="pv-bubble pv-video"><i>🎙</i><div><b>${t.a}</b>${t.at}</div></div>` : ''}
+        <div class="pv-bubble"><b>${t.r}</b>${t.ref2}</div>`;
+    };
+    lb.forEach(b => b.addEventListener('click', () => { press(lb, b); lang = b.dataset.lang; draw(); }));
+    cb.forEach(b => b.addEventListener('click', () => { press(cb, b); ch = b.dataset.ch; draw(); }));
+    draw();
+  }
+
+  // 02 · The services, one morning.
+  tour(document.getElementById('arch'), {
+    sched: [340, 8], orch: [340, 48], read: [104, 94], write: [222, 94], trans: [340, 94], img: [340, 144], gate: [340, 198], store: [340, 240],
+    fan: [340, 292], qe: [340, 358], se: [340, 404], dlq: [340, 450], user: [288, 490],
+  }, [
+    ['sched', 'sched', 'lit', 'At 18:00 UTC the day before, the scheduler starts the run: two hours before Sydney, the first 7 AM on Earth.'],
+    ['orch', 'orch', 'lit', 'The orchestrator first claims the date, so a second trigger can’t start a second run.'],
+    ['read', 'read', 'lit', 'Reading looks today up in the liturgical calendar and pulls the passage from the stored Bible, in all four languages.'],
+    ['write', 'write', 'lit', 'Writer picks a saint’s quote from a sourced list and drafts a short reflection around the reading.'],
+    ['trans', 'trans', 'lit', 'Translate turns the reflection into Hindi, Marathi and Spanish.'],
+    ['img', 'img audio video', 'lit', 'In parallel: one image for the day, four voice notes, and a video that is found online or rendered.'],
+    ['gate', 'gate', 'lit', 'A quality gate checks every language before anything is saved.'],
+    ['store', 'store', 'lit', 'It all lands as one package for the date: written once, read by every sender.'],
+    ['fan', 'subs fan', 'lit', 'At 7 AM in each time zone, a schedule fires and fan-out reads that zone’s subscribers.'],
+    ['qe', 'qe qw', 'lit', 'It writes one small message per person onto the channel’s queue, keyed by subscriber, date and channel.'],
+    ['se', 'se sw', 'lit', 'Senders pace themselves under each provider’s limit, and skip anything already sent.'],
+    ['dlq', 'dlq', 'lit', 'Anything that fails five times goes to dead letters, raises an alarm, and is redriven after the fix.'],
+    ['user', 'user obs', 'stop', 'At 7:00 AM a phone lights up, and the dashboard counts it as on time.'],
+  ]);
+
+  // 03 · Local and AWS: the same contracts.
+  const port = document.getElementById('port');
+  if (port) {
+    const rows = [['orchestration', 'Step Functions Local', 'AWS Step Functions'], ['services', 'containers in docker compose', 'ECS Fargate services'],
+                  ['queues & events', 'LocalStack: SQS, SNS', 'SQS, SNS, EventBridge'], ['package store', 'MinIO + DynamoDB Local', 'S3 + CloudFront + DynamoDB'],
+                  ['subscribers', 'a Postgres container', 'Aurora Serverless (PostgreSQL)'], ['email', 'Mailpit: catches every email', 'Amazon SES'],
+                  ['WhatsApp', 'a WireMock fake: can throttle on demand', 'WhatsApp Cloud API'], ['AI models', 'recorded responses, then real calls', 'Bedrock + a voice API'],
+                  ['schedule', 'a cron container', 'EventBridge Scheduler'], ['secrets', 'a .env file', 'Secrets Manager']];
+    const box = port.querySelector('#port-rows'), out = port.querySelector('#port-out'), btns = [...port.querySelectorAll('[data-w]')];
+    box.innerHTML = rows.map(([k, l]) => `<div><b>${k}</b><span>${l}</span></div>`).join('');
+    const spans = [...box.querySelectorAll('span')];
+    let run = 0;
+    const show = async w => {
+      const me = ++run;
+      box.classList.toggle('aws', w === 'aws');
+      for (let i = 0; i < rows.length; i++) {
+        spans[i].classList.add('fade'); await sleep(90); if (me !== run) return;
+        spans[i].textContent = rows[i][w === 'aws' ? 2 : 1]; spans[i].classList.remove('fade');
+      }
+      out.innerHTML = w === 'aws' ? 'Same code, same message formats. <b>Only the adapters changed,</b> one service at a time, each behind a feature flag.'
+                                  : '<b>The whole system on one laptop:</b> <code>docker compose up</code>, and every failure can be rehearsed for free.';
+    };
+    btns.forEach(b => b.addEventListener('click', () => { press(btns, b); show(b.dataset.w); }));
+    out.innerHTML = '<b>The whole system on one laptop:</b> <code>docker compose up</code>, and every failure can be rehearsed for free.';
+  }
+
+  // 04 · The pipeline: in a line vs as a graph.
+  const dag = document.getElementById('dag');
+  if (dag) {
+    const svg = dag.querySelector('#dag-svg'), out = dag.querySelector('#dag-out'), btns = [...dag.querySelectorAll('[data-m]')];
+    const W = 560, L = 110, R = 14, T = 12, ROW = 28, XMAX = 150;
+    const X = s => L + s / XMAX * (W - L - R);
+    const st = [['reading', 'r', 2], ['writer', 'w', 18], ['translate', 't', 22], ['image', 'i', 35], ['audio ×4', 't', 12], ['video', 'i', 45], ['quality gate', 'o', 6], ['store', 'o', 3]];
+    const H = T + st.length * ROW;
+    for (let s = 0; s <= XMAX; s += 25) {
+      el(svg, 'line', {x1: X(s), x2: X(s), y1: T - 4, y2: H, class: s ? 'grid' : 'base', 'stroke-width': 1});
+      el(svg, 'text', {x: X(s), y: H + 15, 'text-anchor': 'middle', class: 'ax'}, String(s));
+    }
+    el(svg, 'text', {x: W - R, y: H + 30, 'text-anchor': 'end', class: 'ax'}, 'seconds');
+    st.forEach(([n], i) => el(svg, 'text', {x: L - 8, y: T + i * ROW + 18, 'text-anchor': 'end', class: 'ax'}, n));
+    const bars = st.map(([, k], i) => el(svg, 'rect', {x: L, y: T + i * ROW + 6, width: 0, height: 16, rx: 3, class: 'bar-' + k}));
+    const endL = el(svg, 'line', {x1: L, x2: L, y1: T - 6, y2: H, class: 'cursor', visibility: 'hidden'});
+    const plans = {seq: (() => { let t = 0; return st.map(([, , d]) => { const s = t; t += d; return s; }); })(), par: [0, 2, 20, 2, 42, 2, 54, 60]};
+    let run = 0;
+    btns.forEach(b => b.addEventListener('click', () => {
+      press(btns, b);
+      const starts = plans[b.dataset.m], me = ++run, t0 = performance.now(), end = Math.max(...starts.map((s, i) => s + st[i][2]));
+      endL.setAttribute('visibility', 'hidden');
+      const frame = now => {
+        if (me !== run) return;
+        const t = reduce ? end : (now - t0) / 1000 * 55;
+        starts.forEach((s, i) => { bars[i].setAttribute('x', X(s)); bars[i].setAttribute('width', Math.max(0, X(Math.min(st[i][2], Math.max(0, t - s))) - L)); });
+        if (t < end) return requestAnimationFrame(frame);
+        endL.setAttribute('x1', X(end)); endL.setAttribute('x2', X(end)); endL.setAttribute('visibility', 'visible');
+        out.innerHTML = b.dataset.m === 'seq' ? `Every stage waits for the last: <b>${end} s</b>.`
+          : `Image and video start as soon as the reading is known; audio waits only for translation. <b>${end} s</b>, and the slowest branch sets the pace.`;
+      };
+      requestAnimationFrame(frame);
+    }));
+  }
+
+  // 05 · Idempotent runs.
+  story(document.getElementById('idem'), {
+    crash: [['lock', 'stop', 'The run claims 2026-11-05: a write that only succeeds if the date is new.'],
+            ['s1 s2', 'stop', 'Text and image finish, and each output is saved as a checkpoint.'],
+            ['s3', 'bad', 'The audio container crashes halfway.', {'i-s3': 'audio ✕'}],
+            ['run2', 'lit', 'The orchestrator retries the step with backoff.', {'i-run2': 'retry: text + image from checkpoints'}],
+            ['s3', 'stop', 'Only audio runs again.', {'i-s3': 'audio ✓'}],
+            ['pkg', 'stop', '<b>One package, no duplicated work,</b> and nobody noticed.']],
+    twice: [['lock', 'stop', 'Run A claims 2026-11-05.'],
+            ['run2', 'bad', 'A misfire starts run B a second later. Its claim fails: the date already exists.', {'i-run2': 'run B: date taken, exit quietly'}],
+            ['s1 s2 s3', 'stop', 'Run A carries on alone.', {'i-s3': 'audio ✓'}],
+            ['pkg', 'stop', '<b>Still one package,</b> and still one message per subscriber.']],
+  });
+
+  // 06 · Seven o'clock sweeps the world.
+  const tz = document.getElementById('tz');
+  if (tz) {
+    const svg = tz.querySelector('#tz-svg'), out = tz.querySelector('#tz-out');
+    const zones = [['Sydney', 11], ['Manila', 8], ['Pune · Mumbai', 5.5], ['Madrid', 1], ['London', 0], ['São Paulo', -3], ['New York', -5], ['Mexico City', -6], ['Los Angeles', -8]];
+    const W = 560, L = 104, R = 24, T = 10, ROW = 24, H = T + zones.length * ROW, X = h => L + h / 24 * (W - L - R);
+    for (let h = 0; h <= 24; h += 3) { el(svg, 'line', {x1: X(h), x2: X(h), y1: T - 4, y2: H, class: h ? 'grid' : 'base', 'stroke-width': 1}); el(svg, 'text', {x: X(h), y: H + 15, 'text-anchor': 'middle', class: 'ax'}, `${String((18 + h) % 24).padStart(2, '0')}:00`); }
+    el(svg, 'text', {x: W - R, y: H + 30, 'text-anchor': 'end', class: 'ax'}, 'UTC');
+    const at = zones.map(([, o]) => ((7 - o - 18) % 24 + 24) % 24);
+    zones.forEach(([n], i) => el(svg, 'text', {x: L - 8, y: T + i * ROW + 16, 'text-anchor': 'end', class: 'ax'}, n));
+    const bars = at.map((u, i) => el(svg, 'rect', {x: X(u), y: T + i * ROW + 5, width: X(0.75) - L, height: 14, rx: 3, class: 'tz-bar'}));
+    el(svg, 'rect', {x: X(0), y: T - 6, width: X(0.4) - L, height: H - T + 6, fill: 'var(--accent)', 'fill-opacity': .25});
+    const cur = el(svg, 'line', {x1: X(0), x2: X(0), y1: T - 6, y2: H, class: 'cursor'});
+    let run = 0;
+    tz.querySelector('#tz-go').addEventListener('click', () => {
+      const me = ++run, t0 = performance.now();
+      const frame = now => {
+        if (me !== run) return;
+        const h = reduce ? 24 : Math.min(24, (now - t0) / 1000 * 3.2);
+        cur.setAttribute('x1', X(h)); cur.setAttribute('x2', X(h));
+        let sent = 0;
+        at.forEach((u, i) => { const s = h >= u + 0.75 ? 'done' : h >= u ? 'on' : ''; bars[i].setAttribute('class', 'tz-bar ' + s); if (s) sent++; });
+        out.innerHTML = h < 24 ? `${String((18 + Math.floor(h)) % 24).padStart(2, '0')}:${String(Math.floor(h % 1 * 60)).padStart(2, '0')} UTC · ${sent} of ${zones.length} zones reached`
+          : '<b>Nine waves from one package</b>, made once at 18:00 UTC. The run is timed by the earliest morning on Earth (Sydney, at 20:00 UTC), not by midnight.';
+        if (h < 24) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    });
+  }
+
+  // 07 · Pacing and breakers.
+  const pace = document.getElementById('pace');
+  if (pace) {
+    const svg = pace.querySelector('#pace-svg'), out = pace.querySelector('#pace-out'), btns = [...pace.querySelectorAll('[data-p]')];
+    const W = 560, L = 54, R = 14, T = 12, H = 180, YMAX = 200, XMAX = 18;
+    const X = m => L + m / XMAX * (W - L - R), Y = v => H - Math.min(v, YMAX) / YMAX * (H - T);
+    for (let m = 0; m <= XMAX; m += 3) { el(svg, 'line', {x1: X(m), x2: X(m), y1: T, y2: H, class: m ? 'grid' : 'base', 'stroke-width': 1}); el(svg, 'text', {x: X(m), y: H + 15, 'text-anchor': 'middle', class: 'ax'}, `7:${String(m).padStart(2, '0')}`); }
+    [0, 80, 160].forEach(v => el(svg, 'text', {x: L - 6, y: Y(v) + 4, 'text-anchor': 'end', class: 'ax'}, String(v)));
+    el(svg, 'text', {x: L, y: H + 30, class: 'ax'}, 'messages a second');
+    el(svg, 'line', {x1: L, x2: W - R, y1: Y(80), y2: Y(80), class: 'limit'});
+    el(svg, 'text', {x: W - R, y: Y(80) - 5, 'text-anchor': 'end', class: 'lab'}, 'provider limit');
+    const errP = el(svg, 'path', {class: 'err', d: ''}), sentP = el(svg, 'path', {class: 'sent', d: ''});
+    const clip = el(svg, 'clipPath', {id: 'pace-clip'}), cr = el(clip, 'rect', {x: L, y: 0, width: 0, height: H + 2});
+    errP.setAttribute('clip-path', 'url(#pace-clip)'); sentP.setAttribute('clip-path', 'url(#pace-clip)');
+    const series = {
+      burst: m => [m < 12.5 ? 80 : m < 14 ? 30 : 0, m < 1 ? 400 : m < 4 ? 120 * (1 - (m - 1) / 4) + 30 : m < 12 ? 25 : 0],
+      paced: m => [m < 12.5 ? 80 : 0, 0],
+      down: m => [m < 3 ? 80 : m < 6 ? 0 : m < 15.5 ? 80 : 0, m >= 3 && m < 3.4 ? 60 : m >= 3.4 && m < 6 ? 2 : 0],
+    };
+    const area = f => { const pts = []; for (let m = 0; m <= XMAX; m += .1) pts.push([X(m), Y(f(m))]); return `M${X(0)},${H} ` + pts.map(([x, y]) => `L${x.toFixed(1)},${y.toFixed(1)}`).join(' ') + ` L${X(XMAX)},${H} Z`; };
+    let run = 0;
+    btns.forEach(b => b.addEventListener('click', () => {
+      press(btns, b);
+      const f = series[b.dataset.p], me = ++run, t0 = performance.now();
+      sentP.setAttribute('d', area(m => f(m)[0])); errP.setAttribute('d', area(m => f(m)[0] + f(m)[1]));
+      const frame = now => {
+        if (me !== run) return;
+        const k = reduce ? 1 : Math.min(1, (now - t0) / 2200);
+        cr.setAttribute('width', (W - R - L) * k);
+        if (k < 1) return requestAnimationFrame(frame);
+        out.innerHTML = {burst: 'Blasting gets <b>thousands of 429s</b> in the first minutes. Retries pile on, and after five tries some messages land in dead letters. Late, or never.',
+                         paced: 'A token bucket releases 80 a second. <b>Zero errors,</b> and all 60,000 are out by 7:13.',
+                         down: 'The provider fails at 7:03. After a burst of errors <b>the breaker opens:</b> one probe a second instead of a flood, messages wait safely on the queue, and email keeps flowing. It recovers at 7:06; everyone has theirs by 7:16.'}[b.dataset.p];
+      };
+      requestAnimationFrame(frame);
+    }));
+  }
+
+  // 08 · The video ladder.
+  const ladder = document.getElementById('ladder');
+  if (ladder) {
+    const rungs = [...ladder.querySelectorAll('.ladder li')], out = ladder.querySelector('#l-out'), btns = [...ladder.querySelectorAll('[data-l]')];
+    const say = {0: 'Sunday, English: plenty of homilies on today’s reading. <b>Rung 1 holds</b>, checked for source, language and length.',
+                 2: 'Weekday, Marathi: no homily or reading video for this passage. <b>Rung 3: we render one</b> from the day’s image, the Marathi narration and captions.',
+                 3: 'The renderer is down too. <b>Rung 4: the image and voice note still go out</b>, and tomorrow’s run retries the video.'};
+    let token = 0;
+    btns.forEach(b => b.addEventListener('click', async () => {
+      const run = ++token, holds = +b.dataset.l;
+      press(btns, b);
+      rungs.forEach(r => { r.className = ''; r.querySelector('i').textContent = ''; });
+      out.textContent = '';
+      for (let i = 0; i <= holds; i++) {
+        if (run !== token) return;
+        rungs[i].className = 'try'; rungs[i].querySelector('i').textContent = 'trying…';
+        await sleep(650); if (run !== token) return;
+        rungs[i].className = i < holds ? 'fail' : 'ok';
+        rungs[i].querySelector('i').textContent = i < holds ? '✕ none' : '✓ holds';
+      }
+      out.innerHTML = say[holds];
+    }));
+  }
+
+  // 09 · Outbox, dedupe and dead letters.
+  story(document.getElementById('outbox'), {
+    crash: [['q', 'lit', 'The WhatsApp sender picks up subscriber 8f2c’s message for today.'],
+            ['check', 'stop', 'Its key isn’t in the delivery log yet.'],
+            ['send', 'stop', 'Sent, with the key as the provider’s idempotency key.'],
+            ['mark', 'bad', 'The container dies before it marks the message as sent. The queue makes it visible again.'],
+            ['check send', 'lit', 'Another sender picks it up and sends again… the provider recognises the key and ignores the duplicate.'],
+            ['mark', 'stop', '<b>One message on the phone,</b> however many times we crash.']],
+    poison: [['q', 'lit', 'A message for a number that no longer exists.'],
+             ['send', 'bad', 'The provider rejects it. Retry with backoff: 1 s, 4 s, 16 s, 1 min, 4 min.'],
+             ['dlq', 'bad', 'Five failures: it moves to dead letters, and stops blocking the queue.'],
+             ['alarm', 'stop', 'An alarm fires. The subscriber’s WhatsApp is marked invalid and they get an email instead; <b>redrive</b> replays anything else once fixed.']],
+  });
+
+  // 10 · The quality gate.
+  const gates = document.getElementById('gates');
+  if (gates) {
+    const grid = gates.querySelector('#gate-grid'), out = gates.querySelector('#gate-out'), btns = [...gates.querySelectorAll('[data-g]')];
+    const checks = ['scripture from the stored text', 'reference matches the calendar', 'quote is in the sourced list', 'back-translation agrees', 'fits each channel’s limits', 'image passes safety', 'video plays and is on topic'];
+    const langs = ['EN', 'HI', 'MR', 'ES'];
+    grid.innerHTML = '<div class="h l">check</div>' + langs.map(l => `<div class="h">${l}</div>`).join('') +
+      checks.map((c, r) => `<div class="l">${c}</div>` + langs.map((_, k) => `<div data-c="${r}-${k}">·</div>`).join('')).join('');
+    let run = 0;
+    btns.forEach(b => b.addEventListener('click', async () => {
+      const me = ++run, bad = b.dataset.g === 'bad';
+      press(btns, b);
+      grid.querySelectorAll('[data-c]').forEach(c => { c.className = ''; c.textContent = '·'; });
+      out.textContent = '';
+      let held = false;
+      for (let r = 0; r < checks.length; r++) for (let k = 0; k < 4; k++) {
+        const c = grid.querySelector(`[data-c="${r}-${k}"]`);
+        await sleep(55); if (me !== run) return;
+        if (bad && k === 2 && r === 3) { c.className = 'bad'; c.textContent = '✕'; held = true; continue; }
+        if (held && k === 2) { c.className = 'hold'; c.textContent = '–'; continue; }
+        c.className = 'ok'; c.textContent = '✓';
+      }
+      out.innerHTML = bad ? 'The Marathi reflection, translated back to English, no longer says what the original said. <b>Marathi still gets the reading, the quote and the image</b> (no generated text), the reflection and its voice note are held, and a reviewer gets the diff.'
+                          : '<b>28 checks, all green.</b> The package is sealed and fan-out can begin.';
+    }));
+  }
+
+  // 11 · The morning dashboard.
+  const dash = document.getElementById('dash');
+  if (dash) {
+    const tilesEl = dash.querySelector('#d-tiles'), alarm = dash.querySelector('#d-alarm');
+    const defs = [['ontime', 'delivered on time', v => `${v.toFixed(1)}%`], ['email', 'emails a minute', v => Math.round(v).toLocaleString('en-US')], ['wa', 'WhatsApps a minute', v => Math.round(v).toLocaleString('en-US')],
+                  ['backlog', 'WhatsApp queue', v => Math.round(v).toLocaleString('en-US')], ['breaker', 'WhatsApp breaker', v => v ? 'open' : 'closed'], ['dlq', 'dead letters', v => String(Math.round(v))]];
+    const tiles = {};
+    defs.forEach(([k, label]) => {
+      const t = document.createElement('div'); t.className = 'd-tile';
+      t.innerHTML = `<div class="l">${label}</div><div class="v"></div><svg viewBox="0 0 100 30" preserveAspectRatio="none"><path d=""/></svg>`;
+      tilesEl.append(t); tiles[k] = {el: t, v: t.querySelector('.v'), path: t.querySelector('path'), hist: []};
+    });
+    const S = {ontime: 99.9, email: 2400, wa: 4800, backlog: 0, breaker: 0, dlq: 0}, rand = rng(5);
+    let mode = 'ok';
+    const render = () => defs.forEach(([k, , fmt]) => {
+      const t = tiles[k], val = S[k];
+      t.hist.push(val); if (t.hist.length > 30) t.hist.shift();
+      const max = Math.max(...t.hist), min = Math.min(...t.hist);
+      t.path.setAttribute('d', t.hist.map((v, i) => `${i ? 'L' : 'M'}${(i / 29 * 100).toFixed(1)},${(28 - (v - min) / (max - min || 1) * 24).toFixed(1)}`).join(''));
+      t.v.textContent = fmt(val);
+      const bad = (k === 'breaker' && S.breaker) || (k === 'backlog' && S.backlog > 1000) || (k === 'ontime' && S.ontime < 99) || (k === 'wa' && S.wa < 100);
+      t.el.className = 'd-tile' + (bad ? ' bad' : '');
+    });
+    const tick = () => {
+      S.email = 2400 + (rand() - .5) * 200;
+      if (mode === 'down') { S.wa = 0; S.backlog += 4800; S.ontime = Math.max(96, S.ontime - .35); }
+      else if (mode === 'recover') { S.wa = 4800; S.backlog = Math.max(0, S.backlog - 2600); S.ontime = Math.max(96, S.ontime - .05);
+        if (!S.backlog) { mode = 'ok'; alarm.className = 'd-alarm'; alarm.innerHTML = '<b>Caught up.</b> Every WhatsApp delivered; a few arrived a few minutes late, none twice, none lost.'; } }
+      else { S.wa = 4800 + (rand() - .5) * 300; S.ontime = Math.min(99.9, S.ontime + .1); }
+      render();
+    };
+    for (let i = 0; i < 30; i++) tick();
+    setInterval(tick, 700);
+    dash.querySelector('#d-kill').addEventListener('click', () => {
+      if (mode === 'down') return;
+      mode = 'down'; S.breaker = 1;
+      alarm.className = 'd-alarm on'; alarm.innerHTML = '<b>WhatsApp provider failing.</b> Breaker open: messages wait on the queue. Email unaffected. No retries hammering a dead API.'; render();
+    });
+    dash.querySelector('#d-back').addEventListener('click', () => {
+      if (mode !== 'down') return;
+      mode = 'recover'; S.breaker = 0;
+      alarm.className = 'd-alarm'; alarm.innerHTML = 'Provider back. Breaker half-open, then closed: the backlog drains at the paced limit.'; render();
+    });
+  }
+
+  // 12 · Cost as subscribers grow.
+  const cost = document.getElementById('cost');
+  if (cost) {
+    const r = cost.querySelector('#c-r'), nEl = cost.querySelector('#c-n'), rows = cost.querySelector('#c-rows'), out = cost.querySelector('#c-out');
+    const parts = [['AI content (made once a day)', n => 6], ['services + orchestration', n => 25 + n * .0004], ['databases + storage + CDN', n => 15 + n * .0003],
+                   ['email (half of subscribers)', n => n / 2 * 30 * .0001], ['WhatsApp (half of subscribers)', n => n / 2 * 30 * .004]];
+    const draw = () => {
+      const n = Math.round(100 * 10 ** (r.value / 100 * 3) / 100) * 100;
+      nEl.textContent = n.toLocaleString('en-US');
+      const vals = parts.map(([, f]) => f(n)), total = vals.reduce((a, b) => a + b, 0), max = Math.max(...vals);
+      rows.innerHTML = parts.map(([name], i) => `<div class="hb-row"><div class="hb-label">${name}</div><div class="hb-track"><div class="hb-bar ${i === 4 ? '' : 'teal'}" style="--f:${Math.max(vals[i] / max, .004)}"></div><span class="hb-val">$${vals[i] < 10 ? vals[i].toFixed(1) : Math.round(vals[i]).toLocaleString('en-US')}</span></div></div>`).join('');
+      out.innerHTML = `About <b>$${Math.round(total).toLocaleString('en-US')} a month</b>, or <b>$${(total * 12 / n).toFixed(2)} per subscriber a year</b>. WhatsApp is ${Math.round(vals[4] / total * 100)}% of it; the AI is ${(vals[0] / total * 100).toFixed(1)}%.`;
+    };
+    r.addEventListener('input', draw); draw();
+  }
+})();
+</script>
+</body>
+</html>
