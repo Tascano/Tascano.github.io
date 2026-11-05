@@ -589,6 +589,60 @@ html{scroll-padding-top:16px;}
 .ladder li.try{border-color:var(--accent);background:var(--accent-wash);}
 .ladder li.fail{border-color:var(--demand);background:var(--demand-wash);border-style:dashed;}
 .ladder li.ok{border-color:var(--capacity);background:var(--capacity-wash);}
+
+/* 01·b · product mockups */
+.mock{margin:10px 0 2px;}
+.mk-browser{border:1.5px solid var(--card-border);border-radius:12px;overflow:hidden;background:var(--bg);box-shadow:0 6px 24px rgba(0,0,0,.08);}
+.mk-bar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--card-bg);border-bottom:1px solid var(--card-border);font:12px var(--mono);color:var(--text-muted);}
+.mk-bar i{width:9px;height:9px;border-radius:50%;background:var(--track);display:inline-block;}
+.mk-bar span{margin-left:8px;background:var(--bg);border:1px solid var(--card-border);border-radius:6px;padding:2px 10px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mk-body{padding:18px;}
+.mk-h{font-size:22px;font-weight:800;line-height:1.2;margin:0 0 6px;}
+.mk-sub{color:var(--text-muted);font-size:14.5px;margin:0 0 14px;}
+.mk-lab{font:700 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);margin:12px 0 6px;}
+.mk-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.mk-chips span{border:1.5px solid var(--card-border);border-radius:999px;padding:5px 12px;font-size:14px;}
+.mk-chips span.on{border-color:var(--accent);background:var(--accent-wash);font-weight:700;}
+.mk-input{border:1.5px solid var(--card-border);border-radius:10px;padding:9px 12px;font-size:15px;color:var(--text-muted);background:var(--bg);}
+.mk-check{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--text-secondary);margin-top:12px;}
+.mk-check b{flex:none;width:18px;height:18px;border-radius:4px;background:var(--capacity);color:#fff;font-size:12px;display:grid;place-items:center;}
+.mk-btn{display:inline-block;margin-top:14px;background:var(--accent);color:#111;font-weight:800;border-radius:10px;padding:10px 18px;font-size:15px;}
+.mk-small{font-size:12.5px;color:var(--text-muted);margin-top:10px;}
+.mk-email{max-width:560px;margin:0 auto;}
+.mk-email .art{height:190px;border-radius:10px;background:radial-gradient(circle at 50% 78%,#ffe7a3 0,#f6b94b 22%,#c96a2b 46%,#3b2a4a 80%);margin:10px 0;}
+.mk-card{border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--card-bg);font-size:14.5px;}
+.mk-card b{display:block;font:700 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:4px;}
+.mk-row{display:flex;gap:10px;align-items:center;}
+.mk-play{flex:none;width:34px;height:34px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-weight:800;color:#111;}
+.mk-wave{flex:1;height:22px;background:repeating-linear-gradient(90deg,var(--accent-ink) 0 2px,transparent 2px 6px);opacity:.5;border-radius:4px;}
+.mk-foot{font-size:12px;color:var(--text-muted);text-align:center;border-top:1px solid var(--card-border);padding-top:10px;margin-top:12px;}
+.mk-phone{max-width:340px;margin:0 auto;border:1.5px solid var(--card-border);border-radius:26px;overflow:hidden;background:#e9e3d8;box-shadow:0 6px 24px rgba(0,0,0,.1);}
+[data-theme="dark"] .mk-phone{background:#0d1418;}
+.mk-wtop{background:#0a6c5d;color:#fff;padding:10px 14px;font-weight:700;font-size:14.5px;display:flex;gap:10px;align-items:center;}
+.mk-wtop i{width:30px;height:30px;border-radius:50%;background:#fff;color:#0a6c5d;display:grid;place-items:center;font-style:normal;}
+.mk-wtop small{display:block;font-weight:400;font-size:11.5px;opacity:.85;}
+.mk-chat{padding:10px;display:grid;gap:6px;}
+.mk-msg{max-width:84%;background:#fff;color:#111;border-radius:10px;padding:7px 9px;font-size:13.5px;line-height:1.4;box-shadow:0 1px 1px rgba(0,0,0,.08);}
+[data-theme="dark"] .mk-msg{background:#1f2c33;color:#e9edef;}
+.mk-msg.me{justify-self:end;background:#d9fdd3;}
+[data-theme="dark"] .mk-msg.me{background:#005c4b;}
+.mk-msg .t{display:block;text-align:right;font-size:10.5px;opacity:.6;margin-top:2px;}
+.mk-msg .img{height:150px;border-radius:7px;background:radial-gradient(circle at 50% 78%,#ffe7a3 0,#f6b94b 22%,#c96a2b 46%,#3b2a4a 80%);margin-bottom:5px;}
+.mk-quick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+.mk-quick span{background:#fff;color:#0a6c5d;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;}
+[data-theme="dark"] .mk-quick span{background:#1f2c33;color:#53bdeb;}
+.mk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;}
+.mk-stat{border:1px solid var(--card-border);border-radius:10px;padding:10px;background:var(--card-bg);}
+.mk-stat small{display:block;font-size:12px;color:var(--text-muted);}
+.mk-stat b{font-size:20px;}
+.mk-stage{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}
+.mk-stage span{font:600 12px var(--mono);padding:4px 9px;border-radius:999px;background:var(--capacity-wash);border:1px solid var(--capacity);}
+.mk-stage span.w{background:var(--accent-wash);border-color:var(--accent);}
+.mk-stage span.b{background:var(--demand-wash);border-color:var(--demand);}
+.mk-table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px;}
+.mk-table td,.mk-table th{border-bottom:1px solid var(--card-border);padding:6px;text-align:left;}
+.mk-table th{font:700 11px var(--mono);color:var(--text-muted);text-transform:uppercase;}
+.mk-tbtn{font:700 12px var(--mono);border:1.5px solid var(--accent-ink);color:var(--accent-ink);border-radius:6px;padding:2px 8px;}
 </style>
 </head>
 <body>
@@ -606,7 +660,18 @@ html{scroll-padding-top:16px;}
   <span class="kicker">Field notes · Microservices</span>
   <h1>Seven O'Clock, Every Morning</h1>
   <p class="alt">or: building a daily scripture service, from docker compose to AWS</p>
-  
+  <section class="watch" id="watch" aria-label="The video version of this post">
+    <div class="intro-video">
+      <button class="play-facade" type="button" data-src="../videos/seven-oclock-every-morning.mp4" data-src-small="../videos/seven-oclock-every-morning-720p.mp4"
+        aria-label="Play the video version of this post (about four and a half minutes)">
+        <img src="../images/daily-poster-960.webp" srcset="../images/daily-poster-640.webp 640w, ../images/daily-poster-960.webp 960w, ../images/daily-poster-1280.webp 1280w" sizes="(max-width: 760px) 100vw, 716px" width="1280" height="720" loading="lazy" decoding="async"
+          alt="Seven O'Clock, Every Morning, written on a dark canvas">
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
+        <span class="play-len" aria-hidden="true">4:16</span>
+      </button>
+    </div>
+    <p class="intro-note">Prefer to watch? Every animation in this post, narrated in about four and a half minutes, with captions built in. The narration is a local AI clone of my voice.</p>
+  </section>
   <p class="dek">Daily Bible sends every subscriber the day's reading, a saint's quote, an AI image and a video, in English, Hindi, Marathi or Spanish, on WhatsApp or email, at 7 AM their time. Here's how I built it as microservices, tested it all on my laptop, then moved it to AWS. Everything you need to rebuild it is in the diagrams.</p>
   <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>5 min read</span></div>
 </header>
@@ -682,6 +747,21 @@ html{scroll-padding-top:16px;}
     <button class="btn" type="button" data-ch="email">Email</button>
   </div>
   <div class="phone" id="pv"></div>
+</div>
+
+<div class="section-title" id="s-screens"><span class="dot"></span><span class="n">01·b</span><span class="section-line"></span></div>
+<h2>The screens</h2>
+
+<div class="widget" id="screens">
+  <div class="widget-title">Mockups · click through the product</div>
+  <div class="btns" role="group" aria-label="Pick a screen">
+    <button class="btn" type="button" data-sc="signup" aria-pressed="true">Sign up</button>
+    <button class="btn" type="button" data-sc="email">The email</button>
+    <button class="btn" type="button" data-sc="wa">WhatsApp</button>
+    <button class="btn" type="button" data-sc="prefs">Preferences</button>
+    <button class="btn" type="button" data-sc="ops">Ops console</button>
+  </div>
+  <div class="mock" id="mock"></div>
 </div>
 
 <div class="section-title" id="s-arch"><span class="dot"></span><span class="n">02</span><span class="section-line"></span><span class="pill">scale</span></div>
@@ -1157,6 +1237,64 @@ html{scroll-padding-top:16px;}
     lb.forEach(b => b.addEventListener('click', () => { press(lb, b); lang = b.dataset.lang; draw(); }));
     cb.forEach(b => b.addEventListener('click', () => { press(cb, b); ch = b.dataset.ch; draw(); }));
     draw();
+  }
+
+
+  // 01·b · Product mockups.
+  const scr = document.getElementById('screens');
+  if (scr) {
+    const box = scr.querySelector('#mock'), btns = [...scr.querySelectorAll('[data-sc]')];
+    const browser = (url, body) => `<div class="mk-browser"><div class="mk-bar"><i></i><i></i><i></i><span>${url}</span></div><div class="mk-body">${body}</div></div>`;
+    const S = {
+      signup: browser('Daily Bible · sign up', `
+        <p class="mk-h">Scripture, every morning at 7.</p>
+        <p class="mk-sub">The day's reading, a saint's words, an image and a video. Free for 7 days, then $10 a year.</p>
+        <div class="mk-lab">Language</div><div class="mk-chips"><span>English</span><span>हिन्दी</span><span class="on">मराठी</span><span>Español</span></div>
+        <div class="mk-lab">Send it on</div><div class="mk-chips"><span class="on">💬 WhatsApp</span><span>✉️ Email</span></div>
+        <div class="mk-lab">WhatsApp number</div><div class="mk-input">+91 98xxx xxxxx</div>
+        <div class="mk-lab">Time zone</div><div class="mk-input">Asia/Kolkata · detected from your browser</div>
+        <div class="mk-check"><b>✓</b><span>Send me one message a day. I can reply STOP at any time.</span></div>
+        <span class="mk-btn">Start my mornings</span>
+        <p class="mk-small">Next: a 6-digit code on WhatsApp confirms the number. Your first message arrives tomorrow at 7:00.</p>`),
+      email: browser('Inbox · from Daily Bible', `<div class="mk-email">
+        <p class="mk-sub" style="margin:0">Thursday, 5 November · 7:00 AM</p>
+        <p class="mk-h">Today's reading: Psalm 23</p>
+        <div class="art" role="img" aria-label="The day's painting"></div>
+        <div class="mk-card"><b>The reading · Douay-Rheims</b>The Lord ruleth me: and I shall want nothing.</div>
+        <div class="mk-card"><b>A word from the saints</b>“You have made us for yourself, and our heart is restless until it rests in you.” — St. Augustine, Confessions I.1</div>
+        <div class="mk-card mk-row"><span class="mk-play">▶</span><div><b>Today's homily</b>The Good Shepherd · 6 min</div></div>
+        <div class="mk-card mk-row"><span class="mk-play">🎙</span><div class="mk-wave"></div><span style="font:12px var(--mono)">2:04</span></div>
+        <div class="mk-card"><b>Reflect</b>Where do you need rest today? Write one line before you start your day.</div>
+        <div class="mk-foot">Manage language, channel and time · Pause for a week · Unsubscribe in one click</div></div>`),
+      wa: `<div class="mk-phone"><div class="mk-wtop"><i>✝</i><div>Daily Bible<small>business account</small></div></div><div class="mk-chat">
+        <div class="mk-msg"><div class="img"></div>आजचे वाचन · स्तोत्र 23<span class="t">7:00</span></div>
+        <div class="mk-msg">“तू आम्हाला तुझ्यासाठी निर्माण केलेस, आणि आमचे हृदय तुझ्यात विसावा मिळेपर्यंत अस्वस्थ राहते.” — संत ऑगस्टीन<span class="t">7:00</span></div>
+        <div class="mk-msg">🎙 ▶ ━━━━━━━━━━ 2:10<span class="t">7:00</span></div>
+        <div class="mk-msg">▶ आजचे वाचन व्हिडिओ · 2 मिनिटे<br><small>tap to watch</small><span class="t">7:00</span></div>
+        <div class="mk-msg me">आमेन 🙏<span class="t">7:04 ✓✓</span></div>
+        <div class="mk-quick"><span>Change language</span><span>Pause 7 days</span><span>Yesterday</span></div></div></div>`,
+      prefs: browser('Daily Bible · your account', `
+        <p class="mk-h">Your mornings</p>
+        <div class="mk-lab">Language</div><div class="mk-chips"><span>English</span><span>हिन्दी</span><span class="on">मराठी</span><span>Español</span></div>
+        <div class="mk-lab">Channels</div><div class="mk-chips"><span class="on">💬 WhatsApp</span><span class="on">✉️ Email</span></div>
+        <div class="mk-lab">Delivery</div><div class="mk-chips"><span class="on">7:00 AM</span><span>Asia/Kolkata</span><span>Pause 7 days</span></div>
+        <div class="mk-lab">Your last three mornings</div>
+        <table class="mk-table"><tr><th>date</th><th>reading</th><th>video</th></tr>
+          <tr><td>5 Nov</td><td>Psalm 23</td><td>made for today</td></tr><tr><td>4 Nov</td><td>Luke 15:1-10</td><td>homily · 9 min</td></tr><tr><td>3 Nov</td><td>Romans 11:29-36</td><td>reading video</td></tr></table>
+        <p class="mk-small">Plan: free trial · 4 days left · $10 a year after</p>`),
+      ops: browser('Daily Bible ops · Thursday 5 November', `
+        <p class="mk-h">Today's package</p>
+        <div class="mk-stage"><span>✓ claim</span><span>✓ reading</span><span>✓ writer</span><span>✓ translate</span><span>✓ image</span><span>✓ audio ×4</span><span class="w">↻ video MR: rendered</span><span>✓ gate 28/28</span><span>✓ sealed 18:01 UTC</span></div>
+        <div class="mk-grid" style="margin-top:10px"><div class="mk-stat"><small>delivered on time</small><b>99.8%</b></div><div class="mk-stat"><small>zones released</small><b>6 / 9</b></div><div class="mk-stat"><small>WhatsApp breaker</small><b>closed</b></div><div class="mk-stat"><small>dead letters</small><b>3</b></div></div>
+        <table class="mk-table"><tr><th>dead letter</th><th>reason</th><th></th></tr>
+          <tr><td>sub_31a · whatsapp</td><td>number not on WhatsApp</td><td><span class="mk-tbtn">email instead</span></td></tr>
+          <tr><td>sub_9c0 · email</td><td>mailbox full (soft bounce)</td><td><span class="mk-tbtn">redrive</span></td></tr>
+          <tr><td>sub_d42 · email</td><td>hard bounce</td><td><span class="mk-tbtn">pause</span></td></tr></table>
+        <p class="mk-small">Override any field for a date · Re-run one stage · Every action is logged</p>`),
+    };
+    const show = k => { box.innerHTML = S[k]; };
+    btns.forEach(b => b.addEventListener('click', () => { press(btns, b); show(b.dataset.sc); }));
+    show('signup');
   }
 
   // 02 · The services, one morning.
