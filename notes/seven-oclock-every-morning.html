@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Seven O'Clock, Every Morning</title>
+<title>Seven O'Clock, Every Morning — Ambrose Tuscano</title>
 <meta name="description" content="How I built Daily Bible, a microservices service that sends the day&#x27;s reading, a saint&#x27;s quote, an AI image and a video in four languages on WhatsApp or email at 7 AM local time: tested locally with docker compose, then ported to AWS, with idempotent runs, paced senders, circuit breakers, dead letters and a fallback ladder.">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Seven O'Clock, Every Morning">
@@ -643,7 +643,54 @@ html{scroll-padding-top:16px;}
 .mk-table td,.mk-table th{border-bottom:1px solid var(--card-border);padding:6px;text-align:left;}
 .mk-table th{font:700 11px var(--mono);color:var(--text-muted);text-transform:uppercase;}
 .mk-tbtn{font:700 12px var(--mono);border:1.5px solid var(--accent-ink);color:var(--accent-ink);border-radius:6px;padding:2px 8px;}
+
+/* 01·c · subscriber flows */
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;}
+.states span{font:600 12px var(--mono);padding:4px 10px;border-radius:999px;border:1.5px solid var(--card-border);background:var(--bg);transition:background .3s,border-color .3s;}
+.states span.on{border-color:var(--accent);background:var(--accent-wash);}
+.states span.now{border-color:var(--capacity);background:var(--capacity-wash);box-shadow:0 0 0 3px var(--capacity-wash);}
+.states span.end{border-color:var(--demand);background:var(--demand-wash);}
+.plot .ll{stroke:var(--card-border);stroke-width:1.5;stroke-dasharray:4 4;}
+.plot .actor{fill:var(--card-bg);stroke:var(--card-border);stroke-width:1.5;}
+.plot .actor-t{font:600 10.5px var(--mono);fill:var(--text);}
+.plot .msg{stroke:var(--accent-ink);stroke-width:1.8;fill:none;}
+.plot .msg.ret{stroke-dasharray:5 4;stroke:var(--text-muted);}
+.plot .msg.bad{stroke:var(--demand);}
+.plot .badge{fill:var(--accent);} .plot .badge-t{font:700 10px var(--mono);fill:#111;}
+.plot .badge.bad{fill:var(--demand);}
+.seqlog li{display:flex;gap:8px;} .seqlog li b.n{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#111;font:700 11px/20px var(--mono);text-align:center;}
+.seqlog li b.n.bad{background:var(--demand);color:#fff;}
 </style>
+<script type="application/ld+json" id="ld-post">
+{
+ "@context": "https://schema.org",
+ "@type": "BlogPosting",
+ "headline": "Seven O'Clock, Every Morning",
+ "description": "How I built Daily Bible, a microservices service that sends the day's reading, a saint's quote, an AI image and a video in four languages on WhatsApp or email at 7 AM local time: tested locally with docker compose, then ported to AWS, with idempotent runs, paced senders, circuit breakers, dead letters and a fallback ladder.",
+ "url": "https://tascano.github.io/notes/seven-oclock-every-morning.html",
+ "mainEntityOfPage": "https://tascano.github.io/notes/seven-oclock-every-morning.html",
+ "datePublished": "2026-11-05",
+ "dateModified": "2026-11-05",
+ "image": "https://tascano.github.io/images/daily-poster-1280.webp",
+ "inLanguage": "en",
+ "author": {
+  "@type": "Person",
+  "@id": "https://tascano.github.io/#person",
+  "name": "Ambrose Tuscano",
+  "url": "https://tascano.github.io/"
+ },
+ "keywords": "microservices, system design, AWS, docker compose, LocalStack, SQS, Step Functions, idempotency, outbox pattern, circuit breaker, WhatsApp Cloud API, SES, Stripe, multilingual",
+ "video": {
+  "@type": "VideoObject",
+  "name": "Seven O'Clock, Every Morning (narrated explainer)",
+  "description": "How I built Daily Bible, a microservices service that sends the day's reading, a saint's quote, an AI image and a video in four languages on WhatsApp or email at 7 AM local time: tested locally with docker compose, then ported to AWS, with idempotent runs, paced senders, circuit breakers, dead letters and a fallback ladder.",
+  "thumbnailUrl": "https://tascano.github.io/images/daily-poster-1280.webp",
+  "contentUrl": "https://tascano.github.io/videos/seven-oclock-every-morning.mp4",
+  "uploadDate": "2026-11-05",
+  "duration": "PT4M44S"
+ }
+}
+</script>
 </head>
 <body>
 <div class="scroll-progress" aria-hidden="true"></div>
@@ -667,7 +714,7 @@ html{scroll-padding-top:16px;}
         <img src="../images/daily-poster-960.webp" srcset="../images/daily-poster-640.webp 640w, ../images/daily-poster-960.webp 960w, ../images/daily-poster-1280.webp 1280w" sizes="(max-width: 760px) 100vw, 716px" width="1280" height="720" loading="lazy" decoding="async"
           alt="Seven O'Clock, Every Morning, written on a dark canvas">
         <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
-        <span class="play-len" aria-hidden="true">4:16</span>
+        <span class="play-len" aria-hidden="true">4:44</span>
       </button>
     </div>
     <p class="intro-note">Prefer to watch? Every animation in this post, narrated in about four and a half minutes, with captions built in. The narration is a local AI clone of my voice.</p>
@@ -725,7 +772,7 @@ html{scroll-padding-top:16px;}
 <div class="pgroups">
   <div><b>Scale</b><a href="#s-fan">fan-out by time zone</a><a href="#s-cost">cost per subscriber</a><a href="#s-arch">services behind queues</a></div>
   <div><b>Speed</b><a href="#s-dag">a parallel pipeline</a><a href="#s-pace">pacing, not bursting</a><a href="#s-port">fast local loops</a></div>
-  <div><b>Reliability</b><a href="#s-idem">idempotent runs</a><a href="#s-outbox">outbox &amp; dedupe</a><a href="#s-gates">quality gates</a></div>
+  <div><b>Reliability</b><a href="#s-flows">every subscriber flow</a><a href="#s-idem">idempotent runs</a><a href="#s-outbox">outbox &amp; dedupe</a><a href="#s-gates">quality gates</a></div>
   <div><b>Visibility</b><a href="#s-dash">on-time delivery</a><a href="#s-dash">dead letters</a><a href="#s-gates">per-language checks</a></div>
   <div><b>Failover</b><a href="#s-ladder">the video ladder</a><a href="#s-pace">circuit breakers</a><a href="#s-outbox">redrive</a></div>
 </div>
@@ -759,10 +806,44 @@ html{scroll-padding-top:16px;}
     <button class="btn" type="button" data-sc="email">The email</button>
     <button class="btn" type="button" data-sc="wa">WhatsApp</button>
     <button class="btn" type="button" data-sc="prefs">Preferences</button>
+    <button class="btn" type="button" data-sc="unsub">Unsubscribe</button>
     <button class="btn" type="button" data-sc="ops">Ops console</button>
   </div>
   <div class="mock" id="mock"></div>
 </div>
+
+<div class="section-title" id="s-flows"><span class="dot"></span><span class="n">01·c</span><span class="section-line"></span><span class="pill">reliability</span></div>
+<h2>Every flow a subscriber can take</h2>
+
+<p>Each subscriber is a small state machine. Pick a flow to see who talks to whom, and how the state changes.</p>
+
+<div class="widget" id="flows">
+  <div class="widget-title">Animation · eight subscriber flows, as sequence diagrams</div>
+  <div class="btns" role="group" aria-label="Pick a flow">
+    <button class="btn" type="button" data-f="email">Sign up · email</button>
+    <button class="btn" type="button" data-f="wa">Sign up · WhatsApp</button>
+    <button class="btn" type="button" data-f="prefs">Change settings</button>
+    <button class="btn" type="button" data-f="pause">Pause</button>
+    <button class="btn" type="button" data-f="unsub">Unsubscribe</button>
+    <button class="btn" type="button" data-f="pay">Trial ends · pay</button>
+    <button class="btn" type="button" data-f="fail">Payment fails</button>
+    <button class="btn" type="button" data-f="delete">Delete my data</button>
+  </div>
+  <div class="states" id="fl-states"></div>
+  <div class="plot"><svg id="fl-svg" viewBox="0 0 600 330" role="img" aria-labelledby="fl-t"><title id="fl-t">A sequence diagram between the subscriber, the app, the API, the subscribers service, Stripe, the message providers and the event bus.</title></svg></div>
+  <ol class="log seqlog" id="fl-log" aria-live="polite"><li>Pick a flow.</li></ol>
+</div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the subscriber API, behind the gateway</span></div><pre><code>POST   /subscribe              rate-limited, bot check, idempotent per email/phone → pending
+POST   /verify                 email link token or 6-digit WhatsApp code → trial
+POST   /login                  magic link by email or WhatsApp: no passwords to leak
+GET    /account  PATCH /account language · channels · time zone (applies from the next release)
+POST   /account/pause          { days } → paused_until; fan-out skips you
+POST   /unsubscribe/{token}    one-click (RFC 8058 List-Unsubscribe-Post), signed token
+DELETE /account                erase personal data within 30 days; keep a hashed suppression entry
+POST   /webhooks/stripe        signature-checked, deduped by event id
+POST   /webhooks/whatsapp      STOP / START / replies, signature-checked
+POST   /webhooks/ses           bounces and complaints → suppress the address</code></pre></div>
 
 <div class="section-title" id="s-arch"><span class="dot"></span><span class="n">02</span><span class="section-line"></span><span class="pill">scale</span></div>
 <h2>Eleven small services</h2>
@@ -1282,6 +1363,14 @@ html{scroll-padding-top:16px;}
         <table class="mk-table"><tr><th>date</th><th>reading</th><th>video</th></tr>
           <tr><td>5 Nov</td><td>Psalm 23</td><td>made for today</td></tr><tr><td>4 Nov</td><td>Luke 15:1-10</td><td>homily · 9 min</td></tr><tr><td>3 Nov</td><td>Romans 11:29-36</td><td>reading video</td></tr></table>
         <p class="mk-small">Plan: free trial · 4 days left · $10 a year after</p>`),
+      unsub: browser('Daily Bible · unsubscribe', `
+        <p class="mk-h">You're unsubscribed from email.</p>
+        <p class="mk-sub">No more emails from us, starting now. Your WhatsApp mornings are unaffected.</p>
+        <div class="mk-chips"><span class="on">Undo</span><span>Pause for a month instead</span><span>Also stop WhatsApp</span></div>
+        <p class="mk-small">One click, no login: every email carries a signed link and a List-Unsubscribe header, so Gmail's own unsubscribe button works too.</p>
+        <div class="mk-phone" style="margin-top:14px;max-width:300px"><div class="mk-wtop"><i>✝</i><div>Daily Bible</div></div><div class="mk-chat">
+          <div class="mk-msg me">STOP<span class="t">8:12 ✓✓</span></div>
+          <div class="mk-msg">You won't hear from us again. Reply START any time to come back. 🙏<span class="t">8:12</span></div></div></div>`),
       ops: browser('Daily Bible ops · Thursday 5 November', `
         <p class="mk-h">Today's package</p>
         <div class="mk-stage"><span>✓ claim</span><span>✓ reading</span><span>✓ writer</span><span>✓ translate</span><span>✓ image</span><span>✓ audio ×4</span><span class="w">↻ video MR: rendered</span><span>✓ gate 28/28</span><span>✓ sealed 18:01 UTC</span></div>
@@ -1295,6 +1384,62 @@ html{scroll-padding-top:16px;}
     const show = k => { box.innerHTML = S[k]; };
     btns.forEach(b => b.addEventListener('click', () => { press(btns, b); show(b.dataset.sc); }));
     show('signup');
+  }
+
+
+  // 01·c · Subscriber flows as sequence diagrams.
+  const flows = document.getElementById('flows');
+  if (flows) {
+    const svg = flows.querySelector('#fl-svg'), log = flows.querySelector('#fl-log'), stEl = flows.querySelector('#fl-states'), btns = [...flows.querySelectorAll('[data-f]')];
+    const actors = ['subscriber', 'app', 'API', 'subscribers', 'Stripe', 'SES · WhatsApp', 'events'];
+    const states = ['pending', 'trial', 'active', 'past_due', 'paused', 'cancelled', 'deleted'];
+    stEl.innerHTML = states.map(s => `<span data-st="${s}">${s}</span>`).join('');
+    const AX = i => 44 + i * 85;
+    el(svg, 'defs', {}).innerHTML = '<marker id="fl-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>';
+    actors.forEach((a, i) => { el(svg, 'line', {x1: AX(i), x2: AX(i), y1: 32, y2: 322, class: 'll'}); el(svg, 'rect', {x: AX(i) - 40, y: 6, width: 80, height: 26, rx: 6, class: 'actor'}); el(svg, 'text', {x: AX(i), y: 23, 'text-anchor': 'middle', class: 'actor-t'}, a); });
+    const layer = el(svg, 'g', {});
+    const F = {
+      email: [[0, 1, 'Fills in the form: email, language, time zone.'], [1, 2, 'POST /subscribe, behind a bot check and a rate limit.'], [2, 3, 'Creates the subscriber, idempotent on the email.', 'pending'],
+              [3, 5, 'Sends a confirm link: signed, valid for 24 hours.'], [5, 0, 'The email arrives.'], [0, 2, 'Taps the link: POST /verify.'],
+              [2, 3, 'Token is valid: a 7-day trial starts.', 'trial'], [3, 6, 'subscriber.activated: a welcome email now, the first reading at the next 7 AM in their zone.']],
+      wa: [[0, 1, 'Enters a number and a language, and ticks the opt-in.'], [1, 2, 'POST /subscribe.'], [2, 3, 'Creates the subscriber and records consent: time, source and the exact wording.', 'pending'],
+           [3, 5, 'A WhatsApp authentication template carries a 6-digit code.'], [0, 2, 'Types the code: 3 tries, 10 minutes.'], [2, 3, 'Verified: the trial starts.', 'trial'],
+           [3, 5, 'An approved welcome template. Outside a 24-hour conversation window, WhatsApp only allows templates.']],
+      prefs: [[0, 2, 'POST /login: a magic link by email or WhatsApp. No passwords to leak.'], [2, 0, 'A short-lived session.'], [0, 2, 'PATCH /account: Marathi to Hindi, and add email.'],
+              [2, 3, 'Saves the change, versioned.'], [3, 6, 'preferences.changed'], [6, 3, 'Applies from the next release. If their zone already went today, from tomorrow.']],
+      pause: [[0, 2, 'POST /account/pause, 7 days.'], [2, 3, 'paused_until is set a week out.', 'paused'], [3, 6, 'Fan-out skips paused subscribers.'], [6, 3, 'Day 8: they resume on their own.', 'active']],
+      unsub: [[0, 1, 'In an email, taps Unsubscribe: one click, no login.'], [1, 2, 'POST /unsubscribe with a signed token.'], [2, 3, 'Email is off at once; the address joins the suppression list.', 'cancelled'],
+              [3, 6, 'channel.cancelled: senders drop anything already queued.'], [0, 5, 'On WhatsApp, they reply STOP.'], [5, 2, 'Webhook, signature checked: the opt-out is recorded.'],
+              [2, 5, 'One confirmation: "You won’t hear from us. Reply START to come back."']],
+      pay: [[3, 0, 'Day 5: "Your trial ends in 2 days."'], [0, 4, 'Checkout: card, UPI or PayPal. $10 a year.'], [4, 2, 'Webhook invoice.paid: signature checked, deduplicated by event id.'],
+            [2, 3, 'Active for a year.', 'active'], [4, 2, 'A year later it renews, after a 7-day notice.']],
+      fail: [[4, 2, 'Webhook invoice.payment_failed.', 'past_due', 1], [3, 0, 'A friendly "update your card" link. Mornings keep coming.'], [4, 4, 'Stripe retries over about two weeks.'],
+             [4, 2, 'Still failing: the subscription is unpaid.', null, 1], [2, 3, 'Delivery pauses; their settings are kept.', 'paused'], [0, 4, 'Updates the card: invoice.paid.'], [2, 3, 'Back on from the next morning.', 'active']],
+      delete: [[0, 2, 'DELETE /account, confirmed by a magic link.'], [2, 3, 'Delivery stops now.', 'deleted'], [3, 4, 'Deletes the Stripe customer.'],
+               [3, 6, 'subscriber.erased: every service deletes its copy within 30 days.'], [3, 3, 'Keeps only a hashed suppression entry, so they are never re-added by mistake.']],
+    };
+    let token = 0;
+    btns.forEach(b => b.addEventListener('click', async () => {
+      const run = ++token, steps = F[b.dataset.f];
+      press(btns, b);
+      layer.innerHTML = ''; log.innerHTML = '';
+      stEl.querySelectorAll('span').forEach(s => { s.className = ''; });
+      for (let k = 0; k < steps.length; k++) {
+        const [a, c, text, st, bad] = steps[k], y = 52 + k * 36;
+        await sleep(k ? 950 : 150); if (run !== token) return;
+        const cls = 'msg' + (bad ? ' bad' : a > c ? ' ret' : '');
+        if (a === c) el(layer, 'path', {d: `M${AX(a)},${y - 8} h26 v16 h-24`, class: cls, 'marker-end': 'url(#fl-ar)', color: 'var(--accent-ink)'});
+        else el(layer, 'line', {x1: AX(a), x2: AX(c) + (c > a ? -4 : 4), y1: y, y2: y, class: cls, 'marker-end': 'url(#fl-ar)', color: bad ? 'var(--demand)' : 'var(--accent-ink)'});
+        const mx = a === c ? AX(a) + 40 : (AX(a) + AX(c)) / 2;
+        el(layer, 'circle', {cx: mx, cy: y, r: 9, class: 'badge' + (bad ? ' bad' : '')});
+        el(layer, 'text', {x: mx, y: y + 3.5, 'text-anchor': 'middle', class: 'badge-t'}, String(k + 1));
+        const li = document.createElement('li'); li.innerHTML = `<b class="n${bad ? ' bad' : ''}">${k + 1}</b><span>${text}</span>`; log.appendChild(li);
+        if (st) {
+          stEl.querySelectorAll('span').forEach(s => { if (s.classList.contains('now')) s.className = 'on'; });
+          stEl.querySelector(`[data-st="${st}"]`).className = ['cancelled', 'deleted', 'past_due'].includes(st) ? 'end now' : 'now';
+        }
+      }
+    }));
   }
 
   // 02 · The services, one morning.
