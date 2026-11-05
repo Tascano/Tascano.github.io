@@ -21,7 +21,7 @@ Highlights, all from the resume:
 
 Long-form technical posts, each with interactive diagrams and a narrated video:
 
-- [Seven O'Clock, Every Morning](https://tascano.github.io/notes/seven-oclock-every-morning.html): Daily Bible as eleven microservices, tested with docker compose then moved to AWS; every subscriber flow, idempotent runs, per-time-zone fan-out, pacing, circuit breakers, an outbox, a fallback ladder
+- [Seven O'Clock, Every Morning](https://tascano.github.io/notes/seven-oclock-every-morning.html): Daily Bible as eleven microservices, tested with docker compose then moved to AWS; every subscriber flow, idempotent runs, per-time-zone fan-out, pacing, circuit breakers, an outbox, a fallback ladder; sign-up surges, trials and Stripe webhook ordering, bounces and complaints, multi-tenant fair queuing, millisecond-aligned sends, failure modes and cost levers
 - [The File That Wouldn't Die](https://tascano.github.io/notes/file-that-wouldnt-die.html): a peer-to-peer file system grown from one laptop to the internet; TCP framing, consistent hashing, quorums, gossip, Merkle trees, erasure coding, Raft
 - [The Teammate in My Terminal](https://tascano.github.io/notes/teammate-in-my-terminal.html): the Claude Code setup (rules, skills, allow lists, hooks) behind his posts and videos
 - [Four Agents Walk Into a Service Bay](https://tascano.github.io/notes/agents-service-bay.html): designing a multi-agent intake system for scale, speed, reliability, visibility and failover (his own recreation, not Nissan's system)

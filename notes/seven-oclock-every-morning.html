@@ -660,37 +660,36 @@ html{scroll-padding-top:16px;}
 .plot .badge.bad{fill:var(--demand);}
 .seqlog li{display:flex;gap:8px;} .seqlog li b.n{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#111;font:700 11px/20px var(--mono);text-align:center;}
 .seqlog li b.n.bad{background:var(--demand);color:#fff;}
+
+/* challenges */
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0;}
+@media (max-width:640px){.split2{grid-template-columns:1fr;}}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:10px;}
+.cd{border:1px solid var(--card-border);border-radius:12px;background:var(--bg);padding:12px;font-size:14px;line-height:1.45;animation:gin .3s ease;}
+.cd .tag{font:700 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);}
+.cd h3{font-size:15.5px;margin:4px 0 6px;}
+.cd .br{color:var(--demand);font-size:13.5px;margin:0 0 6px;}
+.cd .br::before{content:"breaks: ";font:700 11px var(--mono);}
+.cd ul{margin:0;padding-left:18px;}
+.cd li{margin:2px 0;}
+@keyframes gin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.plot .win{fill:var(--accent);fill-opacity:.55;} .plot .zero{stroke:var(--demand);stroke-width:2;}
+
+.plot .wv circle{fill:var(--accent);stroke:var(--card-bg);stroke-width:2;}
+.bl-card{border:1px solid var(--card-border);border-radius:10px;padding:12px 14px;margin-top:10px;background:var(--card-bg);}
+.bl-card h3{margin:0 0 8px;font-size:16px;}
+.bl-card dl{display:grid;grid-template-columns:170px 1fr;gap:6px 12px;margin:0;font-size:14.5px;}
+.bl-card dt{font:700 11px var(--mono);text-transform:uppercase;color:var(--text-muted);padding-top:3px;}
+.bl-card dd{margin:0;}
+@media (max-width:600px){.bl-card dl{grid-template-columns:1fr;}.bl-card dd{margin-bottom:6px;}}
+.cd .cost-l{margin:8px 0 0;font:12px var(--mono);color:var(--text-muted);}
+.cd .cost-l::before{content:"costs: ";font-weight:700;color:var(--accent-ink);}
+
+.field{border-left:3px solid var(--accent);background:var(--card-bg);border-radius:0 10px 10px 0;padding:10px 14px;margin:14px 0 22px;}
+.field .tag{display:block;font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--accent-ink);margin-bottom:4px;}
+.field p{margin:0;font-size:15px;}
 </style>
-<script type="application/ld+json" id="ld-post">
-{
- "@context": "https://schema.org",
- "@type": "BlogPosting",
- "headline": "Seven O'Clock, Every Morning",
- "description": "How I built Daily Bible, a microservices service that sends the day's reading, a saint's quote, an AI image and a video in four languages on WhatsApp or email at 7 AM local time: tested locally with docker compose, then ported to AWS, with idempotent runs, paced senders, circuit breakers, dead letters and a fallback ladder.",
- "url": "https://tascano.github.io/notes/seven-oclock-every-morning.html",
- "mainEntityOfPage": "https://tascano.github.io/notes/seven-oclock-every-morning.html",
- "datePublished": "2026-11-05",
- "dateModified": "2026-11-05",
- "image": "https://tascano.github.io/images/daily-poster-1280.webp",
- "inLanguage": "en",
- "author": {
-  "@type": "Person",
-  "@id": "https://tascano.github.io/#person",
-  "name": "Ambrose Tuscano",
-  "url": "https://tascano.github.io/"
- },
- "keywords": "microservices, system design, AWS, docker compose, LocalStack, SQS, Step Functions, idempotency, outbox pattern, circuit breaker, WhatsApp Cloud API, SES, Stripe, multilingual",
- "video": {
-  "@type": "VideoObject",
-  "name": "Seven O'Clock, Every Morning (narrated explainer)",
-  "description": "How I built Daily Bible, a microservices service that sends the day's reading, a saint's quote, an AI image and a video in four languages on WhatsApp or email at 7 AM local time: tested locally with docker compose, then ported to AWS, with idempotent runs, paced senders, circuit breakers, dead letters and a fallback ladder.",
-  "thumbnailUrl": "https://tascano.github.io/images/daily-poster-1280.webp",
-  "contentUrl": "https://tascano.github.io/videos/seven-oclock-every-morning.mp4",
-  "uploadDate": "2026-11-05",
-  "duration": "PT4M44S"
- }
-}
-</script>
+<script type="application/ld+json" id="ld-post">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "Seven O'Clock, Every Morning", "description": "How I built Daily Bible, a microservices service that sends the day&#x27;s reading, a saint&#x27;s quote, an AI image and a video in four languages on WhatsApp or email at 7 AM local time: tested locally with docker compose, then ported to AWS, with idempotent runs, paced senders, circuit breakers, dead letters and a fallback ladder.", "datePublished": "2026-11-05", "dateModified": "2026-11-05", "url": "https://tascano.github.io/notes/seven-oclock-every-morning.html", "image": "https://tascano.github.io/images/daily-poster-1280.webp", "author": {"@id": "https://tascano.github.io/#person"}, "keywords": ["microservices", "AWS", "SQS", "DynamoDB", "SES", "WhatsApp Cloud API", "Stripe", "idempotency", "multi-tenancy", "failover", "scheduling", "distributed systems"], "video": {"@type": "VideoObject", "name": "Seven O'Clock, Every Morning", "description": "How I built Daily Bible, a microservices service that sends the day&#x27;s reading, a saint&#x27;s quote, an AI image and a video in four languages on WhatsApp or email at 7 AM local time: tested locally with docker compose, then ported to AWS, with idempotent runs, paced senders, circuit breakers, dead letters and a fallback ladder.", "thumbnailUrl": "https://tascano.github.io/images/daily-poster-1280.webp", "uploadDate": "2026-11-05", "contentUrl": "https://tascano.github.io/videos/seven-oclock-every-morning.mp4", "duration": "PT6M27S"}}</script>
 </head>
 <body>
 <div class="scroll-progress" aria-hidden="true"></div>
@@ -710,17 +709,17 @@ html{scroll-padding-top:16px;}
   <section class="watch" id="watch" aria-label="The video version of this post">
     <div class="intro-video">
       <button class="play-facade" type="button" data-src="../videos/seven-oclock-every-morning.mp4" data-src-small="../videos/seven-oclock-every-morning-720p.mp4"
-        aria-label="Play the video version of this post (about four and a half minutes)">
+        aria-label="Play the video version of this post (about 6.5 minutes)">
         <img src="../images/daily-poster-960.webp" srcset="../images/daily-poster-640.webp 640w, ../images/daily-poster-960.webp 960w, ../images/daily-poster-1280.webp 1280w" sizes="(max-width: 760px) 100vw, 716px" width="1280" height="720" loading="lazy" decoding="async"
           alt="Seven O'Clock, Every Morning, written on a dark canvas">
         <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
-        <span class="play-len" aria-hidden="true">4:44</span>
+        <span class="play-len" aria-hidden="true">6:27</span>
       </button>
     </div>
-    <p class="intro-note">Prefer to watch? Every animation in this post, narrated in about four and a half minutes, with captions built in. The narration is a local AI clone of my voice.</p>
+    <p class="intro-note">Prefer to watch? Every animation in this post, narrated in about 6.5 minutes, with captions built in. The narration is a local AI clone of my voice.</p>
   </section>
   <p class="dek">Daily Bible sends every subscriber the day's reading, a saint's quote, an AI image and a video, in English, Hindi, Marathi or Spanish, on WhatsApp or email, at 7 AM their time. Here's how I built it as microservices, tested it all on my laptop, then moved it to AWS. Everything you need to rebuild it is in the diagrams.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>5 min read</span></div>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>17 min read</span></div>
 </header>
 
 <div class="card origin" role="note">
@@ -770,11 +769,11 @@ html{scroll-padding-top:16px;}
 <nav class="card pmap" aria-labelledby="pmap-t">
 <div class="q" id="pmap-t">The five things I care about, and where they show up</div>
 <div class="pgroups">
-  <div><b>Scale</b><a href="#s-fan">fan-out by time zone</a><a href="#s-cost">cost per subscriber</a><a href="#s-arch">services behind queues</a></div>
+  <div><b>Scale</b><a href="#s-fan">fan-out by time zone</a><a href="#s-once">create once</a><a href="#s-exact">7:00:00 for a million</a><a href="#s-arch">services behind queues</a></div>
   <div><b>Speed</b><a href="#s-dag">a parallel pipeline</a><a href="#s-pace">pacing, not bursting</a><a href="#s-port">fast local loops</a></div>
-  <div><b>Reliability</b><a href="#s-flows">every subscriber flow</a><a href="#s-idem">idempotent runs</a><a href="#s-outbox">outbox &amp; dedupe</a><a href="#s-gates">quality gates</a></div>
+  <div><b>Reliability</b><a href="#s-flows">every subscriber flow</a><a href="#s-idem">idempotent runs</a><a href="#s-outbox">outbox &amp; dedupe</a><a href="#s-hooks">payment webhooks</a><a href="#s-gates">quality gates</a></div>
   <div><b>Visibility</b><a href="#s-dash">on-time delivery</a><a href="#s-dash">dead letters</a><a href="#s-gates">per-language checks</a></div>
-  <div><b>Failover</b><a href="#s-ladder">the video ladder</a><a href="#s-pace">circuit breakers</a><a href="#s-outbox">redrive</a></div>
+  <div><b>Failover</b><a href="#s-ladder">the video ladder</a><a href="#s-pace">circuit breakers</a><a href="#s-sweep">the sweeper</a><a href="#s-hard">30 hard problems</a></div>
 </div>
 </nav>
 
@@ -844,6 +843,33 @@ DELETE /account                erase personal data within 30 days; keep a hashed
 POST   /webhooks/stripe        signature-checked, deduped by event id
 POST   /webhooks/whatsapp      STOP / START / replies, signature-checked
 POST   /webhooks/ses           bounces and complaints → suppress the address</code></pre></div>
+
+<div class="section-title" id="s-surge"><span class="dot"></span><span class="n">01·d</span><span class="section-line"></span><span class="pill">scale</span><span class="pill">security</span></div>
+<h2>A thousand sign-ups a minute</h2>
+
+<p>A parish shares the link after Sunday Mass, or a creator mentions it in a video, and sign-ups arrive in a wall. The sign-up itself is easy to scale. The trap is the verification code: it has to reach a phone through the same rate-limited providers as the morning messages.</p>
+
+<div class="widget" id="surge">
+  <div class="widget-title">Interactive · a sign-up rush: 400 a second for two minutes</div>
+  <div class="btns" role="group" aria-label="Pick a design">
+    <button class="btn" type="button" data-u="direct">Send codes directly</button>
+    <button class="btn" type="button" data-u="queue">Queue them</button>
+    <button class="btn" type="button" data-u="lane">Codes get their own lane</button>
+  </div>
+  <div class="plot"><svg id="surge-svg" viewBox="0 0 560 230" role="img" aria-labelledby="surge-t"><title id="surge-t">Verification codes sent per second during a sign-up rush.</title></svg></div>
+  <p class="readout" id="surge-out" aria-live="polite">Pick a design.</p>
+  <p class="small-note" style="margin:0">illustrative: 400 sign-ups a second for two minutes, then 30; a shared sender limit of 80 a second</p>
+</div>
+
+<p>How I built it so a rush is boring:</p>
+<ol class="steps">
+  <li><b>The page can't fall over.</b> The sign-up page is static files on S3 behind CloudFront. A million visits cost almost nothing and need no servers.</li>
+  <li><b>The request does one thing.</b> <code>POST /signup</code> runs on API Gateway and Lambda. It checks the bot token, normalises the contact (lower-case email, phone in E.164), does one conditional write keyed by <code>tenant + hash(contact)</code>, and returns <code>202</code>. A double tap gets the same answer, not a second row. Everything slow happens later, off a queue.</li>
+  <li><b>Bots never cost me a message.</b> A WAF rate rule per IP, a bot check before any code is sent, at most 3 codes per number an hour, and a daily spending cap per country. If the share of codes that get entered drops below about 60%, an alarm fires: that's what SMS/WhatsApp pumping fraud looks like.</li>
+  <li><b>Codes are short-lived and stored hashed:</b> 6 digits, 10 minutes counted from when the code is <i>sent</i> (not requested), 5 attempts, then a new code.</li>
+  <li><b>Codes get their own lane.</b> A separate queue and a separate WhatsApp number using authentication templates, with its own throughput. A sign-up rush never slows the 7 AM wave, and the 7 AM wave never delays a code. Email verification links go through SES, which is quick and cheap.</li>
+  <li><b>What it costs:</b> idle, close to zero (Lambda and on-demand DynamoDB bill per request). A rush costs cents, plus the messages themselves.</li>
+</ol>
 
 <div class="section-title" id="s-arch"><span class="dot"></span><span class="n">02</span><span class="section-line"></span><span class="pill">scale</span></div>
 <h2>Eleven small services</h2>
@@ -923,6 +949,7 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   # ... translate, image, audio, video, fanout, sender-email, sender-whatsapp, subscribers
 </code></pre></div>
 
+<aside class="field"><span class="tag">From my work · Amazon Ads</span><p>I moved a service with six interdependent subsystems to a new team with 100% uptime. It worked for the same reason this port did: one piece at a time, each with a way back.</p></aside>
 <div class="section-title" id="s-dag"><span class="dot"></span><span class="n">04</span><span class="section-line"></span><span class="pill">speed</span></div>
 <h2>Make it once, in parallel</h2>
 
@@ -935,6 +962,23 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   <div class="plot"><svg id="dag-svg" viewBox="0 0 560 260" role="img" aria-labelledby="dag-t"><title id="dag-t">A timeline of the pipeline stages.</title></svg></div>
   <p class="readout" id="dag-out" aria-live="polite">Pick a schedule.</p>
   <p class="small-note" style="margin:0">seconds, from local test runs with recorded model responses replaced by real calls · illustrative</p>
+</div>
+
+<div class="section-title" id="s-once"><span class="dot"></span><span class="n">04·b</span><span class="section-line"></span><span class="pill">scale</span></div>
+<h2>Create once, not once per person</h2>
+
+<p>Generating each subscriber's morning separately sounds personal. It is ruinous, and it means no two people share the same reading. So the package is made once per date and language, and only cheap, safe things are filled in at send time.</p>
+
+<div class="widget" id="once">
+  <div class="widget-title">Interactive · the same morning, two ways to make it</div>
+  <label class="range"><span>subscribers: <b id="on-n">10,000</b></span><input id="on-r" type="range" min="0" max="100" value="44" aria-label="Subscribers"></label>
+  <div class="hb" id="on-rows"></div>
+  <div class="split2">
+    <div class="mk-card"><b>made once, per date and language</b>reading · quote · reflection · image · voice note · video</div>
+    <div class="mk-card"><b>filled in at send time, per person</b>name · local date · their language's variant · signed unsubscribe link · their channel's format</div>
+  </div>
+  <p class="readout" id="on-out" aria-live="polite"></p>
+  <p class="small-note" style="margin:0">illustrative: about $0.22 and 60 seconds of model time per package; 100 parallel workers</p>
 </div>
 
 <div class="section-title" id="s-idem"><span class="dot"></span><span class="n">05</span><span class="section-line"></span><span class="pill">reliability</span></div>
@@ -960,6 +1004,7 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   </div>
 </div>
 
+<aside class="field"><span class="tag">From my work · Amazon Ads</span><p>I built Step Functions workflows that evaluated ads in real time at more than 5,000 transactions a second. At that rate, the step that saves its result before moving on is what makes a retry cheap instead of a disaster.</p></aside>
 <div class="section-title" id="s-fan"><span class="dot"></span><span class="n">06</span><span class="section-line"></span><span class="pill">scale</span></div>
 <h2>Seven o'clock, everywhere</h2>
 
@@ -972,6 +1017,53 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   <p class="readout" id="tz-out" aria-live="polite">Press play.</p>
 </div>
 
+<div class="section-title" id="s-exact"><span class="dot"></span><span class="n">06·b</span><span class="section-line"></span><span class="pill">speed</span><span class="pill">scale</span></div>
+<h2>Exactly 7:00:00, for a million people?</h2>
+
+<p>"Exactly 7 AM" is a promise about throughput, not just a timer. A million messages at 80 a second takes three and a half hours. Precision comes from three things: everything rendered and queued before the moment, clocks that agree, and enough parallel senders (and provider capacity) to drain the wave in seconds.</p>
+
+<div class="widget" id="exact">
+  <div class="widget-title">Interactive · how long one time zone's wave takes</div>
+  <label class="range"><span>subscribers in the zone: <b id="ex-n">500,000</b></span><input id="ex-r" type="range" min="0" max="100" value="62" aria-label="Subscribers in the zone"></label>
+  <div class="btns" role="group" aria-label="Pick a setup">
+    <button class="btn" type="button" data-x="one" aria-pressed="true">One sender, 80/s</button>
+    <button class="btn" type="button" data-x="tier">WhatsApp high tier, 1,000/s</button>
+    <button class="btn" type="button" data-x="shard">Email, 40 shards × 250/s</button>
+  </div>
+  <div class="btns" role="group" aria-label="Pick a window">
+    <button class="btn" type="button" data-wn="start" aria-pressed="true">Start at 7:00:00</button>
+    <button class="btn" type="button" data-wn="centre">Centre the wave on 7:00</button>
+  </div>
+  <div class="plot"><svg id="ex-svg" viewBox="0 0 560 120" role="img" aria-labelledby="ex-t"><title id="ex-t">The send window around 7 AM.</title></svg></div>
+  <p class="readout" id="ex-out" aria-live="polite"></p>
+</div>
+
+<div class="widget" id="wave">
+  <div class="widget-title">Diagram · one time zone's wave, minute by minute</div>
+  <div class="plot"><svg viewBox="0 0 560 128" role="img" aria-labelledby="wave-t"><title id="wave-t">The steps before and after 7:00 for one time zone.</title>
+    <line class="base" x1="16" x2="544" y1="64" y2="64"/>
+    <g class="wv"><circle cx="34" cy="64" r="6"/><text class="lab" x="34" y="44" text-anchor="start">freeze</text><text class="ax" x="34" y="88" text-anchor="start">−60 min</text></g>
+    <g class="wv"><circle cx="150" cy="64" r="6"/><text class="lab" x="150" y="44" text-anchor="middle">scale up</text><text class="ax" x="150" y="88" text-anchor="middle">−15 min</text></g>
+    <g class="wv"><circle cx="250" cy="64" r="6"/><text class="lab" x="250" y="30" text-anchor="middle">load shards,</text><text class="lab" x="250" y="44" text-anchor="middle">warm, check clock</text><text class="ax" x="250" y="88" text-anchor="middle">−5 min</text></g>
+    <line class="zero" x1="340" x2="340" y1="20" y2="104"/><text class="lab" x="340" y="14" text-anchor="middle">7:00:00.000</text><text class="ax" x="340" y="118" text-anchor="middle">fire</text>
+    <rect class="win" x="340" y="54" width="90" height="20" rx="4"/><text class="ax" x="385" y="88" text-anchor="middle">drain, N s</text>
+    <g class="wv"><circle cx="524" cy="64" r="6"/><text class="lab" x="524" y="44" text-anchor="end">sweep</text><text class="ax" x="524" y="88" text-anchor="end">+10 min</text></g>
+  </svg></div>
+</div>
+
+<p>How each zone hits 7:00:00, step by step:</p>
+<ol class="steps">
+  <li><b>T−60 min, freeze.</b> A wave planner (a Lambda) reads the zone's entitled, unsuppressed subscribers from a read replica and streams them to S3 as shards of 5,000 lines. Each line is a ready-to-send request: template variables filled in, a signed unsubscribe link, and the idempotency key. Changes made after the freeze apply tomorrow, except unsubscribes, which senders check again just before sending.</li>
+  <li><b>T−15 min, scale up.</b> A schedule sets the sender service's task count for this zone (shards ÷ shards per task). EventBridge Scheduler is only accurate to about a minute, so it starts the wave, never the send.</li>
+  <li><b>T−5 min, warm.</b> Each task claims shards with a conditional write, loads them into memory, opens keep-alive HTTP/2 connections to the provider, fetches tokens, and checks its clock against Amazon Time Sync. An offset over 20 ms raises an alarm.</li>
+  <li><b>T−50 ms, wait precisely.</b> Tasks sleep until 50 ms before the moment, then spin on the monotonic clock to 7:00:00.000 and start together. Nothing is computed now; the requests are already built.</li>
+  <li><b>T, fire.</b> Token buckets add up to just under the provider's limit, so there are no 429s. Each shard is shuffled every day, so nobody is always last.</li>
+  <li><b>T+N s, drain and measure.</b> Every send is logged with its timestamp. Dispatch p50 and p99 against 7:00 go to the dashboard, per zone.</li>
+  <li><b>T+10 min, sweep.</b> Anyone expected but not delivered is sent again with the same key (09·c).</li>
+</ol>
+<p class="small-note">Honest fine print: "to the millisecond" holds for when we <i>dispatch</i>. Arrival on a phone takes a few seconds more, decided by WhatsApp, mail servers and the network. So the promise I measure is "99% delivered within N seconds of 7:00", where N = subscribers ÷ throughput. If N creeps up, I buy throughput (a higher WhatsApp tier, a bigger SES quota, more shards) before it matters. WhatsApp also caps how many different people a number can message per day, so I raise that tier ahead of sign-ups.</p>
+
+<aside class="field"><span class="tag">From my work · Amazon Ads</span><p>I remember chasing a 10% request drop that no error log explained. The cause was autoscaling policies reacting a step behind the traffic. Ever since, I don't let a known spike wait for autoscaling, which is why senders scale up on a schedule at T−15, not when the queue fills.</p></aside>
 <div class="section-title" id="s-pace"><span class="dot"></span><span class="n">07</span><span class="section-line"></span><span class="pill">speed</span><span class="pill">failover</span></div>
 <h2>Pace, don't burst</h2>
 
@@ -988,6 +1080,45 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   <p class="readout" id="pace-out" aria-live="polite">Pick a sender.</p>
   <p class="small-note" style="margin:0">illustrative: a limit of 80 messages a second</p>
 </div>
+
+<aside class="field"><span class="tag">From my work · Amazon Ads</span><p>The BrandSafety pipeline went from 17 million products a day to 52 million, and a critical 45-day backfill finished in under 14. Nothing in that work was a timer. It was all throughput: more parallel lanes, each kept under its limit.</p></aside>
+<div class="section-title" id="s-feedback"><span class="dot"></span><span class="n">07·b</span><span class="section-line"></span><span class="pill">failover</span><span class="pill">reliability</span></div>
+<h2>Bounces, complaints and failed messages</h2>
+
+<p>Sending isn't the end. Every provider reports back: delivered, bounced, complained, failed, throttled. Ignore those reports and SES pauses your account, or WhatsApp lowers your limits. Every report lands on one feedback queue, and each kind has exactly one rule.</p>
+
+<div class="widget" id="feedback">
+  <div class="widget-title">Animation · what happens after "send"</div>
+  <div class="btns" role="group" aria-label="Pick an outcome">
+    <button class="btn" type="button" data-s="hard">Email: hard bounce</button>
+    <button class="btn" type="button" data-s="soft">Email: soft bounce</button>
+    <button class="btn" type="button" data-s="spam">Marked as spam</button>
+    <button class="btn" type="button" data-s="undel">WhatsApp: can't deliver</button>
+    <button class="btn" type="button" data-s="thr">WhatsApp: throttled</button>
+    <button class="btn" type="button" data-s="tpl">Template paused</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 296" aria-hidden="true">
+      <g class="node" data-node="prov"><rect x="10" y="6" width="280" height="34" rx="17"/><text x="150" y="28" font-size="11.5" text-anchor="middle">SES · WhatsApp Cloud API</text></g>
+      <g class="node" data-node="ev"><rect x="10" y="52" width="280" height="36" rx="6"/><text x="150" y="68" font-size="11" text-anchor="middle">feedback queue</text><text x="150" y="81" font-size="9.5" text-anchor="middle" class="sub">SES events via SNS · WhatsApp status webhooks</text></g>
+      <g class="node" data-node="cls"><rect x="10" y="100" width="280" height="36" rx="6"/><text x="150" y="116" font-size="11" text-anchor="middle">classify</text><text x="150" y="129" font-size="9.5" text-anchor="middle" class="sub">permanent · temporary · complaint · template</text></g>
+      <g class="node" data-node="sup"><rect x="10" y="148" width="136" height="40" rx="6"/><text x="78" y="165" font-size="11" text-anchor="middle">suppress</text><text x="78" y="179" font-size="9.5" text-anchor="middle" class="sub">this channel</text></g>
+      <g class="node" data-node="later"><rect x="154" y="148" width="136" height="40" rx="6"/><text x="222" y="165" font-size="11" text-anchor="middle">retry later</text><text x="222" y="179" font-size="9.5" text-anchor="middle" class="sub">same key, backoff</text></g>
+      <g class="node" data-node="alt"><rect x="10" y="200" width="136" height="40" rx="6"/><text x="78" y="217" font-size="11" text-anchor="middle">other channel</text><text x="78" y="231" font-size="9.5" text-anchor="middle" class="sub">if they have one</text></g>
+      <g class="node" data-node="tplb"><rect x="154" y="200" width="136" height="40" rx="6"/><text x="222" y="217" font-size="11" text-anchor="middle">backup template</text><text x="222" y="231" font-size="9.5" text-anchor="middle" class="sub">pre-approved</text></g>
+      <g class="node" data-node="st"><rect x="40" y="252" width="220" height="36" rx="18"/><text x="150" y="275" font-size="11" text-anchor="middle" id="fb-state" data-reset="reputation: healthy">reputation: healthy</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick an outcome.</li></ol></div>
+  </div>
+</div>
+
+<ol class="steps">
+  <li><b>Wire it once.</b> An SES configuration set publishes bounce, complaint, delivery and reject events to SNS, then SQS. WhatsApp status webhooks (sent, delivered, read, failed) are checked by signature and land on the same queue. One small worker applies the rules.</li>
+  <li><b>Never retry a permanent failure.</b> It only damages reputation. Suppress the address at once, in my table and in SES's account-level suppression list.</li>
+  <li><b>Keep the two numbers that matter low:</b> bounces well under 5%, complaints under 0.1%. Both have alarms at half those values. Double opt-in and one-click unsubscribe are what keep them low.</li>
+  <li><b>The domain is set up properly:</b> SPF, DKIM, DMARC, a custom MAIL FROM, and a slow warm-up for a new domain or IP.</li>
+  <li><b>Recycled phone numbers:</b> numbers get reassigned. I ask for a one-tap reconfirmation every 12 months, and a long run of failures on a number ends that subscription instead of messaging a stranger.</li>
+</ol>
 
 <div class="section-title" id="s-ladder"><span class="dot"></span><span class="n">08</span><span class="section-line"></span><span class="pill">failover</span></div>
 <h2>A video, no matter what</h2>
@@ -1031,6 +1162,102 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   </div>
 </div>
 
+<div class="section-title" id="s-hooks"><span class="dot"></span><span class="n">09·b</span><span class="section-line"></span><span class="pill">reliability</span></div>
+<h2>Payment events lie about time</h2>
+
+<p>Stripe's webhooks can arrive late, twice, or in a different order from the events themselves, and our endpoint can be down when they're sent. So we never trust the order, never trust a single delivery, and never trust ourselves to have caught everything.</p>
+
+<div class="widget" id="hooks">
+  <div class="widget-title">Animation · three ways a payment event goes wrong</div>
+  <div class="btns" role="group" aria-label="Pick a problem">
+    <button class="btn" type="button" data-s="order">Out of order</button>
+    <button class="btn" type="button" data-s="dup">Delivered twice</button>
+    <button class="btn" type="button" data-s="down">We were down</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 300" aria-hidden="true">
+      <g class="node" data-node="stripe"><rect x="10" y="6" width="280" height="34" rx="17"/><text x="150" y="28" font-size="11.5" text-anchor="middle">Stripe</text></g>
+      <g class="node" data-node="inbox"><rect x="10" y="52" width="280" height="36" rx="6"/><text x="150" y="68" font-size="11" text-anchor="middle">webhook inbox</text><text x="150" y="81" font-size="9.5" text-anchor="middle" class="sub">check signature · store · reply 200 fast</text></g>
+      <g class="node" data-node="dedupe"><rect x="10" y="100" width="280" height="36" rx="6"/><text x="150" y="116" font-size="11" text-anchor="middle">event table</text><text x="150" y="129" font-size="9.5" text-anchor="middle" class="sub">unique on event id</text></g>
+      <g class="node" data-node="worker"><rect x="10" y="148" width="280" height="36" rx="6"/><text x="150" y="164" font-size="11" text-anchor="middle">worker</text><text x="150" y="177" font-size="9.5" text-anchor="middle" class="sub">asks Stripe for the current state</text></g>
+      <g class="node" data-node="state"><rect x="10" y="196" width="280" height="36" rx="6"/><text x="150" y="217" font-size="11" text-anchor="middle" id="h-state" data-reset="subscriber: trial">subscriber: trial</text></g>
+      <g class="node" data-node="recon"><rect x="10" y="244" width="280" height="40" rx="8"/><text x="150" y="261" font-size="11" text-anchor="middle">nightly reconciliation</text><text x="150" y="275" font-size="9.5" text-anchor="middle" class="sub">every Stripe subscription vs our table</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a problem.</li></ol></div>
+  </div>
+</div>
+
+
+<p>The payment side, end to end:</p>
+<ol class="steps">
+  <li><b>Trials without a card.</b> Stripe Checkout creates a subscription with a 14-day trial, collecting a payment method only if required, and set to <i>pause</i> if the trial ends with no card. Mornings stop; nothing is charged by surprise.</li>
+  <li><b>One trial per person, forever.</b> Before a trial starts, I look up <code>hash(normalised email or phone)</code> in <code>trials_used</code>. That hash outlives account deletion, so delete-and-re-sign-up doesn't reset the trial, and it isn't personal data I can read back.</li>
+  <li><b>A reminder before the trial ends.</b> Stripe sends <code>customer.subscription.trial_will_end</code> three days before; the subscriber gets one message in their language and channel, with a link to add a card.</li>
+  <li><b>The webhook inbox is tiny on purpose.</b> Verify the signature, insert into <code>stripe_events</code> (primary key: event id), reply 200 within milliseconds. A queue does the work, so a slow database never makes Stripe retry.</li>
+  <li><b>Events are hints; the API is the truth.</b> The worker fetches the subscription and maps its status to one thing: may we send? <code>trialing</code> and <code>active</code>: yes. <code>past_due</code>: yes, during a 7-day grace period. <code>paused</code>, <code>unpaid</code>, <code>canceled</code>: no. The row is updated only if the fetched copy is newer than the stored one.</li>
+  <li><b>Every call to Stripe carries an idempotency key,</b> such as <code>checkout:sub_8f2c:2026-11-05</code>, so a retried request never creates two subscriptions or two charges.</li>
+  <li><b>Failed renewals:</b> Stripe's Smart Retries plus card-updater, and a message after the first failure. Mornings continue during the grace period, then pause. They don't get deleted.</li>
+  <li><b>Nightly reconciliation</b> lists every subscription Stripe changed in the last 48 hours and corrects any that differ. If it fixes anything, an alarm fires, because something upstream is wrong.</li>
+  <li><b>Who may receive tomorrow's message is decided once,</b> at the T−60 freeze, from that one field.</li>
+</ol>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the tables that keep payments and sends safe</span></div><pre><code>subscribers   (id, tenant_id, contact_hash, lang, channel, zone,
+               status, may_send, stripe_sub_id, fetched_at)
+trials_used   (contact_hash PRIMARY KEY, first_trial_at)       -- survives erasure
+stripe_events (event_id PRIMARY KEY, type, received_at, processed_at)
+deliveries    (key PRIMARY KEY, status, provider_msg_id, sent_at, ttl)
+              -- key = tenant:subscriber:date:channel, TTL 30 days
+suppressions  (contact_hash, channel, reason, at)              -- bounces, complaints, STOP</code></pre></div>
+
+<div class="section-title" id="s-sweep"><span class="dot"></span><span class="n">09·c</span><span class="section-line"></span><span class="pill">reliability</span><span class="pill">visibility</span></div>
+<h2>The sweeper: nobody gets missed</h2>
+
+<div class="widget" id="sweep">
+  <div class="widget-title">Animation · ten minutes after each wave</div>
+  <div class="btns" role="group" aria-label="Pick a case">
+    <button class="btn" type="button" data-s="silent">A worker died silently</button>
+    <button class="btn" type="button" data-s="canary">The canary inboxes</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 250" aria-hidden="true">
+      <g class="node" data-node="exp"><rect x="10" y="6" width="136" height="44" rx="6"/><text x="78" y="24" font-size="11" text-anchor="middle">expected</text><text x="78" y="39" font-size="9.5" text-anchor="middle" class="sub">the zone's snapshot</text></g>
+      <g class="node" data-node="got"><rect x="154" y="6" width="136" height="44" rx="6"/><text x="222" y="24" font-size="11" text-anchor="middle">delivered</text><text x="222" y="39" font-size="9.5" text-anchor="middle" class="sub">the delivery log</text></g>
+      <g class="node" data-node="diff"><rect x="10" y="62" width="280" height="36" rx="6"/><text x="150" y="84" font-size="11" text-anchor="middle" id="sw-diff" data-reset="difference">difference</text></g>
+      <g class="node" data-node="re"><rect x="10" y="110" width="280" height="36" rx="6"/><text x="150" y="126" font-size="11" text-anchor="middle">re-enqueue the missing</text><text x="150" y="139" font-size="9.5" text-anchor="middle" class="sub">same keys: impossible to double-send</text></g>
+      <g class="node" data-node="can"><rect x="10" y="158" width="280" height="36" rx="6"/><text x="150" y="174" font-size="11" text-anchor="middle">canary inboxes</text><text x="150" y="187" font-size="9.5" text-anchor="middle" class="sub">a test subscriber per language × channel × zone</text></g>
+      <g class="node" data-node="slo"><rect x="40" y="206" width="220" height="36" rx="18"/><text x="150" y="229" font-size="11.5" text-anchor="middle" id="sw-slo" data-reset="on-time rate">on-time rate</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a case.</li></ol></div>
+  </div>
+</div>
+
+<aside class="field"><span class="tag">From my work · Microsoft · Azure Resource Graph</span><p>On a high-throughput relationship pipeline I added per-record metric dimensions and fixed seven telemetry signals across three microservices. Averages said it was healthy; only per-record counts showed what was missing. The sweeper is the same lesson: count every person, not the average.</p></aside>
+<div class="section-title" id="s-tenants"><span class="dot"></span><span class="n">09·d</span><span class="section-line"></span><span class="pill">scale</span></div>
+<h2>Many tenants, one pipeline</h2>
+
+<p>Parishes, schools and ministries sign up whole communities under their own name. One tenant must never slow down, break or see another. The classic failure: a parish with 200,000 members imports first, and every small parish waits behind it.</p>
+
+<div class="widget" id="fair">
+  <div class="widget-title">Interactive · one zone: a 200,000-member parish, 50 small parishes, 30,000 individuals</div>
+  <div class="btns" role="group" aria-label="Pick a queue">
+    <button class="btn" type="button" data-q="fifo">One queue, first come</button>
+    <button class="btn" type="button" data-q="fair">A lane per tenant, fair share</button>
+  </div>
+  <div class="hb" id="fair-rows"></div>
+  <p class="readout" id="fair-out" aria-live="polite"></p>
+  <p class="small-note" style="margin:0">illustrative: 1,000 messages a second in total; seconds after 7:00 until the last member of each group is sent</p>
+</div>
+
+<ol class="steps">
+  <li><b>A tenant id on everything:</b> every row, every partition key, every message key (<code>tenant:subscriber:date:channel</code>), every log line and cost tag.</li>
+  <li><b>A tenant is configuration, not code:</b> its name and branding, its calendar, its languages and channels, its quota, and optionally its own WhatsApp number (with its own throughput and quality rating, so its mistakes stay its own).</li>
+  <li><b>Members still opt in themselves.</b> A parish shares a link or QR code carrying its tenant code. A CSV import sends invitations, never subscriptions.</li>
+  <li><b>Fair sending:</b> fan-out writes a lane per tenant per zone. Senders take from the lanes round-robin, and a lane that empties gives its share to the rest. Small tenants finish in seconds; the big one finishes when it would have anyway.</li>
+  <li><b>Content is still made once:</b> packages are keyed by date × calendar × language, so ten tenants on the same calendar share one package.</li>
+  <li><b>Billing:</b> the tenant is one Stripe customer on a per-seat subscription, updated nightly from its active member count. Members pay nothing.</li>
+  <li><b>Blast radius:</b> per-tenant API rate limits, per-tenant quotas, and a bad import or a paused template fails only that tenant's lane.</li>
+</ol>
+
 <div class="section-title" id="s-gates"><span class="dot"></span><span class="n">10</span><span class="section-line"></span><span class="pill">reliability</span><span class="pill">visibility</span></div>
 <h2>Checks before anything sends</h2>
 
@@ -1046,6 +1273,7 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   <p class="readout" id="gate-out" aria-live="polite">Pick a day.</p>
 </div>
 
+<aside class="field"><span class="tag">From my work · Nissan</span><p>Tell Me More, the dealership chatbot I shipped, had a Rubric agent whose only job was to judge an answer before a customer saw it. The quality gate here is the same idea: what the model writes is checked before it's sent.</p></aside>
 <div class="section-title" id="s-dash"><span class="dot"></span><span class="n">11</span><span class="section-line"></span><span class="pill">visibility</span></div>
 <h2>One number: on time</h2>
 
@@ -1057,6 +1285,21 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   <p class="small-note" style="margin:6px 0 0">simulated: one tick per minute during the India morning wave</p>
 </div>
 
+<aside class="field"><span class="tag">From my work · Amazon Ads</span><p>The data lake I built (DynamoDB exports to Iceberg, queried with Athena) had a single promise: data no more than 30 minutes old. One number you can alarm on beats ten dashboards. Here, that number is on-time delivery.</p></aside>
+<div class="section-title" id="s-blast"><span class="dot"></span><span class="n">11·b</span><span class="section-line"></span><span class="pill">failover</span></div>
+<h2>Pull any plug</h2>
+
+<p>Every part of this will fail one day. For each one: what the subscriber notices, how I find out, what happens automatically, and what the protection costs. Pick a part to break.</p>
+
+<div class="widget" id="blast">
+  <div class="widget-title">Interactive · what happens when this fails</div>
+  <div class="btns" role="group" aria-label="Pick a part" id="bl-btns"></div>
+  <div class="bl-card" id="bl-card" aria-live="polite"></div>
+</div>
+
+<p>The design choice behind most of these: <b>the 7 AM path depends on as little as possible.</b> At send time a sender needs only its shard in S3, a queue, the delivery log and the provider. The database, the AI providers, Stripe and the pipeline can all be down at 7:00, and the morning still arrives.</p>
+
+<aside class="field"><span class="tag">From my work · Microsoft · Azure Resource Graph</span><p>I rolled out new graph-relationship rules region by region, and helped build the same stack in a new region, Australia East. A second region is only real if code can build it. That's why my pilot light is infrastructure as code, not a runbook full of console clicks.</p></aside>
 <div class="section-title" id="s-cost"><span class="dot"></span><span class="n">12</span><span class="section-line"></span><span class="pill">scale</span></div>
 <h2>Where the money goes</h2>
 
@@ -1068,6 +1311,21 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   <p class="small-note" style="margin:0">illustrative unit costs; half the subscribers on WhatsApp, half on email</p>
 </div>
 
+
+<p>How I keep the bill small without making it fragile:</p>
+<ol class="steps">
+  <li><b>Make content once.</b> The biggest saving by far (04·b): AI cost doesn't grow with subscribers.</li>
+  <li><b>Nothing runs while it isn't needed.</b> Senders exist only during waves, scaled from zero by the zone schedules. The pipeline runs on Fargate Spot (up to 70% cheaper; an interruption is just a retry from the last checkpoint) on ARM (Graviton).</li>
+  <li><b>Low-traffic APIs are serverless.</b> Sign-up, settings, webhooks and unsubscribe run on API Gateway and Lambda: close to free at this size, and they scale on their own.</li>
+  <li><b>Never attach media.</b> Messages carry links to S3 behind CloudFront (the first terabyte a month is free); homilies link to where they're hosted.</li>
+  <li><b>Email is the cheap channel.</b> SES costs $0.10 per 1,000 emails; a WhatsApp template message costs tens to hundreds of times more, depending on the country. Both are offered; the price page says so honestly.</li>
+  <li><b>No NAT gateway.</b> Free gateway endpoints for S3 and DynamoDB; senders run in public subnets with no inbound access, so they don't pay roughly $30+ a month per NAT plus data.</li>
+  <li><b>Data expires.</b> The delivery log has a 30-day TTL (deletes are free), old packages move to cheaper S3 storage after 90 days, and logs are kept 14 days.</li>
+  <li><b>Pay for safety where it's cheap.</b> Replicating packages to a second region costs pennies; a fully warm second region would roughly double the bill. So I keep a pilot light (11·b) and accept a slower recovery.</li>
+  <li><b>Watch the bill like an SLO.</b> AWS Budgets alarms, a cost tag on every service and tenant, and a monthly cost-per-subscriber figure.</li>
+</ol>
+
+<aside class="field"><span class="tag">From my work · Microsoft · Azure Resource Graph</span><p>I worked on a five-region scale-out that roughly doubled processing capacity with no extra cloud spend. The cheapest capacity is the capacity you're already paying for. Here, that means senders that run only during waves, and content made once.</p></aside>
 <div class="section-title" id="s-build"><span class="dot"></span><span class="n">13</span><span class="section-line"></span></div>
 <h2>Rebuild it yourself</h2>
 
@@ -1093,6 +1351,26 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   "lang": "mr", "channel": "whatsapp",
   "zone": "Asia/Kolkata" }</code></pre></div>
 
+<div class="section-title" id="s-hard"><span class="dot"></span><span class="n">13·b</span><span class="section-line"></span></div>
+<h2>Every hard problem, and how I handle it</h2>
+
+<p><b id="hard-n">Thirty-odd</b> things that will happen sooner or later, each with the fix and what the fix costs. Filter by where they bite.</p>
+
+<div class="widget" id="hard">
+  <div class="widget-title">Catalogue · what breaks, and the fix</div>
+  <div class="btns" role="group" aria-label="Filter">
+    <button class="btn" type="button" data-cat="all" aria-pressed="true">All</button>
+    <button class="btn" type="button" data-cat="signup">Sign-up</button>
+    <button class="btn" type="button" data-cat="pay">Payments</button>
+    <button class="btn" type="button" data-cat="content">Content</button>
+    <button class="btn" type="button" data-cat="send">Delivery</button>
+    <button class="btn" type="button" data-cat="fail">Failures</button>
+    <button class="btn" type="button" data-cat="tenant">Tenants</button>
+    <button class="btn" type="button" data-cat="sec">Security</button>
+  </div>
+  <div class="cards" id="hard-cards"></div>
+</div>
+
 <div class="interrupt"><span class="tag">Sorry, quick interruption</span>
 <p>Machine translation has opinions. Ask for "the Good Shepherd" in Marathi with no context, and you can get a shepherd who's simply good at his job. That's why every language has a native-speaker gate.</p>
 </div>
@@ -1107,6 +1385,10 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
   <li><div class="dq">How do sends get timed?</div><div class="chips"><span class="chip">delayed queue messages</span><span class="chip won">a release schedule per time zone</span></div><p class="why">Queues only delay 15 minutes; schedules can wait hours. <span class="cost"><b>Cost:</b> ~40 schedules to manage.</span></p></li>
   <li><div class="dq">How do retries stay safe?</div><div class="chips"><span class="chip">hope</span><span class="chip won">dedupe key + idempotency key</span></div><p class="why">Crashes never double-send. <span class="cost"><b>Cost:</b> a write per message.</span></p></li>
   <li><div class="dq">What if there's no video?</div><div class="chips"><span class="chip">skip it</span><span class="chip won">the ladder</span></div><p class="why">Something always arrives. <span class="cost"><b>Cost:</b> a renderer to run.</span></p></li>
+  <li><div class="dq">What does 7 AM depend on?</div><div class="chips"><span class="chip">the whole stack</span><span class="chip won">a frozen shard, a queue, a provider</span></div><p class="why">The database, AI and Stripe can all be down at 7:00. <span class="cost"><b>Cost:</b> changes after T−60 wait a day.</span></p></li>
+  <li><div class="dq">Verification codes?</div><div class="chips"><span class="chip">share the senders</span><span class="chip won">their own lane and number</span></div><p class="why">A rush never touches the morning. <span class="cost"><b>Cost:</b> a second number to manage.</span></p></li>
+  <li><div class="dq">Tenants?</div><div class="chips"><span class="chip">one queue</span><span class="chip won">a lane each, fair share</span></div><p class="why">No parish waits behind another. <span class="cost"><b>Cost:</b> more queues to watch.</span></p></li>
+  <li><div class="dq">A second region?</div><div class="chips"><span class="chip">warm standby</span><span class="chip won">pilot light</span></div><p class="why">Pennies, not double. <span class="cost"><b>Cost:</b> ~30 minutes to recover, rare duplicates.</span></p></li>
   <li><div class="dq">How is it tested?</div><div class="chips"><span class="chip">in the cloud</span><span class="chip won">locally, failures included</span></div><p class="why">Fast loops, no bill. <span class="cost"><b>Cost:</b> keeping mocks honest.</span></p></li>
 </ol>
 
@@ -1447,7 +1729,7 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
     sched: [340, 8], orch: [340, 48], read: [104, 94], write: [222, 94], trans: [340, 94], img: [340, 144], gate: [340, 198], store: [340, 240],
     fan: [340, 292], qe: [340, 358], se: [340, 404], dlq: [340, 450], user: [288, 490],
   }, [
-    ['sched', 'sched', 'lit', 'At 18:00 UTC the day before, the scheduler starts the run: two hours before Sydney, the first 7 AM on Earth.'],
+    ['sched', 'sched', 'lit', 'At 18:00 UTC the day before (two hours before Sydney, the first 7 AM on Earth), the scheduler seals the day’s package. It was built up to a week ahead; this run verifies it and rebuilds anything missing.'],
     ['orch', 'orch', 'lit', 'The orchestrator first claims the date, so a second trigger can’t start a second run.'],
     ['read', 'read', 'lit', 'Reading looks today up in the liturgical calendar and pulls the passage from the stored Bible, in all four languages.'],
     ['write', 'write', 'lit', 'Writer picks a saint’s quote from a sourced list and drafts a short reflection around the reading.'],
@@ -1729,6 +2011,248 @@ POST   /webhooks/ses           bounces and complaints → suppress the address</
       out.innerHTML = `About <b>$${Math.round(total).toLocaleString('en-US')} a month</b>, or <b>$${(total * 12 / n).toFixed(2)} per subscriber a year</b>. WhatsApp is ${Math.round(vals[4] / total * 100)}% of it; the AI is ${(vals[0] / total * 100).toFixed(1)}%.`;
     };
     r.addEventListener('input', draw); draw();
+  }
+
+  // 04·b · Create once vs once per subscriber.
+  const once = document.getElementById('once');
+  if (once) {
+    const r = once.querySelector('#on-r'), nEl = once.querySelector('#on-n'), rows = once.querySelector('#on-rows'), out = once.querySelector('#on-out');
+    const money = v => v >= 1000 ? '$' + Math.round(v).toLocaleString('en-US') : '$' + v.toFixed(2);
+    const dur = s => s < 120 ? Math.round(s) + ' s' : s < 7200 ? Math.round(s / 60) + ' min' : (s / 3600).toFixed(1) + ' h';
+    const draw = () => {
+      const n = Math.round(100 * 10 ** (r.value / 100 * 4) / 100) * 100;
+      nEl.textContent = n.toLocaleString('en-US');
+      const perCost = n * .22, onceCost = 4 * .22, perTime = n * 60 / 100, onceTime = 63;
+      const mx = Math.max(perCost, onceCost);
+      rows.innerHTML = [['once per subscriber: cost a day', perCost, money(perCost), ''], ['once per date × 4 languages: cost a day', onceCost, money(onceCost), 'teal']]
+        .map(([l, v, t, c]) => `<div class="hb-row"><div class="hb-label">${l}</div><div class="hb-track"><div class="hb-bar ${c}" style="--f:${Math.max(v / mx, .004)}"></div><span class="hb-val">${t}</span></div></div>`).join('');
+      out.innerHTML = `Per subscriber: <b>${money(perCost)} a day</b> and <b>${dur(perTime)}</b> of generation every evening, growing with each sign-up. Once: <b>${money(onceCost)} a day</b> and ${onceTime} s, at any size, and everyone prays over the same words.`;
+    };
+    r.addEventListener('input', draw); draw();
+  }
+
+  // 06·b · Exactly 7:00:00.
+  const exact = document.getElementById('exact');
+  if (exact) {
+    const r = exact.querySelector('#ex-r'), nEl = exact.querySelector('#ex-n'), svg = exact.querySelector('#ex-svg'), out = exact.querySelector('#ex-out');
+    const sb = [...exact.querySelectorAll('[data-x]')], wb = [...exact.querySelectorAll('[data-wn]')];
+    const rates = {one: 80, tier: 1000, shard: 10000};
+    let setup = 'one', win = 'start';
+    const W = 560, L = 20, R = 20, MID = 280;
+    const draw = () => {
+      const n = Math.round(10 ** (4 + r.value / 100 * 2.3) / 1000) * 1000;
+      nEl.textContent = n.toLocaleString('en-US');
+      const secs = n / rates[setup], span = Math.max(secs * 1.3, 120), X = t => MID + t / span * (W / 2 - R);
+      const a = win === 'start' ? 0 : -secs / 2, bEnd = a + secs;
+      svg.innerHTML = '';
+      el(svg, 'line', {x1: L, x2: W - R, y1: 70, y2: 70, class: 'base'});
+      el(svg, 'rect', {x: Math.max(L, X(a)), y: 52, width: Math.max(3, Math.min(W - R, X(bEnd)) - Math.max(L, X(a))), height: 36, rx: 4, class: 'win'});
+      el(svg, 'line', {x1: MID, x2: MID, y1: 30, y2: 104, class: 'zero'});
+      el(svg, 'text', {x: MID, y: 24, 'text-anchor': 'middle', class: 'lab'}, '7:00:00');
+      const fmt = t => { const s = Math.round(t), sg = s < 0 ? '−' : '+'; const a2 = Math.abs(s); return `${sg}${Math.floor(a2 / 60)}:${String(a2 % 60).padStart(2, '0')}`; };
+      const narrow = X(bEnd) - X(a) < 90;
+      el(svg, 'text', {x: Math.max(L, X(a)) - (narrow ? 4 : 0), y: 116, 'text-anchor': narrow ? 'end' : 'start', class: 'ax'}, fmt(a));
+      el(svg, 'text', {x: Math.min(W - R, X(bEnd)) + (narrow ? 4 : 0), y: 116, 'text-anchor': narrow ? 'start' : 'end', class: 'ax'}, fmt(bEnd));
+      const t = secs < 90 ? `${secs.toFixed(secs < 10 ? 1 : 0)} seconds` : secs < 5400 ? `${Math.round(secs / 60)} minutes` : `${(secs / 3600).toFixed(1)} hours`;
+      out.innerHTML = `${n.toLocaleString('en-US')} messages at ${rates[setup].toLocaleString('en-US')} a second take <b>${t}</b>. ` +
+        (win === 'centre' ? `Centred, the furthest subscriber is <b>${t.replace(/[\d.]+/, v => (+v / 2).toFixed(+v / 2 < 10 ? 1 : 0))}</b> from 7:00.` : (() => { const s = Math.round(secs), h = 7 + Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return `Starting at 7:00, the last subscriber gets it at ${h}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}.`; })()) +
+        (secs > 600 ? ' No timer fixes this: only more throughput does.' : '');
+    };
+    sb.forEach(b => b.addEventListener('click', () => { press(sb, b); setup = b.dataset.x; draw(); }));
+    wb.forEach(b => b.addEventListener('click', () => { press(wb, b); win = b.dataset.wn; draw(); }));
+    r.addEventListener('input', draw); draw();
+  }
+
+  // 09·b · Webhooks out of order, twice, or while we're down.
+  story(document.getElementById('hooks'), {
+    order: [['stripe', 'lit', 'The customer pays at the end of the trial.'],
+            ['inbox', 'stop', 'invoice.paid arrives first, then subscription.updated a second later.'],
+            ['dedupe', 'stop', 'Both stored; the inbox replies 200 in milliseconds.'],
+            ['worker', 'lit', 'The worker ignores what each event says and asks Stripe for the subscription as it is now.'],
+            ['state', 'stop', 'Active, whatever the order.', {'h-state': 'subscriber: active'}]],
+    dup: [['stripe', 'lit', 'A network blip: Stripe sends invoice.paid twice.'],
+          ['inbox', 'stop', 'Both pass the signature check.'],
+          ['dedupe', 'bad', 'The second insert hits the unique event id and is dropped.'],
+          ['state', 'stop', 'One state change, one receipt email.', {'h-state': 'subscriber: active'}]],
+    down: [['stripe', 'lit', 'A renewal succeeds while our API is deploying.'],
+           ['inbox', 'bad', 'Stripe gets a 503, and retries with backoff for up to three days.'],
+           ['inbox dedupe worker', 'stop', 'Ten minutes later the retry lands and is processed.', {'h-state': 'subscriber: active'}],
+           ['recon', 'stop', '<b>And if every retry had failed,</b> the nightly job compares every Stripe subscription with our table and fixes the difference.']],
+  });
+
+  // 09·c · The sweeper.
+  story(document.getElementById('sweep'), {
+    silent: [['exp got', 'lit', '07:10 in India: the sweeper compares who should have got today’s message with who did.'],
+             ['diff', 'bad', '312 missing: a sender died between taking and sending a batch.', {'sw-diff': '312 missing'}],
+             ['re', 'stop', 'They go back on the queue with the same keys, so nobody can get two.'],
+             ['slo', 'stop', 'All delivered by 07:14. On-time rate: 99.4%, and an alarm explains why it isn’t 100.', {'sw-slo': 'on time: 99.4% · all delivered'}]],
+    canary: [['can', 'lit', 'Every morning, test subscribers in each language, channel and a few zones receive the real message.'],
+             ['can', 'stop', 'A checker reads them: arrived on time, right language, image loads, video plays, unsubscribe link works.'],
+             ['diff', 'bad', 'Spanish email arrived, but its video link 404s.', {'sw-diff': 'canary: es video 404'}],
+             ['slo', 'stop', 'An alarm fires before most of Spain is awake, and the ladder swaps in the next rung.', {'sw-slo': 'fixed before 7:00 Madrid'}]],
+  });
+
+  // 13·b · The catalogue of hard problems.
+  const hard = document.getElementById('hard');
+  if (hard) {
+    const C = [
+      ['signup', 'A sign-up rush', 'A parish shares the link after Sunday Mass: 20,000 sign-ups in ten minutes.', ['The API scales out; sign-up only writes a row and returns.', 'Verification messages go on their own paced queue.', 'Per-IP and per-number rate limits; a waiting page instead of errors.'], 'cents: Lambda and on-demand DynamoDB bill per request'],
+      ['signup', 'OTP pumping fraud', 'Bots request codes to premium-rate numbers, and we pay per message.', ['A bot check before any code is sent.', 'At most 3 codes per number per hour, with caps per country.', 'Alarm when the verify rate drops: sent codes that nobody enters.'], 'free (WAF rules and caps), and it prevents the expensive failure'],
+      ['signup', 'Double sign-ups', 'A double tap, or two tabs, creates two subscribers.', ['Normalise email and phone (E.164) first.', 'A unique index, plus an idempotency key per form submit.', 'The second request returns the first result.'], 'free: a unique index'],
+      ['signup', 'Never verified', 'Half-finished sign-ups pile up, with personal data in them.', ['Pending rows expire after 7 days, with one reminder.', 'Then they are deleted, not kept "just in case".'], 'free: a TTL'],
+      ['signup', 'Time zones, DST and travel', 'A fixed offset sends at 6 AM after a clock change, or at 3 AM in Nepal.', ['Store the IANA zone (Asia/Kolkata), never an offset.', 'Compute each day’s 7 AM from the zone: DST, +5:30, +5:45 all work.', 'Confirm the zone in the welcome message; one tap to change it.'], 'free: the tz database does the work'],
+      ['pay', 'Free-trial abuse', 'The same person starts a new trial every week.', ['One trial ever per verified phone or email, kept as a hash after deletion.', 'No card needed, but a verified identity is.', 'Extensions only through support.'], 'one tiny table'],
+      ['pay', 'Webhooks out of order', 'invoice.paid lands before the subscription it belongs to.', ['Store by event id, reply 200 fast, process asynchronously.', 'Re-fetch the object from Stripe: the API is the truth, the event is a hint.'], 'one API call per event'],
+      ['pay', 'Paid while we were down', 'The renewal succeeds; our endpoint returns 503.', ['Stripe retries for up to three days.', 'A nightly reconciliation compares every Stripe subscription with our table.'], 'a nightly job, minutes of compute'],
+      ['pay', 'Renewals and expiring cards', 'Cards expire; annual renewals surprise people.', ['A reminder 7 days before renewal.', 'Stripe retries and card-updater; a grace period with mornings still arriving.', 'Then pause, never delete.'], 'included in Stripe'],
+      ['pay', 'Refunds and disputes', 'A chargeback arrives months later.', ['Refunds end access at the period end or at once, by policy.', 'A dispute pauses the account and flags it for a person.'], 'a person’s time, rarely'],
+      ['pay', 'Taxes and Indian recurring payments', 'GST, VAT and India’s e-mandate rules differ by country.', ['Stripe Tax computes and records tax per country.', 'India: pre-debit notices and limits for auto-debit; offer a one-time annual UPI payment too.'], 'Stripe Tax fee per transaction'],
+      ['content', 'Create once, not per person', 'Generating per subscriber costs thousands a day and misses 7 AM.', ['One package per date × language × calendar.', 'Only cheap parts are filled in at send time: name, local date, links.'], 'saves almost all of the AI bill'],
+      ['content', 'The pipeline runs late', 'A slow model or a broken renderer delays the whole world.', ['Packages are built up to a week ahead from the liturgical calendar.', 'The evening run only verifies and seals; reserve packages cover emergencies.'], 'free: same work, done earlier'],
+      ['content', 'Misquoted scripture', 'A model "improves" a verse or invents a quote.', ['Scripture is only ever read from the stored text.', 'Quotes come from a sourced list with citations; the gate rejects anything else.'], 'free: it’s a lookup'],
+      ['content', 'A bad translation', 'Marathi drifts in meaning.', ['Back-translation check on every reflection.', 'Native review of new prompts; hold the reflection if it fails.'], 'one extra model call per language'],
+      ['content', 'Dead video links', 'A homily is deleted or region-blocked overnight.', ['Checked when chosen and again at 06:00 local.', 'If it fails, the ladder drops to the next rung.'], 'a HEAD request per link'],
+      ['send', 'Exactly 7:00 for millions', 'A million messages at 80 a second take three and a half hours.', ['Stage and shard before 7:00; sync clocks; start together.', 'Buy throughput ahead; promise "99% within N seconds", and measure it.'], 'provider tiers and minutes of extra senders'],
+      ['send', 'WhatsApp’s 24-hour rule', 'Outside a conversation, WhatsApp only allows pre-approved templates.', ['The daily message is an approved template with variables.', 'A backup template if one is paused; content kept inside variable limits.'], 'free; approval takes time'],
+      ['send', 'Email bounces and complaints', 'Too many bounces or spam reports and SES pauses the account.', ['Hard bounce: suppress at once. Soft: retry 3 times over 6 hours.', 'Complaint: unsubscribe. SPF, DKIM, DMARC; warm up new domains.', 'Keep bounces well under 5% and complaints under 0.1%.'], 'free, and it keeps the account alive'],
+      ['send', 'WhatsApp failures', 'Not on WhatsApp, blocked the business, or our quality rating drops.', ['Mark the channel invalid; fall back to email if they have one.', 'Watch the quality rating: it controls how much we may send.'], 'free'],
+      ['send', 'Unsubscribed mid-send', 'They unsubscribe at 6:59; the message is already queued.', ['Senders check a suppression cache just before each send.'], 'a cache read per message'],
+      ['send', 'Settings changed mid-wave', 'Language switches while their zone is sending.', ['Fan-out reads a snapshot at release time.', 'Changes apply from tomorrow, and the app says so.'], 'free'],
+      ['send', 'Missed sends', 'A worker dies silently between taking a batch and sending it.', ['The sweeper diffs expected vs delivered 10 minutes after each wave.', 'Re-enqueue with the same keys; canary inboxes catch the rest.'], 'one query per wave, plus a few test inboxes'],
+      ['fail', 'A service dies', 'The audio service crashes at 18:05.', ['Queues hold the work; retries with backoff and jitter.', 'Checkpoints mean only the failed step runs again.'], 'free'],
+      ['fail', 'A provider dies', 'The email provider is down at 7:00 in New York.', ['A circuit breaker stops hammering it; messages wait.', 'A second email provider behind the same interface takes over.'], 'a second provider, idle until needed'],
+      ['fail', 'A region dies', 'The whole AWS region is out.', ['Packages replicate to a second region (S3 replication, DynamoDB global tables).', 'Warm senders and schedules there; dedupe keys stop double sends.'], 'pennies for replication; a warm standby would double the bill'],
+      ['fail', 'A bad deploy', 'A change breaks the Spanish template.', ['Canary one zone and one language first.', 'Auto-rollback when the on-time rate or canary inboxes go red.'], 'free'],
+      ['tenant', 'Parishes as tenants', 'A parish signs up its whole congregation, with its own name on it.', ['tenant_id on every row and every message key.', 'Per-tenant branding, languages and rate limits, so one big parish can’t starve the rest.', 'Bulk imports still need each member’s own opt-in.'], 'free: a column and lanes'],
+      ['tenant', 'Different calendars', 'Feasts move by country; India’s calendar isn’t the US one.', ['Each tenant picks a calendar.', 'Packages are keyed by date × calendar × language.'], 'one more package per calendar per day'],
+      ['content', 'A language or calendar added mid-day', 'A new tenant needs Tagalog today.', ['Packages are created lazily with the same claim: the first request builds it, everyone else waits on it.', 'Never two builds of one package.'], 'one package build'],
+      ['send', 'Recycled phone numbers', 'A number is reassigned to a stranger.', ['A one-tap reconfirmation every 12 months.', 'A long run of failures ends the WhatsApp subscription.'], 'one message a year'],
+      ['send', 'Clocks that disagree', 'One sender starts 400 ms late.', ['Every task checks its offset against Amazon Time Sync before the wave and alarms over 20 ms.', 'Requests are built in advance, so the start is the only thing that must be precise.'], 'free'],
+      ['tenant', 'A huge import', 'A tenant uploads 300,000 rows at 6:45.', ['Imports only create invitations, at a paced rate.', 'Nobody joins a wave after its T−60 freeze.'], 'free'],
+      ['sec', 'Links, webhooks and personal data', 'A guessed link unsubscribes someone; a fake webhook marks them paid.', ['Signed, expiring tokens; one-time where it matters.', 'Every webhook signature verified.', 'Personal data encrypted; phone numbers hashed in logs; secrets rotated.'], 'KMS keys, about $1 a month each'],
+    ];
+    const box = hard.querySelector('#hard-cards'), btns = [...hard.querySelectorAll('[data-cat]')];
+    const names = {signup: 'sign-up', pay: 'payments', content: 'content', send: 'delivery', fail: 'failures', tenant: 'tenants', sec: 'security'};
+    const show = cat => { box.innerHTML = C.filter(c => cat === 'all' || c[0] === cat).map(([c, t, br, how, cost]) => `<div class="cd"><span class="tag">${names[c]}</span><h3>${t}</h3><p class="br">${br}</p><ul>${how.map(h => `<li>${h}</li>`).join('')}</ul><p class="cost-l">${cost}</p></div>`).join(''); };
+    const hn = hard.querySelector('#hard-n'); if (hn) hn.textContent = C.length;
+    btns.forEach(b => b.addEventListener('click', () => { press(btns, b); show(b.dataset.cat); }));
+    show('all');
+  }
+
+  // 01·d · A sign-up rush.
+  const surge = document.getElementById('surge');
+  if (surge) {
+    const svg = surge.querySelector('#surge-svg'), out = surge.querySelector('#surge-out'), btns = [...surge.querySelectorAll('[data-u]')];
+    const W = 560, L = 54, R = 14, T = 12, H = 180, YMAX = 450, XMAX = 14, DT = 1 / 60;
+    const X = m => L + m / XMAX * (W - L - R), Y = v => H - Math.min(v, YMAX) / YMAX * (H - T);
+    for (let m = 0; m <= XMAX; m += 2) { el(svg, 'line', {x1: X(m), x2: X(m), y1: T, y2: H, class: m ? 'grid' : 'base', 'stroke-width': 1}); el(svg, 'text', {x: X(m), y: H + 15, 'text-anchor': m === XMAX ? 'end' : 'middle', class: 'ax'}, `+${m} min`); }
+    [0, 80, 200, 400].forEach(v => el(svg, 'text', {x: L - 6, y: Y(v) + 4, 'text-anchor': 'end', class: 'ax'}, String(v)));
+    el(svg, 'text', {x: L, y: H + 30, class: 'ax'}, 'codes a second');
+    const lim = el(svg, 'line', {x1: L, x2: W - R, y1: Y(80), y2: Y(80), class: 'limit'});
+    const limT = el(svg, 'text', {x: W - R, y: Y(80) - 5, 'text-anchor': 'end', class: 'lab'}, 'shared sender limit');
+    el(svg, 'path', {class: 'hline', fill: 'none', d: `M${X(0)},${Y(400)} L${X(2)},${Y(400)} L${X(2)},${Y(30)} L${X(XMAX)},${Y(30)}`});
+    el(svg, 'text', {x: X(2) + 6, y: Y(400) + 12, class: 'lab'}, 'sign-ups a second');
+    const errP = el(svg, 'path', {class: 'err', d: ''}), sentP = el(svg, 'path', {class: 'sent', d: ''});
+    const clip = el(svg, 'clipPath', {id: 'surge-clip'}), cr = el(clip, 'rect', {x: L, y: 0, width: 0, height: H + 2});
+    errP.setAttribute('clip-path', 'url(#surge-clip)'); sentP.setAttribute('clip-path', 'url(#surge-clip)');
+    const arrive = m => m < 2 ? 400 : 30;
+    const sim = mode => {
+      const pts = []; let backlog = 0, maxWait = 0, drained = 0;
+      for (let m = 0; m <= XMAX + 1e-9; m += DT) {
+        const a = arrive(m);
+        if (mode === 'direct') pts.push([m, Math.min(a, 80), Math.max(0, a - 80)]);
+        else if (mode === 'lane') pts.push([m, a, 0]);
+        else { const s = Math.min(80, a + backlog / (DT * 60)); backlog = Math.max(0, backlog + (a - s) * DT * 60); if (backlog > 0) drained = m; maxWait = Math.max(maxWait, backlog / 80 / 60); pts.push([m, s, 0]); }
+      }
+      return {pts, maxWait, drained};
+    };
+    const area = (pts, f) => `M${X(0)},${H} ` + pts.map(p => `L${X(p[0]).toFixed(1)},${Y(f(p)).toFixed(1)}`).join(' ') + ` L${X(XMAX)},${H} Z`;
+    let run = 0;
+    btns.forEach(b => b.addEventListener('click', () => {
+      press(btns, b);
+      const mode = b.dataset.u, r = sim(mode), me = ++run, t0 = performance.now();
+      sentP.setAttribute('d', area(r.pts, p => p[1])); errP.setAttribute('d', area(r.pts, p => p[1] + p[2]));
+      lim.style.opacity = limT.style.opacity = mode === 'lane' ? .25 : 1;
+      const frame = now => {
+        if (me !== run) return;
+        const k = reduce ? 1 : Math.min(1, (now - t0) / 2000);
+        cr.setAttribute('width', (W - R - L) * k);
+        if (k < 1) return requestAnimationFrame(frame);
+        out.innerHTML = {
+          direct: 'Calling the provider straight from the sign-up request: <b>four out of five codes fail</b> with rate-limit errors in the first two minutes, and those people leave.',
+          queue: `Queued behind the shared limit, nothing fails, but the last code waits <b>${Math.round(r.maxWait)} minutes</b>, and if this happens near 7 AM, codes and mornings fight over the same limit.`,
+          lane: 'Codes on their own queue and their own WhatsApp number, with a higher limit: <b>every code arrives within seconds</b>, and the morning wave never notices.'}[mode];
+      };
+      requestAnimationFrame(frame);
+    }));
+  }
+
+  // 07·b · Provider feedback.
+  story(document.getElementById('feedback'), {
+    hard: [['prov', 'lit', 'An email to a mailbox that no longer exists.'],
+           ['ev', 'stop', 'SES publishes a Permanent bounce to SNS; it lands on the feedback queue.'],
+           ['cls', 'stop', 'Permanent: retrying would only hurt our reputation.'],
+           ['sup', 'bad', 'The address is suppressed at once, in our table and in SES’s account suppression list.'],
+           ['alt', 'stop', 'If they also use WhatsApp, a message there asks them to fix their email.', {'fb-state': 'bounce rate: 0.4%'}]],
+    soft: [['prov', 'lit', 'Mailbox full. SES has already retried for a while.'],
+           ['ev cls', 'stop', 'A Transient bounce: counted, not suppressed.'],
+           ['later', 'stop', 'Tomorrow’s email goes as usual.'],
+           ['sup', 'bad', 'Three transient bounces on three different days pause email for that address, and we ask them to check it.']],
+    spam: [['prov', 'lit', 'Someone marks the morning email as spam.'],
+           ['ev', 'stop', 'The mailbox provider’s feedback loop reports a complaint.'],
+           ['cls', 'stop', 'A complaint means "stop", whatever the reason.'],
+           ['sup', 'bad', 'Unsubscribed from email immediately. No reconfirmation, no "are you sure".', {'fb-state': 'complaints: 0.02% (alarm at 0.05%)'}]],
+    undel: [['prov', 'lit', 'WhatsApp reports the message failed: the number can’t receive it.'],
+            ['ev cls', 'stop', 'Permanent, for this channel only.'],
+            ['sup', 'bad', 'After two failed days, WhatsApp is marked invalid for this subscriber.'],
+            ['alt', 'stop', 'If they gave an email, that becomes their channel from tomorrow, and they’re told why.']],
+    thr: [['prov', 'lit', '7:00:20: WhatsApp returns a rate-limit error.'],
+          ['ev cls', 'stop', 'Temporary.'],
+          ['later', 'lit', 'The token bucket halves its rate; the message goes back on the queue with backoff, jitter and the same idempotency key.'],
+          ['later', 'stop', 'It goes at 7:00:24. Two retries later the bucket climbs back to full speed.', {'fb-state': 'on time: 99.8%'}]],
+    tpl: [['prov', 'lit', 'Meta pauses the daily template after a run of low ratings.'],
+          ['ev cls', 'bad', 'This is about the template, not one subscriber: every WhatsApp send would fail.'],
+          ['tplb', 'stop', 'Senders switch to the pre-approved backup template with the same content.'],
+          ['st', 'stop', 'An alarm asks why people are rating us down: usually too long, or sent at the wrong hour.', {'fb-state': 'template: backup in use'}]],
+  });
+
+  // 09·d · Fair lanes for tenants.
+  const fair = document.getElementById('fair');
+  if (fair) {
+    const rows = fair.querySelector('#fair-rows'), out = fair.querySelector('#fair-out'), btns = [...fair.querySelectorAll('[data-q]')];
+    const data = {fifo: [['small parishes (400 each)', 220], ['individuals', 250], ['the big parish', 200]],
+                  fair: [['small parishes (400 each)', 21], ['individuals', 80], ['the big parish', 250]]};
+    const draw = q => {
+      rows.innerHTML = data[q].map(([l, v], i) => `<div class="hb-row"><div class="hb-label">${l}</div><div class="hb-track"><div class="hb-bar ${i === 0 ? 'teal' : ''}" style="--f:${v / 250}"></div><span class="hb-val">${v} s</span></div></div>`).join('');
+      out.innerHTML = q === 'fifo' ? 'First come, first served: the big parish imported first, so <b>every small parish waits over three and a half minutes</b> behind it.'
+        : 'Fair share: small parishes are done in <b>21 seconds</b> and individuals in 80. The big parish finishes at 250 s instead of 200, the same time the whole zone would have finished anyway.';
+    };
+    btns.forEach(b => b.addEventListener('click', () => { press(btns, b); draw(b.dataset.q); }));
+    press(btns, btns[0]); draw('fifo');
+  }
+
+  // 11·b · Pull any plug.
+  const blast = document.getElementById('blast');
+  if (blast) {
+    const P = [
+      ['The database', 'Nothing at 7:00: senders read the frozen shard in S3, not the database. Sign-ups and settings fail for about a minute.', 'RDS failover event; API 5xx alarm.', 'Aurora fails over to its replica; clients retry with backoff.', 'Single instance plus snapshots while small; a Multi-AZ replica (about double the database cost) once paying subscribers depend on it.'],
+      ['A sender task', 'Nothing, usually: a few messages arrive seconds later.', 'ECS task-stopped event; the sweeper.', 'Messages it hadn’t deleted reappear on the queue after the visibility timeout (60 s); delivery keys stop doubles; ECS starts a new task.', 'Free.'],
+      ['The delivery log', 'Sends slow down; nothing doubles.', 'DynamoDB throttling alarm.', 'On-demand capacity absorbs the spike; keys are spread by subscriber hash so no partition runs hot; conditional writes retry with backoff.', 'Pay per request; a 30-day TTL deletes old rows for free.'],
+      ['The video renderer', 'Nothing, or a lower ladder rung.', 'Pipeline step failure; package incomplete at the evening seal.', 'Retries with backoff for two hours, then the ladder (08) uses the next rung.', 'Free: packages are built days ahead.'],
+      ['An AI provider', 'Nothing.', 'Breaker opens on errors; the evening seal reports gaps.', 'Packages are built up to a week ahead; a second model behind the same interface; a reserve of reviewed reflections for emergencies.', 'A one-off cost to write the reserve.'],
+      ['Email (SES)', 'Email arrives minutes late.', 'Send errors; the breaker opens.', 'Breaker plus queue; after 10 minutes, senders switch to SES in a second region with the same verified domain.', 'Nearly free: a verified identity in a second region costs nothing until used.'],
+      ['WhatsApp', 'WhatsApp messages are late; email is unaffected.', 'Breaker; on-time rate per channel.', 'Messages wait on the queue (kept up to 4 days); after 30 minutes, anyone with an email gets today’s message by email too.', 'Free.'],
+      ['A zone’s schedule', 'Nothing, if the watchdog catches it.', 'At T−10 min a watchdog checks each zone’s wave has started.', 'The schedule retries into its own dead-letter queue; the watchdog starts the wave itself.', 'One small Lambda.'],
+      ['A bad deploy', 'At most one zone and one language.', 'Canary inboxes; on-time and error alarms.', 'Blue/green deploys roll back automatically on those alarms; no deploys in the 30 minutes before a big wave.', 'Free.'],
+      ['Stripe webhooks', 'Nothing: sends use the state frozen at T−60.', '5xx on the inbox; reconciliation finding differences.', 'Stripe retries for up to three days; the nightly reconciliation fixes the rest.', 'Free.'],
+      ['A whole AWS region', 'Mornings are late, about 30 minutes, until failover.', 'Health checks across regions; canary inboxes.', 'A pilot light: packages and snapshots are copied to a second region, and the infrastructure is code, so one command brings senders up there. A few duplicates are possible in the minutes around failover; I accept that.', 'Pennies a day for replication. A warm standby would roughly double the bill.'],
+    ];
+    const bb = blast.querySelector('#bl-btns'), card = blast.querySelector('#bl-card');
+    P.forEach((p, i) => { const b = document.createElement('button'); b.className = 'btn'; b.type = 'button'; b.textContent = p[0]; b.dataset.i = i; bb.append(b); });
+    const btns = [...bb.children];
+    const show = i => { const [n, felt, det, act, cost] = P[i]; card.innerHTML = `<h3>⚡ ${n} fails</h3><dl><dt>subscriber notices</dt><dd>${felt}</dd><dt>I find out from</dt><dd>${det}</dd><dt>the response</dt><dd>${act}</dd><dt>protection costs</dt><dd>${cost}</dd></dl>`; };
+    btns.forEach(b => b.addEventListener('click', () => { press(btns, b); show(+b.dataset.i); }));
+    press(btns, btns[0]); show(0);
   }
 })();
 </script>
