@@ -719,7 +719,7 @@ html{scroll-padding-top:16px;}
     <p class="intro-note">Prefer to watch? Every animation in this post, narrated in about 6.5 minutes, with captions built in. The narration is a local AI clone of my voice.</p>
   </section>
   <p class="dek">Daily Bible sends every subscriber the day's reading, a saint's quote, an AI image and a video, in English, Hindi, Marathi or Spanish, on WhatsApp or email, at 7 AM their time. Here's how I built it as microservices, tested it all on my laptop, then moved it to AWS. Everything you need to rebuild it is in the diagrams.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>17 min read</span></div>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>18 min read</span></div>
 </header>
 
 <div class="card origin" role="note">
@@ -741,6 +741,7 @@ html{scroll-padding-top:16px;}
   <li><strong>Make the day's content once, send it many times.</strong> Generation is a fixed daily cost; delivery is the only part that grows.</li>
   <li><strong>Every step can fail and the morning still happens:</strong> retries, fallbacks, and a ladder that ends in plain text.</li>
   <li><strong>Built and tested on a laptop first,</strong> then each piece swapped for its AWS twin.</li>
+  <li><strong>7 AM depends on almost nothing:</strong> a frozen list, a queue and the provider. The database, AI and payments can all be down at 7:00.</li>
 </ul>
 </div>
 <div class="hat" data-for="eng" hidden>
@@ -748,6 +749,7 @@ html{scroll-padding-top:16px;}
   <li><strong>One package per date, written with a conditional put:</strong> reruns are free, double-runs are impossible.</li>
   <li><strong>Outbox + dedupe key (subscriber, date, channel):</strong> a crash never sends twice.</li>
   <li><strong>Scripture is never generated:</strong> it's read from a stored, versioned text; models only write around it.</li>
+  <li><strong>Stripe events are hints:</strong> stored by event id, then the subscription is re-fetched; a nightly reconciliation catches the rest.</li>
 </ul>
 </div>
 <div class="hat" data-for="arch" hidden>
@@ -755,13 +757,15 @@ html{scroll-padding-top:16px;}
   <li><strong>Small services behind queues,</strong> each with one job, its own data and its own failure budget.</li>
   <li><strong>Same contracts locally and in the cloud:</strong> LocalStack, MinIO and Mailpit stand in for SQS, S3 and SES.</li>
   <li><strong>Per-channel pacing and circuit breakers,</strong> so a slow WhatsApp never delays email.</li>
+  <li><strong>A lane per tenant with fair share,</strong> codes on their own lane, and a pilot-light second region instead of a costly warm one.</li>
 </ul>
 </div>
 <div class="hat" data-for="em" hidden>
 <ul>
   <li><strong>The promise is "7 AM, every day":</strong> on-time delivery rate is the headline metric.</li>
   <li><strong>Four languages, one review gate,</strong> with a native-speaker check before any language goes live.</li>
-  <li><strong>Cost is mostly messaging,</strong> not AI; the slider in section 12 shows where it goes.</li>
+  <li><strong>Cost is mostly messaging,</strong> not AI; the slider in section 12 shows where it goes, and nine levers keep it low.</li>
+  <li><strong>Every failure has an owner and a price:</strong> section 11·b shows what each one costs to protect against.</li>
 </ul>
 </div>
 </section>
@@ -769,11 +773,11 @@ html{scroll-padding-top:16px;}
 <nav class="card pmap" aria-labelledby="pmap-t">
 <div class="q" id="pmap-t">The five things I care about, and where they show up</div>
 <div class="pgroups">
-  <div><b>Scale</b><a href="#s-fan">fan-out by time zone</a><a href="#s-once">create once</a><a href="#s-exact">7:00:00 for a million</a><a href="#s-arch">services behind queues</a></div>
+  <div><b>Scale</b><a href="#s-fan">fan-out by time zone</a><a href="#s-once">create once</a><a href="#s-exact">7:00:00 for a million</a><a href="#s-surge">sign-up rushes</a><a href="#s-tenants">many tenants</a><a href="#s-cost">cost</a></div>
   <div><b>Speed</b><a href="#s-dag">a parallel pipeline</a><a href="#s-pace">pacing, not bursting</a><a href="#s-port">fast local loops</a></div>
-  <div><b>Reliability</b><a href="#s-flows">every subscriber flow</a><a href="#s-idem">idempotent runs</a><a href="#s-outbox">outbox &amp; dedupe</a><a href="#s-hooks">payment webhooks</a><a href="#s-gates">quality gates</a></div>
+  <div><b>Reliability</b><a href="#s-flows">every subscriber flow</a><a href="#s-idem">idempotent runs</a><a href="#s-outbox">outbox &amp; dedupe</a><a href="#s-hooks">trials &amp; payments</a><a href="#s-feedback">bounces &amp; complaints</a><a href="#s-gates">quality gates</a></div>
   <div><b>Visibility</b><a href="#s-dash">on-time delivery</a><a href="#s-dash">dead letters</a><a href="#s-gates">per-language checks</a></div>
-  <div><b>Failover</b><a href="#s-ladder">the video ladder</a><a href="#s-pace">circuit breakers</a><a href="#s-sweep">the sweeper</a><a href="#s-hard">30 hard problems</a></div>
+  <div><b>Failover</b><a href="#s-ladder">the video ladder</a><a href="#s-pace">circuit breakers</a><a href="#s-sweep">the sweeper</a><a href="#s-blast">pull any plug</a><a href="#s-hard">every hard problem</a></div>
 </div>
 </nav>
 
@@ -1335,12 +1339,16 @@ suppressions  (contact_hash, channel, reason, at)              -- bounces, compl
   <li><b>Run the stack with compose,</b> models in fixture mode, then real calls. Mailpit shows every email; the WhatsApp mock can return 429s on demand.</li>
   <li><b>Test the failures, not just the path:</b> kill containers mid-run, fire the scheduler twice, make the mock throttle.</li>
   <li><b>Port one piece at a time:</b> containers to ECS Fargate, LocalStack to SQS/SNS/DynamoDB, MinIO to S3, Postgres to Aurora, Mailpit to SES, the mock to the WhatsApp Cloud API, all in CDK.</li>
+  <li><b>Add the safety nets before the users:</b> the feedback worker (bounces, complaints, WhatsApp statuses), the Stripe inbox and nightly reconciliation, the sweeper ten minutes after each wave, and canary inboxes.</li>
+  <li><b>Add the wave machinery:</b> a planner that freezes each zone at T−60 into shards in S3, a schedule that scales senders at T−15, and a watchdog at T−10.</li>
+  <li><b>Load-test the waves locally:</b> a million fake subscribers, a mock provider at its real limit, and a stopwatch on dispatch p99.</li>
   <li><b>Canary first:</b> one time zone and one language for a week, watching the on-time rate, then everyone.</li>
 </ol>
 
 <div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the repository</span></div><pre><code>daily-bible/
   services/   reading  writer  translate  image  audio  video
               fanout  sender-email  sender-whatsapp  subscribers  orchestrator
+  jobs/       wave-planner  watchdog  sweeper  feedback  stripe-inbox  reconciler
   libs/       ports/ (Queue, Blob, KV, Mailer, WhatsApp, LLM)  adapters/local  adapters/aws
   infra/      docker-compose.yml  cdk/ (VPC, ECS, SQS, DynamoDB, Aurora, SES, Step Functions)
   data/       bible/<lang>.sqlite  calendar/  quotes.yaml (saints, sourced)
@@ -1402,6 +1410,7 @@ suppressions  (contact_hash, channel, reason, at)              -- bounces, compl
   <li><strong>Claim the date, checkpoint every stage,</strong> and reruns become free.</li>
   <li><strong>Key every message,</strong> pace every channel, and keep a breaker per provider.</li>
   <li><strong>Build a ladder</strong> whose last rung is plain text.</li>
+  <li><strong>Freeze before you fire:</strong> at 7:00, nothing is computed, only sent.</li>
   <li><strong>Test it on a laptop,</strong> failures and all, then port one piece at a time.</li>
 </ol>
 
