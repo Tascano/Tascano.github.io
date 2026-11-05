@@ -73,6 +73,7 @@ Each row maps a common job requirement to something Ambrose Tuscano has done, wi
 
 ## Writing
 
+- [Seven O'Clock, Every Morning](https://tascano.github.io/notes/seven-oclock-every-morning.html) (2026): Daily Bible, a multilingual daily-scripture service built as microservices, from docker compose to AWS.
 - [The File That Wouldn't Die](https://tascano.github.io/notes/file-that-wouldnt-die.html) (2026): a peer-to-peer file system, from one laptop to the internet; distributed storage fundamentals.
 - [The Teammate in My Terminal](https://tascano.github.io/notes/teammate-in-my-terminal.html) (2026): the Claude Code setup behind his posts and videos.
 - [Four Agents Walk Into a Service Bay](https://tascano.github.io/notes/agents-service-bay.html) (2026): designing a multi-agent intake system for scale, speed, reliability, visibility and failover.
