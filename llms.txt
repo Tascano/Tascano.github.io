@@ -29,6 +29,11 @@ Long-form technical posts, each with interactive diagrams and a narrated video:
 - [A Million Questions a Second](https://tascano.github.io/notes/scaling-ad-relevance-apis.html): an ad-relevance API at over a million requests a second; precompute, Bloom filters, fan-out, SNS/SQS pipelines, failover (numbers illustrative)
 - [The Terminal Was Always a Log](https://tascano.github.io/notes/the-terminal-was-always-a-log.html): terminal internals, PTYs, and terminals as distributed systems
 
+## Video series
+
+- [Systems on Glass](https://tascano.github.io/series/): one system-design or AI-engineering idea a day, drawn simply (system design Mon/Wed/Fri, AI agents Tue/Thu/Sat, AI at scale on Sunday)
+- [Episode 1: Latency vs Throughput](https://tascano.github.io/series/latency-vs-throughput.html): two problems, two fixes; Little's law, queueing delay at high utilisation, Prime Day headroom, tail latency under fan-out; with further reading
+
 ## Contact
 
 - Email: ambrosetuscanojobs@gmail.com
