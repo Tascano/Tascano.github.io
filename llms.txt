@@ -15,7 +15,7 @@ Highlights, all from the resume:
 - [Candidate profile](https://tascano.github.io/candidate.md): roles, core expertise, an evidence index mapping job requirements to proof, experience, skills
 - [Resume (JSON Resume)](https://tascano.github.io/resume.json): structured resume
 - [Resume (PDF)](https://tascano.github.io/assets/Ambrose_Tuscano_Resume.pdf): full resume
-- [Website](https://tascano.github.io/): experience, projects, skills and a 3-minute intro video
+- [Website](https://tascano.github.io/): experience, projects, skills, a 3-minute intro video and the Systems on Glass video series
 
 ## Writing
 
