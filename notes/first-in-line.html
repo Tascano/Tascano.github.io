@@ -836,7 +836,7 @@ html{scroll-padding-top:16px;}
 <p>Every job moves through one small state machine. Pick a flow to see who talks to whom, and where the job ends up.</p>
 
 <div class="widget" id="flows">
-  <div class="widget-title">Animation · ten flows, as sequence diagrams</div>
+  <div class="widget-title">Animation · eleven flows, as sequence diagrams</div>
   <div class="btns" role="group" aria-label="Pick a flow">
     <button class="btn" type="button" data-f="setup">First-time setup</button>
     <button class="btn" type="button" data-f="run">The daily run</button>
@@ -846,6 +846,7 @@ html{scroll-padding-top:16px;}
     <button class="btn" type="button" data-f="account">A Workday form</button>
     <button class="btn" type="button" data-f="captcha">A CAPTCHA it can’t pass</button>
     <button class="btn" type="button" data-f="reply">A reply arrives</button>
+    <button class="btn" type="button" data-f="ask">A question only I can answer</button>
     <button class="btn" type="button" data-f="dup">Already applied by hand</button>
     <button class="btn" type="button" data-f="wipe">Export or delete everything</button>
   </div>
@@ -1206,7 +1207,8 @@ never_type: [date_of_birth, ssn, bank_details, passport_number]   # skip and fla
 <ol class="steps">
   <li><b>Three sources, all written by me.</b> <code>profile.yaml</code> holds facts (work authorization, notice period, eligibility). My résumés hold the history. <code>stories.yaml</code> holds a handful of stories with real numbers, the raw material for every free-text answer.</li>
   <li><b>An answer bank remembers every question.</b> Each question it meets is stored with the answer it gave. A new wording ("Do you have the right to work in the United States?", "Where did you find this role?") is matched to a saved one by meaning: a small model compares them, only a confident match reuses the answer, and the new wording is saved too, so paraphrases pile up as aliases of one answer.</li>
-  <li><b>It asks me once, then never again.</b> A factual question with no saved answer goes on a short "questions for me" list on the end-of-day page, and that one application waits. I answer once; the answer becomes a fact; the application goes out on the next run, and so does every future form that asks.</li>
+  <li><b>It never waits on me.</b> A question with no saved answer doesn't stop the run. The agent saves that form exactly where it is, parks the application in a "waiting on you" queue, and moves straight on to the next role. Ten roles can be parked on the same question; they all wait on one answer.</li>
+  <li><b>It asks me at the end, once.</b> When the run finishes, the parked questions are on my dashboard, each with the roles waiting on it. Most are a tap (yes or no); some need a line of text. The moment I answer, it's saved as a fact (with every wording it was asked in), and the agent reopens each parked form and submits it, without waiting for the next run. The question never comes back, however it's worded.</li>
   <li><b>Free-text answers are written, not copied.</b> The best model gets the job description, the company's own about or engineering page, and the one or two stories from my bank that fit the role. It writes in plain first person, within the field's limit, and every claim must trace to a story or my résumé. The first time it meets a new kind of question, the draft waits for my approval; after that it writes on its own, with my approved answers as examples.</li>
   <li><b>It learns from my edits.</b> When I change a draft, the edited version becomes the new example for that kind of question. It also notes which answers went out with applications that got a reply, though with so few data points that's a hint, not a science.</li>
   <li><b>Some things it never learns.</b> Date of birth, Social Security number, bank details and passport numbers are never stored and never typed. A real application almost never needs them before an offer, so a form that asks is skipped and flagged as possibly not real.</li>
@@ -1709,7 +1711,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       eod: browser('localhost:8765 · end of day', `
         <p class="mk-h">Thursday, 6 November</p>
         <div class="mk-grid"><div class="mk-stat"><small>applied today</small><b>7</b></div><div class="mk-stat"><small>to respond</small><b>3</b></div><div class="mk-stat"><small>interviews this week</small><b>2</b></div><div class="mk-stat"><small>questions for me</small><b>1</b></div></div>
-        <div class="mk-card"><b>A question for you</b>"Are you open to an on-call rotation?" (Fabrikam). Answer once, and it's saved for every form that asks, however it's worded.</div>
+        <div class="mk-card"><b>Waiting on you · 3 roles</b>"Are you open to an on-call rotation?" (Fabrikam, Proseware, Lucerne) <span class="mk-tbtn">Yes</span> <span class="mk-tbtn">No</span><br><small>Answer once: it's saved for every wording, and the 3 parked applications go out right away.</small></div>
         <div class="mk-lab">Coming up</div>
         <table class="mk-table"><tr><td>Fri 10:00</td><td>Tailspin · recruiter screen</td><td>30 min</td></tr><tr><td>Mon 14:30</td><td>Wingtip · technical interview</td><td>60 min</td></tr></table>
         <div class="mk-lab">Applied today</div>
@@ -1775,6 +1777,10 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
                 [2, 5, 'The agent moves on to the next job.'], [2, 0, 'Listed under "Skipped, and why".']],
       reply: [[6, 0, 'A recruiter replies to the jobs inbox: "We’d like to schedule a call."'], [5, 7, 'The agent reads it and matches it to the application by company and role.'],
               [5, 7, 'Status: interview. The card moves on the board.', 'interview'], [5, 1, 'Adds it to "To respond" and "Coming up". It never replies.'], [1, 0, 'At the end of the day it’s at the top of my list.'], [0, 6, 'I reply and book the call. This part stays human.']],
+      ask: [[5, 6, 'A form asks: "Are you open to an on-call rotation?"', 'applying'], [5, 7, 'No saved answer: the form is saved and the role parked in "waiting on you".', 'needs_you'],
+            [2, 5, 'The agent moves straight on to the next role. Two more ask the same thing; both are parked too.'], [2, 0, 'Run done: 7 applied, 3 waiting on one question.'],
+            [0, 1, 'On the dashboard I tap "Yes".'], [1, 7, 'Saved as a fact, with all three wordings it was asked in.'], [1, 5, 'Reopens all three parked forms at once.'],
+            [5, 6, 'Answers, and submits each one.'], [5, 7, 'All three applied. Never asked again.', 'applied']],
       dup: [[0, 6, 'I applied to Acme’s backend role by hand, through a referral.'], [0, 1, 'One click: "I applied". (The inbox check would catch it too.)'], [1, 7, 'applications: Acme · backend family · today.'],
             [2, 3, 'Next morning the same role appears on another site, with a new ID.', 'found'], [2, 7, 'Its fingerprint is already in seen.'], [2, 7, 'And Acme’s backend family is inside the 30-day window.', 'skipped']],
       wipe: [[0, 1, '<code>jobhunt export</code>'], [1, 7, 'Every table to JSON and CSV, screenshots zipped.'], [0, 1, '<code>jobhunt wipe</code>, confirmed twice.'], [1, 7, 'Deletes the three stores and the screenshots.'],
@@ -2007,7 +2013,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       ['match', 'Scoring costs creep up', 'More sources mean more descriptions to read.', ['Rules first, a cache keyed by résumé and description, and only new descriptions scored.'], 'cents'],
       ['match', 'Which résumé?', 'My backend and ML résumés fit different roles.', ['The scorer picks; review shows the choice; the tracker records it.'], 'free'],
       ['apply', 'A form changes', 'The mapping can’t fill a required field.', ['Fall back to computer use in review mode; flag the mapping.'], 'a model call per new form'],
-      ['apply', 'A question it’s never seen', '"Are you open to an on-call rotation?" on a form for the first time.', ['Hold that application; ask me once on the end-of-day page; save the answer as a fact.'], 'one answer, once'],
+      ['apply', 'A question it’s never seen', '"Are you open to an on-call rotation?" on a form for the first time.', ['Park that application in a queue and carry on; ask me once at the end; my answer is saved and every parked role goes out.'], 'one tap, once'],
       ['apply', 'New wording, same question', '"Right to work in the US?" vs "legally authorized to work in the US?"', ['A small model matches by meaning; only confident matches reuse an answer; the wording is saved as an alias.'], 'a small-model call'],
       ['sec', 'Sensitive questions', 'Date of birth, SSN, bank details on an application.', ['Never stored, never typed; the job is skipped and flagged.'], 'free'],
       ['apply', 'Résumé parsing', 'The form reads my PDF and fills fields wrongly.', ['After upload, re-read every field and correct it from the profile.', 'The screenshot shows the final state.'], 'free'],
@@ -2127,7 +2133,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
     const Q = [
       ['"Are you 18 or older?"', [['answer from', '<code>profile.yaml</code>: <code>over_18: yes</code>. An eligibility fact, not a birth date.'], ['what it does', 'Ticks "Yes". No model call.'], ['saved?', 'Already a fact. I wrote it once.']]],
       ['"Do you have the right to work in the United States?"', [['answer from', 'The answer bank: this wording is new, but a small model matches it to the saved "Are you legally authorized to work in the US?"'], ['what it does', 'Reuses the saved answer, because the match is confident.'], ['saved?', 'Yes: the new wording is stored as an alias, so next time it\'s an exact match.']]],
-      ['"Are you open to an on-call rotation?"', [['answer from', 'Nowhere yet: it isn\'t in my profile or the bank.'], ['what it does', 'Holds that one application and adds the question to "questions for me" on the end-of-day page.'], ['saved?', 'I answer once ("yes, one week in six"); it becomes a fact, the held application goes out on the next run, and the question, in any wording, never comes back to me.']]],
+      ['"Are you open to an on-call rotation?"', [['answer from', 'Nowhere yet: it isn\'t in my profile or the bank.'], ['what it does', 'Saves the form where it is, parks the application in the "waiting on you" queue, and moves on to the next role. The run never stops for me.'], ['saved?', 'At the end, it\'s on my dashboard with every role waiting on it. I tap "Yes"; it becomes a fact, every parked application is reopened and submitted right away, and the question, in any wording, never comes back.']]],
       ['"Date of birth"', [['answer from', 'Never: it\'s on the never-type list with SSN, bank details and passport numbers.'], ['what it does', 'Skips the job and flags it. Real applications almost never need this before an offer.'], ['saved?', 'Never stored, never typed.']]],
       ['"Why do you want to work here?"', [['answer from', 'The job description, the company\'s own about or engineering page, and the story from my bank that fits the role.'], ['what it does', 'The best model writes 80 to 150 words in plain first person; every claim must trace to a story or my résumé. The first answer of this kind waited for my approval; now it writes on its own.'], ['saved?', 'Yes, with the application. It\'s company-specific, so it\'s never reused word for word, but approved answers become examples for the next one.']]],
       ['"What are you most proud of?"', [['answer from', '<code>stories.yaml</code>: for a data role, the brand-safety pipeline (17M to 52M products a day); for a platform role, the five-region scale-out with no extra spend.'], ['what it does', 'Adapts the story to the role and the field\'s length.'], ['saved?', 'Yes. The same story is reused across companies with a new first line, and my edits become the new version.']]],
