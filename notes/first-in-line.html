@@ -1169,6 +1169,7 @@ resumes: { backend: resumes/backend.pdf, ml: resumes/ml-platform.pdf }
 facts:
   years_python: 6
   willing_to_relocate: [Seattle, Vancouver, remote]
+  heard_about_us: Web search     # always the honest answer: the agent found it
 voluntary_disclosures: decline     # gender, race, veteran, disability: "prefer not to say"
 never_type: [date_of_birth, ssn, bank_details, passport_number]   # skip and flag the job</code></pre></div>
 
@@ -1184,14 +1185,15 @@ never_type: [date_of_birth, ssn, bank_details, passport_number]   # skip and fla
 <div class="section-title" id="s-answers"><span class="dot"></span><span class="n">06·b</span><span class="section-line"></span><span class="pill">correctness</span></div>
 <h2>Where its answers come from, and how it learns</h2>
 
-<p>Every form asks something new: "Are you 18 or older?", "How did you hear about us?", "What are you most proud of?". The agent never invents an answer. It draws from three things I wrote once, remembers every question it has met, and asks me only when it meets something it truly can't answer. Pick a question to see what happens:</p>
+<p>Every form asks something new: "Are you 18 or older?", "Are you open to an on-call rotation?", "What are you most proud of?". The agent never invents an answer. It draws from three things I wrote once, remembers every question it has met, and asks me only when it meets something it truly can't answer. Pick a question to see what happens:</p>
 
 <div class="widget" id="ans">
-  <div class="widget-title">Interactive · eight questions, eight decisions</div>
+  <div class="widget-title">Interactive · nine questions, nine decisions</div>
   <div class="btns" role="group" aria-label="Pick a question">
     <button class="btn" type="button" data-q="0" aria-pressed="true">Are you 18 or older?</button>
     <button class="btn" type="button" data-q="1">Right to work in the US? (new wording)</button>
-    <button class="btn" type="button" data-q="2">How did you hear about us?</button>
+    <button class="btn" type="button" data-q="2">Open to on-call? (first time)</button>
+    <button class="btn" type="button" data-q="8">How did you hear about us? (reworded)</button>
     <button class="btn" type="button" data-q="3">Date of birth</button>
     <button class="btn" type="button" data-q="4">Why do you want to work here?</button>
     <button class="btn" type="button" data-q="5">What are you most proud of?</button>
@@ -1203,7 +1205,7 @@ never_type: [date_of_birth, ssn, bank_details, passport_number]   # skip and fla
 
 <ol class="steps">
   <li><b>Three sources, all written by me.</b> <code>profile.yaml</code> holds facts (work authorization, notice period, eligibility). My résumés hold the history. <code>stories.yaml</code> holds a handful of stories with real numbers, the raw material for every free-text answer.</li>
-  <li><b>An answer bank remembers every question.</b> Each question it meets is stored with the answer it gave. A new wording ("Do you have the right to work in the United States?") is matched to a saved one by meaning: a small model compares them, and only a confident match reuses the answer.</li>
+  <li><b>An answer bank remembers every question.</b> Each question it meets is stored with the answer it gave. A new wording ("Do you have the right to work in the United States?", "Where did you find this role?") is matched to a saved one by meaning: a small model compares them, only a confident match reuses the answer, and the new wording is saved too, so paraphrases pile up as aliases of one answer.</li>
   <li><b>It asks me once, then never again.</b> A factual question with no saved answer goes on a short "questions for me" list on the end-of-day page, and that one application waits. I answer once; the answer becomes a fact; the application goes out on the next run, and so does every future form that asks.</li>
   <li><b>Free-text answers are written, not copied.</b> The best model gets the job description, the company's own about or engineering page, and the one or two stories from my bank that fit the role. It writes in plain first person, within the field's limit, and every claim must trace to a story or my résumé. The first time it meets a new kind of question, the draft waits for my approval; after that it writes on its own, with my approved answers as examples.</li>
   <li><b>It learns from my edits.</b> When I change a draft, the edited version becomes the new example for that kind of question. It also notes which answers went out with applications that got a reply, though with so few data points that's a hint, not a science.</li>
@@ -1707,7 +1709,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       eod: browser('localhost:8765 · end of day', `
         <p class="mk-h">Thursday, 6 November</p>
         <div class="mk-grid"><div class="mk-stat"><small>applied today</small><b>7</b></div><div class="mk-stat"><small>to respond</small><b>3</b></div><div class="mk-stat"><small>interviews this week</small><b>2</b></div><div class="mk-stat"><small>questions for me</small><b>1</b></div></div>
-        <div class="mk-card"><b>A question for you</b>"How did you hear about us?" (Fabrikam). Answer once, and it's saved for every form that asks.</div>
+        <div class="mk-card"><b>A question for you</b>"Are you open to an on-call rotation?" (Fabrikam). Answer once, and it's saved for every form that asks, however it's worded.</div>
         <div class="mk-lab">Coming up</div>
         <table class="mk-table"><tr><td>Fri 10:00</td><td>Tailspin · recruiter screen</td><td>30 min</td></tr><tr><td>Mon 14:30</td><td>Wingtip · technical interview</td><td>60 min</td></tr></table>
         <div class="mk-lab">Applied today</div>
@@ -2005,7 +2007,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       ['match', 'Scoring costs creep up', 'More sources mean more descriptions to read.', ['Rules first, a cache keyed by résumé and description, and only new descriptions scored.'], 'cents'],
       ['match', 'Which résumé?', 'My backend and ML résumés fit different roles.', ['The scorer picks; review shows the choice; the tracker records it.'], 'free'],
       ['apply', 'A form changes', 'The mapping can’t fill a required field.', ['Fall back to computer use in review mode; flag the mapping.'], 'a model call per new form'],
-      ['apply', 'A question it’s never seen', '"How did you hear about us?" on a form for the first time.', ['Hold that application; ask me once on the end-of-day page; save the answer as a fact.'], 'one answer, once'],
+      ['apply', 'A question it’s never seen', '"Are you open to an on-call rotation?" on a form for the first time.', ['Hold that application; ask me once on the end-of-day page; save the answer as a fact.'], 'one answer, once'],
       ['apply', 'New wording, same question', '"Right to work in the US?" vs "legally authorized to work in the US?"', ['A small model matches by meaning; only confident matches reuse an answer; the wording is saved as an alias.'], 'a small-model call'],
       ['sec', 'Sensitive questions', 'Date of birth, SSN, bank details on an application.', ['Never stored, never typed; the job is skipped and flagged.'], 'free'],
       ['apply', 'Résumé parsing', 'The form reads my PDF and fills fields wrongly.', ['After upload, re-read every field and correct it from the profile.', 'The screenshot shows the final state.'], 'free'],
@@ -2125,12 +2127,13 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
     const Q = [
       ['"Are you 18 or older?"', [['answer from', '<code>profile.yaml</code>: <code>over_18: yes</code>. An eligibility fact, not a birth date.'], ['what it does', 'Ticks "Yes". No model call.'], ['saved?', 'Already a fact. I wrote it once.']]],
       ['"Do you have the right to work in the United States?"', [['answer from', 'The answer bank: this wording is new, but a small model matches it to the saved "Are you legally authorized to work in the US?"'], ['what it does', 'Reuses the saved answer, because the match is confident.'], ['saved?', 'Yes: the new wording is stored as an alias, so next time it\'s an exact match.']]],
-      ['"How did you hear about us?"', [['answer from', 'Nowhere yet: it isn\'t in my profile or the bank.'], ['what it does', 'Holds that one application and adds the question to "questions for me" on the end-of-day page.'], ['saved?', 'I answer once ("the company\'s careers page"); it becomes a fact, the held application goes out on the next run, and the question never comes back to me.']]],
+      ['"Are you open to an on-call rotation?"', [['answer from', 'Nowhere yet: it isn\'t in my profile or the bank.'], ['what it does', 'Holds that one application and adds the question to "questions for me" on the end-of-day page.'], ['saved?', 'I answer once ("yes, one week in six"); it becomes a fact, the held application goes out on the next run, and the question, in any wording, never comes back to me.']]],
       ['"Date of birth"', [['answer from', 'Never: it\'s on the never-type list with SSN, bank details and passport numbers.'], ['what it does', 'Skips the job and flags it. Real applications almost never need this before an offer.'], ['saved?', 'Never stored, never typed.']]],
       ['"Why do you want to work here?"', [['answer from', 'The job description, the company\'s own about or engineering page, and the story from my bank that fits the role.'], ['what it does', 'The best model writes 80 to 150 words in plain first person; every claim must trace to a story or my résumé. The first answer of this kind waited for my approval; now it writes on its own.'], ['saved?', 'Yes, with the application. It\'s company-specific, so it\'s never reused word for word, but approved answers become examples for the next one.']]],
       ['"What are you most proud of?"', [['answer from', '<code>stories.yaml</code>: for a data role, the brand-safety pipeline (17M to 52M products a day); for a platform role, the five-region scale-out with no extra spend.'], ['what it does', 'Adapts the story to the role and the field\'s length.'], ['saved?', 'Yes. The same story is reused across companies with a new first line, and my edits become the new version.']]],
       ['"Expected salary"', [['answer from', 'My profile\'s range for that country, if I\'ve set one. Never guessed.'], ['what it does', 'Fills the range; if there isn\'t one for that country, it asks me once.'], ['saved?', 'Yes, per country.']]],
       ['"Gender, race, veteran status, disability"', [['answer from', 'A standing rule: <code>voluntary_disclosures: decline</code>.'], ['what it does', 'Chooses "I don\'t wish to answer" or the form\'s equivalent.'], ['saved?', 'It\'s a rule, not data: nothing about me is stored.']]],
+      ['"Where did you first come across this role?"', [['answer from', 'The answer bank: a reworded "How did you hear about us?", matched by meaning to the saved fact <code>heard_about_us: Web search</code>.'], ['what it does', 'Answers "Web search", which is always the honest answer: the agent found it.'], ['saved?', 'Yes: one more paraphrase saved as an alias. The bank now knows a dozen ways employers ask this.']]],
     ];
     tabs(ans, 'q', i => { ans.querySelector('#ans-card').innerHTML = card(...Q[+i]); }, '0');
   }
