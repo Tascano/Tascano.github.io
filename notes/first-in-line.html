@@ -711,6 +711,9 @@ html{scroll-padding-top:16px;}
 .qb-out pre.qb-q{color:var(--accent-ink);font-weight:700;}
 #qb .mk-lab{margin-top:6px;}
 .cards.tiers{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
+
+.interrupt.jokes ul{margin:6px 0 0;padding-left:18px;}
+.interrupt.jokes li{margin:6px 0;}
 </style>
 <script type="application/ld+json" id="ld-post">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "First in Line", "description": "How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.", "datePublished": "2026-11-06", "dateModified": "2026-11-06", "url": "https://tascano.github.io/notes/first-in-line.html", "image": "https://tascano.github.io/images/og-image.jpg", "author": {"@id": "https://tascano.github.io/#person"}, "keywords": ["AI agents", "computer use", "Playwright", "SQLite", "deduplication", "job search automation", "Google search operators", "ATS APIs", "Greenhouse", "Lever", "Ashby", "LinkedIn", "outreach", "local-first"]}</script>
 </head>
@@ -731,7 +734,7 @@ html{scroll-padding-top:16px;}
   <p class="alt">or: the job hunter I built for myself, running on my laptop</p>
   
   <p class="dek">It started with one wish: be among the first people to apply when a role opens. First I built a small site to find roles fast and apply by hand. Then, one piece at a time, I handed the rest to AI. Today it's JobHunt: I type one command on my laptop, and an agent finds new roles across ATS feeds, job boards and search engines, makes sure I never apply to the same one twice, scores them against my résumé, fills in applications in my own browser, reads replies in its own inbox, and finds the person to message. This is what it does, how, and why.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>19 min read</span></div>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>20 min read</span></div>
 </header>
 
 <div class="card origin" role="note">
@@ -1226,7 +1229,16 @@ google.com:     { account: none,        find: agent, pace: human }</code></pre><
   <li><b>CAPTCHAs are skipped too.</b> They're never solved or bypassed. Because it's my real browser on my home connection, they're rare; when one appears, the role is marked skipped and the agent moves on.</li>
 </ol>
 
-<div class="callout"><b>Workday lives up to its name:</b> one application can take a whole one. And when a site asks the agent whether it's a robot, it gives the only honest answer: it leaves. Some tests you're meant to fail.</div>
+<div class="interrupt jokes"><span class="tag">Field notes from the skip list</span>
+<ul class="plain">
+  <li><b>Workday lives up to its name:</b> one application can take a whole one.</li>
+  <li>Workday asks you to upload your résumé, then to type your résumé into boxes, then whether you'd like to upload your résumé. The agent is patient. Not that patient.</li>
+  <li>On Workday, "Quick Apply" means "clear your afternoon".</li>
+  <li>When a site asks the agent whether it's a robot, it gives the only honest answer: it leaves. Some tests you're meant to fail.</li>
+  <li>It reads 1,240 job posts before breakfast, and is defeated by "select all squares with a bus".</li>
+  <li>Every CAPTCHA is a tiny identity crisis. "Are you a robot?" "…Next job."</li>
+</ul>
+</div>
 
 <div class="section-title" id="s-inbox"><span class="dot"></span><span class="n">07·b</span><span class="section-line"></span><span class="pill">reliability</span></div>
 <h2>An inbox of its own</h2>
@@ -1941,13 +1953,13 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       ['apply', 'Résumé parsing', 'The form reads my PDF and fills fields wrongly.', ['After upload, re-read every field and correct it from the profile.', 'The screenshot shows the final state.'], 'free'],
       ['apply', 'A crash mid-submit', 'Did it go through or not?', ['Intent before the click; check before any retry.'], 'free'],
       ['apply', 'A silent failure', 'The page says thanks; no email ever comes.', ['"Unverified" after an hour; never counted as applied.'], 'free'],
-      ['apply', 'Multi-page marathons', 'Workday, Taleo and iCIMS want an account per employer and six pages of form.', ['Skipped, with the reason and link kept; the slot goes to the next match.'], 'a few roles a week'],
+      ['apply', 'Multi-page marathons', 'Workday, Taleo and iCIMS want an account per employer and six pages of form, three of them your résumé again.', ['Skipped, with the reason and link kept; the slot goes to the next match.'], 'a few roles a week'],
       ['apply', 'The job closes', 'Between finding it and applying.', ['Detect "no longer accepting" and skip with a reason.'], 'free'],
       ['fair', 'Flooding one employer', 'Ten roles at one company, all "good fits".', ['At most 2 per company in 30 days, best first.'], 'some matches wait'],
       ['fair', 'Terms of service', 'LinkedIn and Google prohibit automated access.', ['My own account only, human pace, a few dozen pages a day.', 'Public feeds first; robots.txt respected on career pages.'], 'risk to my own account'],
       ['fair', 'Messaging too many people', 'Outreach that turns into spam.', ['One person per role, 5 notes a day, one follow-up at most.'], 'free'],
       ['fair', 'The wrong person', 'A note to someone with nothing to do with the role.', ['Rank: post author, then the named team’s manager, then the org’s recruiter.', 'No match above the bar means no note.'], 'free'],
-      ['fair', 'CAPTCHAs', 'A site asking "are you human?"', ['Never solved or bypassed: the role is skipped.'], 'a role now and then'],
+      ['fair', 'CAPTCHAs', 'A site asking "are you human?" (it isn’t, and it won’t pretend).', ['Never solved or bypassed: the role is skipped.'], 'a role now and then'],
       ['fair', 'Telling the truth', 'An agent can make things up.', ['Answers only from my profile, a never-list, and review the first time at each company.'], 'free'],
       ['ops', 'Skipped days', 'I don’t run it for three days.', ['Every run reads since the last successful run, not since yesterday.'], 'free'],
       ['ops', 'Stopped halfway', 'I close the laptop mid-run.', ['Stage checkpoints; the next run resumes where this one stopped.'], 'free'],
