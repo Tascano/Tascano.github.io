@@ -8,7 +8,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="First in Line">
 <meta property="og:description" content="A local-first job hunter: fresh roles from ATS feeds, three SQLite stores so nothing is applied to twice, and a computer-use agent with guardrails.">
-<meta property="og:image" content="https://tascano.github.io/images/og-image.jpg">
+<meta property="og:image" content="https://tascano.github.io/images/jobhunt-poster-1280.webp">
 <meta name="theme-color" content="#fdb515">
 <link rel="icon" href="../favicon.ico?v=3" sizes="any">
 <script>
@@ -714,8 +714,24 @@ html{scroll-padding-top:16px;}
 
 .interrupt.jokes ul{margin:6px 0 0;padding-left:18px;}
 .interrupt.jokes li{margin:6px 0;}
+
+.dsh{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.dsh .pn{border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;background:var(--card-bg);display:flex;flex-direction:column;gap:6px;}
+.dsh .pn.wide{grid-column:span 3;}
+.dsh .pn.hot{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent);}
+.dsh h4{margin:0;font:700 11.5px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);}
+.dsh p{margin:0;font-size:14px;line-height:1.45;}
+.dsh small{font:11.5px var(--mono);color:var(--accent-ink);margin-top:auto;}
+.dsh .trk{display:flex;flex-wrap:wrap;gap:6px;}
+.dsh .trk span{border:1px solid var(--card-border);border-radius:999px;padding:3px 10px;font-size:13px;}
+@media (max-width:700px){.dsh{grid-template-columns:1fr;}.dsh .pn.wide{grid-column:span 1;}}
+.dsh .pn.span2{grid-column:span 2;}
+@media (max-width:700px){.dsh .pn.span2{grid-column:span 1;}}
+:not(pre) > code{overflow-wrap:anywhere;word-break:break-word;}
+.steps li,.bl-card dd,.cd li{min-width:0;overflow-wrap:anywhere;}
+article :not(pre) > code{white-space:normal;}
 </style>
-<script type="application/ld+json" id="ld-post">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "First in Line", "description": "How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.", "datePublished": "2026-11-06", "dateModified": "2026-11-06", "url": "https://tascano.github.io/notes/first-in-line.html", "image": "https://tascano.github.io/images/og-image.jpg", "author": {"@id": "https://tascano.github.io/#person"}, "keywords": ["AI agents", "computer use", "Playwright", "SQLite", "deduplication", "job search automation", "Google search operators", "ATS APIs", "Greenhouse", "Lever", "Ashby", "LinkedIn", "outreach", "local-first"]}</script>
+<script type="application/ld+json" id="ld-post">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "First in Line", "description": "How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.", "datePublished": "2026-11-06", "dateModified": "2026-11-06", "url": "https://tascano.github.io/notes/first-in-line.html", "image": "https://tascano.github.io/images/jobhunt-poster-1280.webp", "author": {"@id": "https://tascano.github.io/#person"}, "keywords": ["AI agents", "computer use", "Playwright", "SQLite", "deduplication", "job search automation", "Google search operators", "ATS APIs", "Greenhouse", "Lever", "Ashby", "LinkedIn", "outreach", "local-first", "Streamlit dashboard"], "video": {"@type": "VideoObject", "name": "First in Line", "description": "How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.", "thumbnailUrl": "https://tascano.github.io/images/jobhunt-poster-1280.webp", "uploadDate": "2026-11-06", "contentUrl": "https://tascano.github.io/videos/first-in-line.mp4", "duration": "PT3M49S"}}</script>
 </head>
 <body>
 <div class="scroll-progress" aria-hidden="true"></div>
@@ -732,9 +748,20 @@ html{scroll-padding-top:16px;}
   <span class="kicker">Field notes · Automation</span>
   <h1>First in Line</h1>
   <p class="alt">or: the job hunter I built for myself, running on my laptop</p>
-  
+  <section class="watch" id="watch" aria-label="The video version of this post">
+    <div class="intro-video">
+      <button class="play-facade" type="button" data-src="../videos/first-in-line.mp4" data-src-small="../videos/first-in-line-720p.mp4"
+        aria-label="Play the video version of this post (about four minutes)">
+        <img src="../images/jobhunt-poster-960.webp" srcset="../images/jobhunt-poster-640.webp 640w, ../images/jobhunt-poster-960.webp 960w, ../images/jobhunt-poster-1280.webp 1280w" sizes="(max-width: 760px) 100vw, 716px" width="1280" height="720" loading="lazy" decoding="async"
+          alt="First in Line, written on a dark canvas">
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
+        <span class="play-len" aria-hidden="true">3:49</span>
+      </button>
+    </div>
+    <p class="intro-note">Prefer to watch? Every animation in this post, narrated in about four minutes, with captions built in. The narration is a local AI clone of my voice.</p>
+  </section>
   <p class="dek">It started with one wish: be among the first people to apply when a role opens. First I built a small site to find roles fast and apply by hand. Then, one piece at a time, I handed the rest to AI. Today it's JobHunt: I type one command on my laptop, and an agent finds new roles across ATS feeds, job boards and search engines, makes sure I never apply to the same one twice, scores them against my résumé, fills in applications in my own browser, reads replies in its own inbox, and finds the person to message. This is what it does, how, and why.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>20 min read</span></div>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>25 min read</span></div>
 </header>
 
 <div class="card origin" role="note">
@@ -786,10 +813,10 @@ html{scroll-padding-top:16px;}
 <div class="q" id="pmap-t">The five things I care about, and where they show up</div>
 <div class="pgroups">
   <div><b>Freshness</b><a href="#s-sources">where new roles come from</a><a href="#s-search">search tricks</a><a href="#s-fresh">how fast I see them</a><a href="#s-origin">why it started</a></div>
-  <div><b>Correctness</b><a href="#s-dedupe">never twice</a><a href="#s-match">matching</a><a href="#s-rel">is it really for me?</a><a href="#s-flows">every flow</a></div>
+  <div><b>Correctness</b><a href="#s-dedupe">never twice</a><a href="#s-match">matching</a><a href="#s-rel">is it really for me?</a><a href="#s-answers">where answers come from</a><a href="#s-flows">every flow</a></div>
   <div><b>Reliability</b><a href="#s-apply">how the agent applies</a><a href="#s-fail">pull any plug</a><a href="#s-secrets">logins &amp; what it skips</a></div>
   <div><b>Respect</b><a href="#s-fair">job boards &amp; employers</a><a href="#s-outreach">reaching the right person</a></div>
-  <div><b>End to end</b><a href="#s-inbox">its own inbox</a><a href="#s-day">the end of my day</a><a href="#s-models">cheap vs good models</a><a href="#s-cost">ten dollars a month</a><a href="#s-hard">every hard problem</a></div>
+  <div><b>End to end</b><a href="#s-inbox">its own inbox</a><a href="#s-day">the end of my day</a><a href="#s-dash">my dashboard</a><a href="#s-models">cheap vs good models</a><a href="#s-cost">ten dollars a month</a><a href="#s-hard">every hard problem</a></div>
 </div>
 </nav>
 
@@ -836,7 +863,7 @@ html{scroll-padding-top:16px;}
 <p>Every job moves through one small state machine. Pick a flow to see who talks to whom, and where the job ends up.</p>
 
 <div class="widget" id="flows">
-  <div class="widget-title">Animation · ten flows, as sequence diagrams</div>
+  <div class="widget-title">Animation · eleven flows, as sequence diagrams</div>
   <div class="btns" role="group" aria-label="Pick a flow">
     <button class="btn" type="button" data-f="setup">First-time setup</button>
     <button class="btn" type="button" data-f="run">The daily run</button>
@@ -846,6 +873,7 @@ html{scroll-padding-top:16px;}
     <button class="btn" type="button" data-f="account">A Workday form</button>
     <button class="btn" type="button" data-f="captcha">A CAPTCHA it can’t pass</button>
     <button class="btn" type="button" data-f="reply">A reply arrives</button>
+    <button class="btn" type="button" data-f="ask">A question only I can answer</button>
     <button class="btn" type="button" data-f="dup">Already applied by hand</button>
     <button class="btn" type="button" data-f="wipe">Export or delete everything</button>
   </div>
@@ -1160,27 +1188,80 @@ CREATE TABLE found (run_id TEXT, source_key TEXT, fingerprint TEXT, raw_json TEX
   </div>
 </div>
 
-<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">profile.yaml · the only source of answers</span></div><pre><code>name: Ambrose Tuscano
-email: ${PROFILE_EMAIL}            # from .env, never committed
-work_authorization: { US: authorized, needs_sponsorship: ask_me }
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">profile.yaml · facts, written once (section 06·b)</span></div><pre><code>name: Ambrose Tuscano
+email: ${JOBS_INBOX}               # the agent's own address
+work_authorization: { US: authorized }
+over_18: yes                       # eligibility, not a birth date
 notice_period: 2 weeks
 resumes: { backend: resumes/backend.pdf, ml: resumes/ml-platform.pdf }
-answers:
+facts:
   years_python: 6
   willing_to_relocate: [Seattle, Vancouver, remote]
-voluntary_disclosures: decline     # EEO questions: "prefer not to say"
-never: [salary_expectation, cover_letter_claims_not_in_resume]   # always stop and ask</code></pre></div>
+  heard_about_us: Web search     # always the honest answer: the agent found it
+voluntary_disclosures: decline     # gender, race, veteran, disability: "prefer not to say"
+never_type: [date_of_birth, ssn, bank_details, passport_number]   # skip and flag the job</code></pre></div>
 
 <ol class="steps">
   <li><b>Intent before action.</b> The row is written as <code>applying</code> before the browser touches the form. If anything dies, the next run sees the intent and checks the site and my inbox before it ever tries again.</li>
   <li><b>Known forms by rules.</b> Greenhouse, Lever and Ashby forms have stable field names; a small mapping fills them in under ten seconds with no model call.</li>
   <li><b>Unknown forms by computer use.</b> The model gets the screenshot, the accessibility tree and my profile, proposes one action at a time, and every action is logged. It may only click inside the application page.</li>
-  <li><b>Free-text questions</b> ("why this company?") are drafted from my résumé and the job description, and always held for review the first time I apply to a company.</li>
+  <li><b>Free-text questions</b> ("why this company?", "what are you proud of?") are written from my story bank and the job, as the next section shows.</li>
   <li><b>Proof:</b> a screenshot before submit, the confirmation page after, and the confirmation email matched by company. No confirmation within an hour means the tracker says "unverified", not "applied".</li>
 </ol>
 
 <aside class="field"><span class="tag">From my work · Amazon Ads</span><p>I built Step Functions workflows that evaluated ads at more than 5,000 transactions a second. What made retries safe there makes them safe here: write down what you're about to do, before you do it.</p></aside>
-<div class="section-title" id="s-skills"><span class="dot"></span><span class="n">06·b</span><span class="section-line"></span></div>
+<div class="section-title" id="s-answers"><span class="dot"></span><span class="n">06·b</span><span class="section-line"></span><span class="pill">correctness</span></div>
+<h2>Where its answers come from, and how it learns</h2>
+
+<p>Every form asks something new: "Are you 18 or older?", "Are you open to an on-call rotation?", "What are you most proud of?". The agent never invents an answer. It draws from three things I wrote once, remembers every question it has met, and asks me only when it meets something it truly can't answer. Pick a question to see what happens:</p>
+
+<div class="widget" id="ans">
+  <div class="widget-title">Interactive · nine questions, nine decisions</div>
+  <div class="btns" role="group" aria-label="Pick a question">
+    <button class="btn" type="button" data-q="0" aria-pressed="true">Are you 18 or older?</button>
+    <button class="btn" type="button" data-q="1">Right to work in the US? (new wording)</button>
+    <button class="btn" type="button" data-q="2">Open to on-call? (first time)</button>
+    <button class="btn" type="button" data-q="8">How did you hear about us? (reworded)</button>
+    <button class="btn" type="button" data-q="3">Date of birth</button>
+    <button class="btn" type="button" data-q="4">Why do you want to work here?</button>
+    <button class="btn" type="button" data-q="5">What are you most proud of?</button>
+    <button class="btn" type="button" data-q="6">Expected salary</button>
+    <button class="btn" type="button" data-q="7">Gender, race, veteran status</button>
+  </div>
+  <div class="bl-card" id="ans-card" aria-live="polite"></div>
+</div>
+
+<ol class="steps">
+  <li><b>Three sources, all written by me.</b> <code>profile.yaml</code> holds facts (work authorization, notice period, eligibility). My résumés hold the history. <code>stories.yaml</code> holds a handful of stories with real numbers, the raw material for every free-text answer.</li>
+  <li><b>An answer bank remembers every question.</b> Each question it meets is stored with the answer it gave. A new wording ("Do you have the right to work in the United States?", "Where did you find this role?") is matched to a saved one by meaning: a small model compares them, only a confident match reuses the answer, and the new wording is saved too, so paraphrases pile up as aliases of one answer.</li>
+  <li><b>It never waits on me.</b> A question with no saved answer doesn't stop the run. The agent saves that form exactly where it is, parks the application in a "waiting on you" queue, and moves straight on to the next role. Ten roles can be parked on the same question; they all wait on one answer.</li>
+  <li><b>It asks me at the end, once.</b> When the run finishes, the parked questions are on my dashboard, each with the roles waiting on it. Most are a tap (yes or no); some need a line of text. The moment I answer, it's saved as a fact (with every wording it was asked in), and the agent reopens each parked form and submits it, without waiting for the next run. The question never comes back, however it's worded.</li>
+  <li><b>Free-text answers are written, not copied.</b> The best model gets the job description, the company's own about or engineering page, and the one or two stories from my bank that fit the role. It writes in plain first person, within the field's limit, and every claim must trace to a story or my résumé. The first time it meets a new kind of question, the draft waits for my approval; after that it writes on its own, with my approved answers as examples.</li>
+  <li><b>It learns from my edits.</b> When I change a draft, the edited version becomes the new example for that kind of question. It also notes which answers went out with applications that got a reply, though with so few data points that's a hint, not a science.</li>
+  <li><b>Some things it never learns.</b> Date of birth, Social Security number, bank details and passport numbers are never stored and never typed. A real application almost never needs them before an offer, so a form that asks is skipped and flagged as possibly not real.</li>
+  <li><b>"Learning" means saved answers, not training.</b> No model is fine-tuned on my data. Everything lives in my data folder; only the text a draft needs is sent to the model API.</li>
+</ol>
+
+<div class="callout"><b>A note on "agent memory":</b> it sounds like something out of a research lab. Mine is two YAML files and a SQLite table. Sometimes "active memory" is just a database with good manners, and that's exactly why I trust it: I can open it, read it, and fix it.</div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">stories.yaml and the answer bank</span></div><pre><code># stories.yaml: real stories, real numbers, written once
+- id: brandsafety-throughput
+  where: Amazon Ads
+  story: Tripled a brand-safety pipeline from 17M to 52M products a day; a 45-day backfill finished in under 14
+  fits: [data engineering, backend, performance]
+- id: free-capacity
+  where: Microsoft, Azure Resource Graph
+  story: Helped a five-region scale-out that roughly doubled capacity with no extra cloud spend
+  fits: [platform, cloud, infrastructure]
+
+-- applications.db: every question it has met
+CREATE TABLE answers (question TEXT PRIMARY KEY,     -- normalised wording
+  kind TEXT,            -- fact | free_text | voluntary | never
+  answer TEXT, source TEXT,                         -- profile | story:brandsafety-throughput | me
+  approved INTEGER, uses INTEGER, last_used TEXT);
+CREATE TABLE answer_aliases (wording TEXT PRIMARY KEY, question TEXT REFERENCES answers);</code></pre></div>
+
+<div class="section-title" id="s-skills"><span class="dot"></span><span class="n">06·c</span><span class="section-line"></span></div>
 <h2>The agent's skills</h2>
 
 <p>The agent isn't one big prompt. It's eight small skills, each a folder with instructions and a script, which the runner calls in order and I can test on their own.</p>
@@ -1194,7 +1275,7 @@ verify/    confirmation page and inbox check                      → applied | 
 track/     applications.db, replies from email, the local board   → statuses
 outreach/  the four people searches, a three-sentence note, caps    → the right person, messaged</code></pre></div>
 
-<div class="section-title" id="s-models"><span class="dot"></span><span class="n">06·c</span><span class="section-line"></span><span class="pill">cost</span></div>
+<div class="section-title" id="s-models"><span class="dot"></span><span class="n">06·d</span><span class="section-line"></span><span class="pill">cost</span></div>
 <h2>Cheap models find, a good model applies</h2>
 
 <p>Most of the work is reading pages and sorting them, which a small, cheap model does well. Only the parts that act in my name get the strongest model I have.</p>
@@ -1300,6 +1381,35 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
 </div>
 
 <p>The "End of day" tab in the screens above is that page. Its rule is simple: <b>the agent tells me what needs a reply; it never sends one.</b> Recruiters and managers who write back get a person.</p>
+
+<div class="section-title" id="s-dash"><span class="dot"></span><span class="n">08·c</span><span class="section-line"></span><span class="pill">visibility</span></div>
+<h2>My own dashboard</h2>
+
+<p>An agent that works while I don't is only useful if I can see everything it did. So JobHunt has its own dashboard: a small Streamlit app on <code>localhost</code> (the same tool I built the public search site with) that reads the three SQLite files. It's the one place I go to know where my job hunt stands, and the only place I ever act.</p>
+
+<div class="widget" id="dsh">
+  <div class="widget-title">Mockup · the dashboard, one panel per question I'd otherwise ask</div>
+  <div class="mk-browser"><div class="mk-bar"><i></i><i></i><i></i><span>localhost:8501 · JobHunt</span></div><div class="mk-body">
+  <div class="dsh">
+    <div class="pn hot"><h4>Waiting on you</h4><p>"Open to an on-call rotation?" · 3 roles <span class="mk-tbtn">Yes</span> <span class="mk-tbtn">No</span></p><small>answers: what's blocked on me?</small></div>
+    <div class="pn hot"><h4>To respond</h4><p>Tailspin recruiter · Northwind manager · Wingtip assessment (due Fri)</p><small>answers: who's waiting for a person?</small></div>
+    <div class="pn"><h4>Coming up</h4><p>Fri 10:00 Tailspin screen · Mon 14:30 Wingtip technical</p><small>answers: what's on my calendar?</small></div>
+    <div class="pn wide"><h4>Tracker</h4><div class="trk"><span>queued <b>3</b></span><span>applied <b>118</b></span><span>replied <b>14</b></span><span>interview <b>5</b></span><span>offer <b>0</b></span><span>closed <b>31</b></span></div><small>answers: where does every application stand?</small></div>
+    <div class="pn"><h4>Today's run</h4><p>1,240 found → 310 new → 46 relevant → 10 queued → 7 applied</p><small>answers: what did it do while I wasn't looking?</small></div>
+    <div class="pn"><h4>Skipped, and why</h4><p>212 not US · 48 not engineering · 9 frontend only · 3 Workday · 1 CAPTCHA</p><small>answers: is a filter wrong?</small></div>
+    <div class="pn"><h4>What's working</h4><p>replies by source: feeds 12% · LinkedIn 7% · by focus: backend 13% · data 9%</p><small>answers: where should it look harder?</small></div>
+    <div class="pn"><h4>Health</h4><p>sources 312/314 · sessions ok · Google rested today · spend this month $6.20</p><small>answers: is anything broken or costly?</small></div>
+    <div class="pn span2"><h4>Answer bank</h4><p>63 questions · 210 wordings · 4 stories · last edit: "proud of" (Tue)</p><small>answers: what does it know about me?</small></div>
+  </div></div></div>
+</div>
+
+<ol class="steps">
+  <li><b>Built on what the run already writes.</b> Every panel is a query over <code>seen.db</code>, <code>applications.db</code> and the run cache. No new data, no second source of truth, and nothing to keep in sync.</li>
+  <li><b>Read-mostly, by design.</b> The dashboard only writes three things: my answers to waiting questions, my edits to drafts, and status changes I make by hand. Each goes through the same small module the agent uses, so the two never disagree.</li>
+  <li><b>Answering here is acting.</b> A Yes on "waiting on you" saves the fact and kicks off the parked applications straight away (06·b). Editing a draft updates the answer bank (06·b). Moving a card updates the tracker.</li>
+  <li><b>Every number links to its rows.</b> "48 not engineering" opens the 48 jobs with the reason each was dropped, which is how I catch a filter that's too strict before it costs me a good role.</li>
+  <li><b>It tells me what not to do:</b> nothing in "To respond" is ever answered by the agent, and the dashboard says so on the panel. Replies to people are the one job that stays mine.</li>
+</ol>
 
 <div class="section-title" id="s-fair"><span class="dot"></span><span class="n">09</span><span class="section-line"></span><span class="pill">respect</span></div>
 <h2>Playing fair with job boards and employers</h2>
@@ -1656,7 +1766,8 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
         <p class="mk-small">The agent drafts nothing and sends nothing here. It only tells you who's waiting.</p>`),
       eod: browser('localhost:8765 · end of day', `
         <p class="mk-h">Thursday, 6 November</p>
-        <div class="mk-grid"><div class="mk-stat"><small>applied today</small><b>7</b></div><div class="mk-stat"><small>to respond</small><b>3</b></div><div class="mk-stat"><small>interviews this week</small><b>2</b></div><div class="mk-stat"><small>applied this month</small><b>118</b></div></div>
+        <div class="mk-grid"><div class="mk-stat"><small>applied today</small><b>7</b></div><div class="mk-stat"><small>to respond</small><b>3</b></div><div class="mk-stat"><small>interviews this week</small><b>2</b></div><div class="mk-stat"><small>questions for me</small><b>1</b></div></div>
+        <div class="mk-card"><b>Waiting on you · 3 roles</b>"Are you open to an on-call rotation?" (Fabrikam, Proseware, Lucerne) <span class="mk-tbtn">Yes</span> <span class="mk-tbtn">No</span><br><small>Answer once: it's saved for every wording, and the 3 parked applications go out right away.</small></div>
         <div class="mk-lab">Coming up</div>
         <table class="mk-table"><tr><td>Fri 10:00</td><td>Tailspin · recruiter screen</td><td>30 min</td></tr><tr><td>Mon 14:30</td><td>Wingtip · technical interview</td><td>60 min</td></tr></table>
         <div class="mk-lab">Applied today</div>
@@ -1722,6 +1833,10 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
                 [2, 5, 'The agent moves on to the next job.'], [2, 0, 'Listed under "Skipped, and why".']],
       reply: [[6, 0, 'A recruiter replies to the jobs inbox: "We’d like to schedule a call."'], [5, 7, 'The agent reads it and matches it to the application by company and role.'],
               [5, 7, 'Status: interview. The card moves on the board.', 'interview'], [5, 1, 'Adds it to "To respond" and "Coming up". It never replies.'], [1, 0, 'At the end of the day it’s at the top of my list.'], [0, 6, 'I reply and book the call. This part stays human.']],
+      ask: [[5, 6, 'A form asks: "Are you open to an on-call rotation?"', 'applying'], [5, 7, 'No saved answer: the form is saved and the role parked in "waiting on you".', 'needs_you'],
+            [2, 5, 'The agent moves straight on to the next role. Two more ask the same thing; both are parked too.'], [2, 0, 'Run done: 7 applied, 3 waiting on one question.'],
+            [0, 1, 'On the dashboard I tap "Yes".'], [1, 7, 'Saved as a fact, with all three wordings it was asked in.'], [1, 5, 'Reopens all three parked forms at once.'],
+            [5, 6, 'Answers, and submits each one.'], [5, 7, 'All three applied. Never asked again.', 'applied']],
       dup: [[0, 6, 'I applied to Acme’s backend role by hand, through a referral.'], [0, 1, 'One click: "I applied". (The inbox check would catch it too.)'], [1, 7, 'applications: Acme · backend family · today.'],
             [2, 3, 'Next morning the same role appears on another site, with a new ID.', 'found'], [2, 7, 'Its fingerprint is already in seen.'], [2, 7, 'And Acme’s backend family is inside the 30-day window.', 'skipped']],
       wipe: [[0, 1, '<code>jobhunt export</code>'], [1, 7, 'Every table to JSON and CSV, screenshots zipped.'], [0, 1, '<code>jobhunt wipe</code>, confirmed twice.'], [1, 7, 'Deletes the three stores and the screenshots.'],
@@ -1954,7 +2069,9 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       ['match', 'Scoring costs creep up', 'More sources mean more descriptions to read.', ['Rules first, a cache keyed by résumé and description, and only new descriptions scored.'], 'cents'],
       ['match', 'Which résumé?', 'My backend and ML résumés fit different roles.', ['The scorer picks; review shows the choice; the tracker records it.'], 'free'],
       ['apply', 'A form changes', 'The mapping can’t fill a required field.', ['Fall back to computer use in review mode; flag the mapping.'], 'a model call per new form'],
-      ['apply', 'Questions it can’t answer', 'Salary, essays, anything not in my profile.', ['Stop with a draft from my résumé; I approve or rewrite.'], 'free'],
+      ['apply', 'A question it’s never seen', '"Are you open to an on-call rotation?" on a form for the first time.', ['Park that application in a queue and carry on; ask me once at the end; my answer is saved and every parked role goes out.'], 'one tap, once'],
+      ['apply', 'New wording, same question', '"Right to work in the US?" vs "legally authorized to work in the US?"', ['A small model matches by meaning; only confident matches reuse an answer; the wording is saved as an alias.'], 'a small-model call'],
+      ['sec', 'Sensitive questions', 'Date of birth, SSN, bank details on an application.', ['Never stored, never typed; the job is skipped and flagged.'], 'free'],
       ['apply', 'Résumé parsing', 'The form reads my PDF and fills fields wrongly.', ['After upload, re-read every field and correct it from the profile.', 'The screenshot shows the final state.'], 'free'],
       ['apply', 'A crash mid-submit', 'Did it go through or not?', ['Intent before the click; check before any retry.'], 'free'],
       ['apply', 'A silent failure', 'The page says thanks; no email ever comes.', ['"Unverified" after an hour; never counted as applied.'], 'free'],
@@ -2064,6 +2181,23 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       const t = D[k].reduce((a, b) => a + b, 0);
       out.innerHTML = k === 'before' ? `About <b>${Math.round(t / 6) / 10} hours a day</b>, most of it doing the same thing on different sites.` : `About <b>${t} minutes</b>. The 15 minutes of replying to people didn't shrink, and shouldn't.`;
     }, 'before');
+  }
+
+  // 06·b · The answer bank.
+  const ans = document.getElementById('ans');
+  if (ans) {
+    const Q = [
+      ['"Are you 18 or older?"', [['answer from', '<code>profile.yaml</code>: <code>over_18: yes</code>. An eligibility fact, not a birth date.'], ['what it does', 'Ticks "Yes". No model call.'], ['saved?', 'Already a fact. I wrote it once.']]],
+      ['"Do you have the right to work in the United States?"', [['answer from', 'The answer bank: this wording is new, but a small model matches it to the saved "Are you legally authorized to work in the US?"'], ['what it does', 'Reuses the saved answer, because the match is confident.'], ['saved?', 'Yes: the new wording is stored as an alias, so next time it\'s an exact match.']]],
+      ['"Are you open to an on-call rotation?"', [['answer from', 'Nowhere yet: it isn\'t in my profile or the bank.'], ['what it does', 'Saves the form where it is, parks the application in the "waiting on you" queue, and moves on to the next role. The run never stops for me.'], ['saved?', 'At the end, it\'s on my dashboard with every role waiting on it. I tap "Yes"; it becomes a fact, every parked application is reopened and submitted right away, and the question, in any wording, never comes back.']]],
+      ['"Date of birth"', [['answer from', 'Never: it\'s on the never-type list with SSN, bank details and passport numbers.'], ['what it does', 'Skips the job and flags it. Real applications almost never need this before an offer.'], ['saved?', 'Never stored, never typed.']]],
+      ['"Why do you want to work here?"', [['answer from', 'The job description, the company\'s own about or engineering page, and the story from my bank that fits the role.'], ['what it does', 'The best model writes 80 to 150 words in plain first person; every claim must trace to a story or my résumé. The first answer of this kind waited for my approval; now it writes on its own.'], ['saved?', 'Yes, with the application. It\'s company-specific, so it\'s never reused word for word, but approved answers become examples for the next one.']]],
+      ['"What are you most proud of?"', [['answer from', '<code>stories.yaml</code>: for a data role, the brand-safety pipeline (17M to 52M products a day); for a platform role, the five-region scale-out with no extra spend.'], ['what it does', 'Adapts the story to the role and the field\'s length.'], ['saved?', 'Yes. The same story is reused across companies with a new first line, and my edits become the new version.']]],
+      ['"Expected salary"', [['answer from', 'My profile\'s range for that country, if I\'ve set one. Never guessed.'], ['what it does', 'Fills the range; if there isn\'t one for that country, it asks me once.'], ['saved?', 'Yes, per country.']]],
+      ['"Gender, race, veteran status, disability"', [['answer from', 'A standing rule: <code>voluntary_disclosures: decline</code>.'], ['what it does', 'Chooses "I don\'t wish to answer" or the form\'s equivalent.'], ['saved?', 'It\'s a rule, not data: nothing about me is stored.']]],
+      ['"Where did you first come across this role?"', [['answer from', 'The answer bank: a reworded "How did you hear about us?", matched by meaning to the saved fact <code>heard_about_us: Web search</code>.'], ['what it does', 'Answers "Web search", which is always the honest answer: the agent found it.'], ['saved?', 'Yes: one more paraphrase saved as an alias. The bank now knows a dozen ways employers ask this.']]],
+    ];
+    tabs(ans, 'q', i => { ans.querySelector('#ans-card').innerHTML = card(...Q[+i]); }, '0');
   }
 })();
 </script>
