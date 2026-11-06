@@ -21,6 +21,11 @@
 		<priority>0.70</priority>
 	</url>
 	<url>
+		<loc>https://tascano.github.io/series/caching.html</loc>
+		<lastmod>2026-11-07</lastmod>
+		<priority>0.70</priority>
+	</url>
+	<url>
 		<loc>https://tascano.github.io/notes/first-in-line.html</loc>
 		<lastmod>2026-11-06</lastmod>
 		<priority>0.80</priority>
