@@ -1211,6 +1211,8 @@ never_type: [date_of_birth, ssn, bank_details, passport_number]   # skip and fla
   <li><b>"Learning" means saved answers, not training.</b> No model is fine-tuned on my data. Everything lives in my data folder; only the text a draft needs is sent to the model API.</li>
 </ol>
 
+<div class="callout"><b>A note on "agent memory":</b> it sounds like something out of a research lab. Mine is two YAML files and a SQLite table. Sometimes "active memory" is just a database with good manners, and that's exactly why I trust it: I can open it, read it, and fix it.</div>
+
 <div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">stories.yaml and the answer bank</span></div><pre><code># stories.yaml: real stories, real numbers, written once
 - id: brandsafety-throughput
   where: Amazon Ads
