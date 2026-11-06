@@ -705,8 +705,14 @@ html{scroll-padding-top:16px;}
 .callout{border:2px dashed var(--accent);border-radius:10px;padding:12px 16px;margin:12px 0 18px;font-size:16px;background:var(--card-bg);}
 .mk-term{border:1px solid var(--card-border);border-radius:10px;overflow:hidden;background:#0d1117;}
 .mk-term pre{margin:0;padding:14px 16px;color:#d6e2ee;font:12.5px/1.65 var(--mono);white-space:pre-wrap;}
+
+.qb-out{margin-top:10px;}
+.qb-out pre{margin:4px 0 8px;padding:8px 10px;border:1px solid var(--card-border);border-radius:8px;background:var(--card-bg);font:12.5px/1.5 var(--mono);white-space:pre-wrap;word-break:break-all;}
+.qb-out pre.qb-q{color:var(--accent-ink);font-weight:700;}
+#qb .mk-lab{margin-top:6px;}
+.cards.tiers{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));}
 </style>
-<script type="application/ld+json" id="ld-post">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "First in Line", "description": "How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.", "datePublished": "2026-11-06", "dateModified": "2026-11-06", "url": "https://tascano.github.io/notes/first-in-line.html", "image": "https://tascano.github.io/images/og-image.jpg", "author": {"@id": "https://tascano.github.io/#person"}, "keywords": ["AI agents", "computer use", "Playwright", "SQLite", "deduplication", "job search automation", "ATS APIs", "Greenhouse", "Lever", "Ashby", "LinkedIn", "outreach", "local-first"]}</script>
+<script type="application/ld+json" id="ld-post">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "First in Line", "description": "How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.", "datePublished": "2026-11-06", "dateModified": "2026-11-06", "url": "https://tascano.github.io/notes/first-in-line.html", "image": "https://tascano.github.io/images/og-image.jpg", "author": {"@id": "https://tascano.github.io/#person"}, "keywords": ["AI agents", "computer use", "Playwright", "SQLite", "deduplication", "job search automation", "Google search operators", "ATS APIs", "Greenhouse", "Lever", "Ashby", "LinkedIn", "outreach", "local-first"]}</script>
 </head>
 <body>
 <div class="scroll-progress" aria-hidden="true"></div>
@@ -725,7 +731,7 @@ html{scroll-padding-top:16px;}
   <p class="alt">or: the job hunter I built for myself, running on my laptop</p>
   
   <p class="dek">It started with one wish: be among the first people to apply when a role opens. First I built a small site to find roles fast and apply by hand. Then, one piece at a time, I handed the rest to AI. Today it's JobHunt: I type one command on my laptop, and an agent finds new roles across ATS feeds, job boards and search engines, makes sure I never apply to the same one twice, scores them against my résumé, fills in applications in my own browser, reads replies in its own inbox, and finds the person to message. This is what it does, how, and why.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>15 min read</span></div>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>19 min read</span></div>
 </header>
 
 <div class="card origin" role="note">
@@ -747,7 +753,7 @@ html{scroll-padding-top:16px;}
   <li><strong>One command, nothing manual:</strong> I type <code>jobhunt run</code>, and an agent finds, filters, applies, tracks and reaches out, end to end.</li>
   <li><strong>Never the same job twice:</strong> three small SQLite stores remember what I've seen, what I've applied to, and what today's run already found.</li>
   <li><strong>It has its own inbox:</strong> a separate email address for applying and tracking, so it can read confirmations and replies without ever touching my personal mail.</li>
-  <li><strong>It plays fair:</strong> answers only from my profile, caps itself so no employer gets flooded, and hands CAPTCHAs back to me.</li>
+  <li><strong>It plays fair:</strong> answers only from my profile, caps itself so no employer gets flooded, and simply skips Workday marathons and CAPTCHAs.</li>
 </ul>
 </div>
 <div class="hat" data-for="eng" hidden>
@@ -776,11 +782,11 @@ html{scroll-padding-top:16px;}
 <nav class="card pmap" aria-labelledby="pmap-t">
 <div class="q" id="pmap-t">The five things I care about, and where they show up</div>
 <div class="pgroups">
-  <div><b>Freshness</b><a href="#s-sources">where new roles come from</a><a href="#s-fresh">how fast I see them</a><a href="#s-origin">why it started</a></div>
-  <div><b>Correctness</b><a href="#s-dedupe">never twice</a><a href="#s-match">matching</a><a href="#s-flows">every flow</a></div>
-  <div><b>Reliability</b><a href="#s-apply">how the agent applies</a><a href="#s-fail">pull any plug</a><a href="#s-secrets">logins &amp; CAPTCHAs</a></div>
+  <div><b>Freshness</b><a href="#s-sources">where new roles come from</a><a href="#s-search">search tricks</a><a href="#s-fresh">how fast I see them</a><a href="#s-origin">why it started</a></div>
+  <div><b>Correctness</b><a href="#s-dedupe">never twice</a><a href="#s-match">matching</a><a href="#s-rel">is it really for me?</a><a href="#s-flows">every flow</a></div>
+  <div><b>Reliability</b><a href="#s-apply">how the agent applies</a><a href="#s-fail">pull any plug</a><a href="#s-secrets">logins &amp; what it skips</a></div>
   <div><b>Respect</b><a href="#s-fair">job boards &amp; employers</a><a href="#s-outreach">reaching the right person</a></div>
-  <div><b>End to end</b><a href="#s-inbox">its own inbox</a><a href="#s-cost">ten dollars a month</a><a href="#s-hard">every hard problem</a></div>
+  <div><b>End to end</b><a href="#s-inbox">its own inbox</a><a href="#s-day">the end of my day</a><a href="#s-models">cheap vs good models</a><a href="#s-cost">ten dollars a month</a><a href="#s-hard">every hard problem</a></div>
 </div>
 </nav>
 
@@ -812,7 +818,8 @@ html{scroll-padding-top:16px;}
     <button class="btn" type="button" data-sc="today" aria-pressed="true">Today</button>
     <button class="btn" type="button" data-sc="search">Search</button>
     <button class="btn" type="button" data-sc="review">Review an application</button>
-    <button class="btn" type="button" data-sc="needs">Needs you</button>
+    <button class="btn" type="button" data-sc="needs">To respond</button>
+    <button class="btn" type="button" data-sc="eod">End of day</button>
     <button class="btn" type="button" data-sc="board">Tracker</button>
     <button class="btn" type="button" data-sc="settings">Settings</button>
     <button class="btn" type="button" data-sc="digest">The terminal</button>
@@ -833,8 +840,8 @@ html{scroll-padding-top:16px;}
     <button class="btn" type="button" data-f="search">Search right now</button>
     <button class="btn" type="button" data-f="review">Review, then submit</button>
     <button class="btn" type="button" data-f="auto">Fully automatic</button>
-    <button class="btn" type="button" data-f="account">A site needing an account</button>
-    <button class="btn" type="button" data-f="captcha">A CAPTCHA</button>
+    <button class="btn" type="button" data-f="account">A Workday form</button>
+    <button class="btn" type="button" data-f="captcha">A CAPTCHA it can’t pass</button>
     <button class="btn" type="button" data-f="reply">A reply arrives</button>
     <button class="btn" type="button" data-f="dup">Already applied by hand</button>
     <button class="btn" type="button" data-f="wipe">Export or delete everything</button>
@@ -943,6 +950,51 @@ indeed.com/jobs?q=backend&amp;fromage=1                                 # days
 
 <aside class="field"><span class="tag">From my work · Amazon Ads</span><p>The data lake I built at Amazon Ads had one promise: data no more than 30 minutes old. Freshness only counts if you measure it, so every job here records both when it was posted and when I first saw it.</p></aside>
 
+<div class="section-title" id="s-search"><span class="dot"></span><span class="n">03·c</span><span class="section-line"></span><span class="pill">freshness</span><span class="pill">correctness</span></div>
+<h2>Searching like I mean it</h2>
+
+<p>My first tool, <a href="https://jobsfinder.streamlit.app/">jobsfinder.streamlit.app</a>, is still the heart of discovery. It turns one job title into search links for 90+ platforms in 12 groups (major ATS, payroll ATS, startup boards, smaller ATS, major boards, remote boards, tech boards and more), with presets like Top 10, All ATS, Remote Only and Tech Boards, filters for time posted, work type and job type, and fields for keywords, exclusions and companies. Today the agent opens those links instead of me. Build one yourself:</p>
+
+<div class="widget" id="qb">
+  <div class="widget-title">Interactive · build a search the way the app does</div>
+  <div class="mk-lab">Title</div>
+  <div class="btns" role="group" aria-label="Title"><button class="btn" type="button" data-qt="be" aria-pressed="true">backend engineer</button><button class="btn" type="button" data-qt="multi">3 title variants</button><button class="btn" type="button" data-qt="sde">SDE II</button></div>
+  <div class="mk-lab">Where</div>
+  <div class="btns" role="group" aria-label="Where"><button class="btn" type="button" data-qw="gh" aria-pressed="true">Greenhouse</button><button class="btn" type="button" data-qw="ashby">Ashby</button><button class="btn" type="button" data-qw="lever">Lever</button><button class="btn" type="button" data-qw="co">one company</button><button class="btn" type="button" data-qw="careers">career subdomains</button><button class="btn" type="button" data-qw="dotjobs">.jobs domains</button></div>
+  <div class="mk-lab">Country</div>
+  <div class="btns" role="group" aria-label="Country"><button class="btn" type="button" data-qc="us" aria-pressed="true">United States</button><button class="btn" type="button" data-qc="ca">Canada</button><button class="btn" type="button" data-qc="remote">Remote, US</button></div>
+  <div class="mk-lab">Posted</div>
+  <div class="btns" role="group" aria-label="Posted"><button class="btn" type="button" data-qp="h">past hour</button><button class="btn" type="button" data-qp="d" aria-pressed="true">past 24 hours</button><button class="btn" type="button" data-qp="w">past week</button></div>
+  <div class="mk-lab">Strict</div>
+  <div class="btns" role="group" aria-label="Strictness"><button class="btn" type="button" data-qs="loose">anywhere on the page</button><button class="btn" type="button" data-qs="title" aria-pressed="true">title only, no noise</button></div>
+  <div class="qb-out" id="qb-out"></div>
+</div>
+
+<ol class="steps">
+  <li><b>Exact titles in quotes, variants with OR:</b> <code>("backend engineer" OR "platform engineer" OR "software engineer II")</code>. Without quotes, Google happily matches "backend" and "engineer" in different sentences.</li>
+  <li><b><code>intitle:</code> instead of hoping:</b> requiring the title words in the page title stops a sales role that merely mentions "our backend engineers" from showing up.</li>
+  <li><b><code>site:</code> per ATS, or per company:</b> <code>site:jobs.ashbyhq.com</code> covers every company on Ashby; <code>site:jobs.ashbyhq.com/acme</code> covers one. Greenhouse, Lever, Workable, SmartRecruiters, Wellfound and the rest each get their own line.</li>
+  <li><b>Companies on their own domains:</b> <code>inurl:careers</code> and <code>inurl:jobs</code> catch careers pages and jobs. subdomains, and <code>site:.jobs</code> catches the <code>.jobs</code> top-level domain some employers use.</li>
+  <li><b>Minus what you don't want:</b> <code>-intern -"staff engineer" -contract -clearance</code>, and companies I've ruled out.</li>
+  <li><b>Time in the URL:</b> <code>&amp;tbs=qdr:h</code> (past hour), <code>qdr:d</code>, <code>qdr:w</code>, or <code>after:2026-11-01</code> for a custom start date. It's the date Google indexed the page, which trails the real posting time, so it finds companies; their feeds give the exact time.</li>
+  <li><b>LinkedIn and Indeed take filters in the URL too:</b> on LinkedIn, <code>geoId=103644278</code> (United States), <code>f_TPR=r3600</code> (past hour), <code>f_WT=2</code> (remote), <code>f_E=4</code> (mid-senior), <code>f_JT=F</code> (full-time), <code>sortBy=DD</code> (newest first). On Indeed, <code>fromage=1</code> and the country's own site (<code>ca.indeed.com</code> for Canada).</li>
+</ol>
+
+<div class="widget" id="rot">
+  <div class="widget-title">Interactive · using 90+ platforms without wearing any of them out</div>
+  <label class="range"><span>visit each search every <b id="rot-k">3</b> days</span><input id="rot-r" type="range" min="1" max="7" value="3" aria-label="Rotation in days"></label>
+  <div class="hb" id="rot-rows"></div>
+  <p class="readout" id="rot-out" aria-live="polite"></p>
+  <p class="small-note" style="margin:0">illustrative: 45 Google site: searches, 12 LinkedIn searches, 6 Indeed searches; feeds are read every run</p>
+</div>
+
+<ol class="steps">
+  <li><b>Spread, don't hammer.</b> Each run takes a different slice of the searches, and each search's time window matches how long since it last ran: visit Ashby's search every three days, and that visit asks for the past three days. Nothing is missed, and no site sees more than a person's worth of browsing.</li>
+  <li><b>A budget per site per day</b> (a few dozen LinkedIn pages, a few dozen Google searches), random pauses between pages, and nothing in parallel against one site.</li>
+  <li><b>Feeds carry the load.</b> Once a company's ATS feed is known, it's read directly, so the browser searches only have to discover companies, not re-find their jobs every day.</li>
+  <li><b>When a site pushes back, the agent backs off.</b> If Google shows its "unusual traffic" check, Google is done for the day and the rest of the rotation carries on.</li>
+</ol>
+
 <div class="section-title" id="s-fresh"><span class="dot"></span><span class="n">03·b</span><span class="section-line"></span><span class="pill">freshness</span></div>
 <h2>How fast I see a new role</h2>
 
@@ -1037,6 +1089,40 @@ CREATE TABLE found (run_id TEXT, source_key TEXT, fingerprint TEXT, raw_json TEX
 </ol>
 
 <aside class="field"><span class="tag">From my work · Nissan</span><p>Tell Me More, the dealership chatbot I shipped, had a Rubric agent whose only job was to judge an answer before a customer saw it. Review mode is that agent's job here, and for now it's me.</p></aside>
+<div class="section-title" id="s-rel"><span class="dot"></span><span class="n">05·b</span><span class="section-line"></span><span class="pill">correctness</span></div>
+<h2>Is this role really for me?</h2>
+
+<p>Keyword search is generous. A role in Tokyo shows up because its description says "work with US clients and data". A recruiter role shows up because it says "hire backend engineers". So search results are only candidates. Relevance is decided from the job's structured fields, never from words in the description.</p>
+
+<div class="widget" id="rel">
+  <div class="widget-title">Animation · four search hits, one decision each</div>
+  <div class="btns" role="group" aria-label="Pick a hit">
+    <button class="btn" type="button" data-s="japan">"US data" in a Tokyo role</button>
+    <button class="btn" type="button" data-s="nontech">A recruiter role</button>
+    <button class="btn" type="button" data-s="emea">"Remote", but EMEA only</button>
+    <button class="btn" type="button" data-s="good">A real match</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 300" aria-hidden="true">
+      <g class="node" data-node="hit"><rect x="10" y="6" width="280" height="36" rx="18"/><text x="150" y="28" font-size="11" text-anchor="middle" id="rl-hit" data-reset="a search hit">a search hit</text></g>
+      <g class="node" data-node="loc"><rect x="10" y="54" width="280" height="40" rx="6"/><text x="150" y="71" font-size="11" text-anchor="middle">where, from the feed's fields</text><text x="150" y="85" font-size="9.5" text-anchor="middle" class="sub">location → country · remote scope</text></g>
+      <g class="node" data-node="fam"><rect x="10" y="106" width="280" height="40" rx="6"/><text x="150" y="123" font-size="11" text-anchor="middle">what, from title + department</text><text x="150" y="137" font-size="9.5" text-anchor="middle" class="sub">engineering family · level band</text></g>
+      <g class="node" data-node="hard"><rect x="10" y="158" width="280" height="40" rx="6"/><text x="150" y="175" font-size="11" text-anchor="middle">hard lines in the description</text><text x="150" y="189" font-size="9.5" text-anchor="middle" class="sub">"must be based in" · clearance · sponsorship</text></g>
+      <g class="node" data-node="drop"><rect x="10" y="210" width="136" height="36" rx="6"/><text x="78" y="232" font-size="11" text-anchor="middle">drop</text></g>
+      <g class="node" data-node="keep"><rect x="154" y="210" width="136" height="36" rx="6"/><text x="222" y="232" font-size="11" text-anchor="middle">keep · score it</text></g>
+      <g class="node" data-node="res"><rect x="40" y="258" width="220" height="34" rx="17"/><text x="150" y="279" font-size="11" text-anchor="middle" id="rl-res" data-reset="decision">decision</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a hit.</li></ol></div>
+  </div>
+</div>
+
+<ol class="steps">
+  <li><b>Location from fields, not prose.</b> Feeds give a location for every job (Greenhouse's <code>location.name</code>, Lever's location category, Ashby's location and address). A small lookup turns it into a country and a remote scope; anything it can't place goes to a small model, and anything still unclear is dropped, not guessed.</li>
+  <li><b>Role family from title and department.</b> The title must be in my engineering families, and the department too when the feed has one. "Technical Recruiter", "Sales Engineer" and "Engineering Manager, Payroll Ops" all contain the right words and all get dropped.</li>
+  <li><b>The description only gets a veto.</b> It's read for hard lines ("must be located in Japan", "active clearance required", "no sponsorship"), never to say a role is a match.</li>
+  <li><b>Every drop keeps its reason,</b> so a wrong filter shows up in the run summary as a pattern, not a mystery.</li>
+</ol>
+
 <div class="section-title" id="s-apply"><span class="dot"></span><span class="n">06</span><span class="section-line"></span><span class="pill">reliability</span></div>
 <h2>How the agent applies</h2>
 
@@ -1101,8 +1187,19 @@ verify/    confirmation page and inbox check                      → applied | 
 track/     applications.db, replies from email, the local board   → statuses
 outreach/  the four people searches, a three-sentence note, caps    → the right person, messaged</code></pre></div>
 
+<div class="section-title" id="s-models"><span class="dot"></span><span class="n">06·c</span><span class="section-line"></span><span class="pill">cost</span></div>
+<h2>Cheap models find, a good model applies</h2>
+
+<p>Most of the work is reading pages and sorting them, which a small, cheap model does well. Only the parts that act in my name get the strongest model I have.</p>
+
+<div class="cards tiers">
+  <div class="cd"><span class="tag">no model</span><h3>Scripts and rules</h3><ul><li>Reading ATS feeds</li><li>Loading search pages with filters in the URL</li><li>Dedupe, caps, known form mappings</li></ul><p class="cost-l">free · most of the steps</p></div>
+  <div class="cd"><span class="tag">small model</span><h3>Find and sort</h3><ul><li>Pulling title, company, location and date out of a results page</li><li>Placing an odd location in a country</li><li>Tech or not, level band, first-pass fit score</li></ul><p class="cost-l">fractions of a cent per job · most of the calls</p></div>
+  <div class="cd"><span class="tag">best model</span><h3>Act in my name</h3><ul><li>Computer use on unfamiliar forms</li><li>Free-text answers drafted from my résumé</li><li>Outreach notes, and the final fit check before applying</li></ul><p class="cost-l">cents per application · a handful a day</p></div>
+</div>
+
 <div class="section-title" id="s-secrets"><span class="dot"></span><span class="n">07</span><span class="section-line"></span><span class="pill">reliability</span><span class="pill">respect</span></div>
-<h2>Logins, secrets and CAPTCHAs</h2>
+<h2>Logins, secrets, and what it skips</h2>
 
 <p>The rule: <code>.env</code> holds keys and settings, never passwords. Website sessions live in a browser profile that only the agent uses. Any password it creates goes to the operating system's keychain.</p>
 
@@ -1116,17 +1213,20 @@ MODE=auto                              # notify | review | auto, overridable per
 greenhouse.io:  { account: none,        find: feed,  apply: auto }
 lever.co:       { account: none,        find: feed,  apply: auto }
 ashbyhq.com:    { account: none,        find: feed,  apply: auto }
-myworkdayjobs:  { account: per_company, find: agent, apply: auto }   # creates the account itself
-icims.com:      { account: per_company, find: agent, apply: auto }
+myworkdayjobs:  { account: per_company, find: agent, apply: skip }   # a whole workday per application
+taleo.net:      { account: per_company, find: agent, apply: skip }
+icims.com:      { account: per_company, find: agent, apply: skip }
 linkedin.com:   { account: mine,        find: agent, apply: via_company_site, pace: human }
 google.com:     { account: none,        find: agent, pace: human }</code></pre></div>
 
 <ol class="steps">
   <li><b>Sign in once.</b> <code>jobhunt setup</code> opens the agent's browser profile, and I sign in to LinkedIn and the jobs inbox, two-factor included. Sessions are reused until they expire.</li>
-  <li><b>Accounts are created by the agent.</b> Workday and iCIMS want an account per employer. The agent signs up with the jobs inbox address, generates a strong password into the keychain, opens the verification email in its own inbox, and carries on. No step for me.</li>
-  <li><b>Passwords never touch a file.</b> They live in the operating system's keychain (macOS Keychain, Windows Credential Manager) through <code>keyring</code>, keyed by site and company.</li>
-  <li><b>CAPTCHAs are the one thing it hands back.</b> They're never solved or bypassed. Because it's my real browser on my home connection, they're rare. When one appears, the agent saves its place, and the summary has a link that opens the page right where it stopped.</li>
+  <li><b>Heavy sites are skipped.</b> Workday, Taleo and iCIMS want a new account per employer and a form that runs for pages. The agent records the role as skipped, with a link, and moves on.</li>
+  <li><b>Passwords never touch a file.</b> The few it needs live in the operating system's keychain (macOS Keychain, Windows Credential Manager) through <code>keyring</code>.</li>
+  <li><b>CAPTCHAs are skipped too.</b> They're never solved or bypassed. Because it's my real browser on my home connection, they're rare; when one appears, the role is marked skipped and the agent moves on.</li>
 </ol>
+
+<div class="callout"><b>Workday lives up to its name:</b> one application can take a whole one. And when a site asks the agent whether it's a robot, it gives the only honest answer: it leaves. Some tests you're meant to fail.</div>
 
 <div class="section-title" id="s-inbox"><span class="dot"></span><span class="n">07·b</span><span class="section-line"></span><span class="pill">reliability</span></div>
 <h2>An inbox of its own</h2>
@@ -1138,8 +1238,8 @@ google.com:     { account: none,        find: agent, pace: human }</code></pre><
 <ol class="steps">
   <li><b>How it gets in:</b> the agent's browser profile is signed in to the inbox for reading verification links. For everything else it uses the Gmail API with an OAuth token kept in the keychain, and no other account's data.</li>
   <li><b>Verification:</b> every "thanks for applying" email is matched to its application by company and role. An application with no confirmation after an hour is "unverified", never "applied".</li>
-  <li><b>Accounts:</b> sign-up codes and "confirm your email" links are opened automatically, which is what lets Workday-style sites run end to end.</li>
-  <li><b>Replies:</b> rejections close the card, interview invitations move it to "interview" and forward to my personal phone, and anything unclear is summarised in the run summary.</li>
+  <li><b>One-time codes:</b> some application forms email a security code before they accept a submission. The agent reads it from its inbox and finishes the form.</li>
+  <li><b>Replies, never answered:</b> rejections close the card, interview invitations move it to "interview" and land on my calendar list, and anything a person wrote goes on a "to respond" list. The agent never replies to anyone. Those messages are mine.</li>
   <li><b>Why a separate address:</b> the blast radius. If the agent misreads or mis-sends, it does so in a mailbox that only ever held job mail, and recruiters see one consistent address for everything.</li>
 </ol>
 
@@ -1170,6 +1270,21 @@ google.com:     { account: none,        find: agent, pace: human }</code></pre><
 I just applied: I built event-driven pipelines on AWS at Amazon Ads and
 now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div>
 
+<div class="section-title" id="s-day"><span class="dot"></span><span class="n">08·b</span><span class="section-line"></span></div>
+<h2>The end of my day</h2>
+
+<p>This is the part I actually feel. Searching, filtering, form-filling and tracking used to eat my evenings. Now I open one page at the end of the day: everything it applied to, everything it skipped and why, interviews coming up, and the short list of people waiting for <i>my</i> reply.</p>
+
+<div class="widget" id="day">
+  <div class="widget-title">Interactive · where my job-hunting time goes, per day</div>
+  <div class="btns" role="group" aria-label="Pick"><button class="btn" type="button" data-d="before" aria-pressed="true">Before</button><button class="btn" type="button" data-d="after">With JobHunt</button></div>
+  <div class="hb" id="day-rows"></div>
+  <p class="readout" id="day-out" aria-live="polite"></p>
+  <p class="small-note" style="margin:0">my own rough estimates of a typical day</p>
+</div>
+
+<p>The "End of day" tab in the screens above is that page. Its rule is simple: <b>the agent tells me what needs a reply; it never sends one.</b> Recruiters and managers who write back get a person.</p>
+
 <div class="section-title" id="s-fair"><span class="dot"></span><span class="n">09</span><span class="section-line"></span><span class="pill">respect</span></div>
 <h2>Playing fair with job boards and employers</h2>
 
@@ -1189,7 +1304,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
 <ol class="steps">
   <li><b>Public feeds first.</b> ATS job-board feeds are published to be read; I read them politely, one request at a time per host, and respect <code>robots.txt</code> on career pages.</li>
   <li><b>Honest about the grey areas.</b> LinkedIn's and Google's terms prohibit automated access. The agent uses them only in my own account, at a human pace and volume, and never collects more than I would read myself. If either asked me to stop, it would.</li>
-  <li><b>No CAPTCHA solving, no fake identities, no rotating IPs.</b> If a site doesn't want a bot right now, the bot steps back and I decide.</li>
+  <li><b>No CAPTCHA solving, no fake identities, no rotating IPs.</b> If a site doesn't want a bot right now, the bot skips it and moves on.</li>
   <li><b>Caps an employer would agree with:</b> a fit threshold, 10 applications a day, at most 2 roles per company in 30 days, 5 notes a day, one person per role.</li>
   <li><b>Everything sent is true.</b> Answers and notes come only from my profile and the job. An application is still me talking to an employer.</li>
 </ol>
@@ -1239,7 +1354,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
   jobhunt/      cli.py  runner.py  app.py (localhost board)  db.py  lock.py
   skills/       find/ dedupe/ match/ tailor/ apply/ verify/ track/ outreach/
   adapters/     greenhouse.py  lever.py  ashby.py  careerpage.py  linkedin.py  search.py
-  mappings/     greenhouse.yaml  lever.yaml  ashby.yaml  workday.yaml   # field → profile key
+  mappings/     greenhouse.yaml  lever.yaml  ashby.yaml  workable.yaml  # field → profile key
   data/         seen.db  applications.db  run_cache.db  screenshots/
   config/       profile.yaml  sites.yaml  companies.yaml  .env
   tests/        adapters (recorded pages)  forms (saved pages)  dedupe  e2e (dry run)</code></pre></div>
@@ -1280,7 +1395,9 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
   <li><div class="dq">How are forms filled?</div><div class="chips"><span class="chip">computer use for all</span><span class="chip won">mappings, then computer use</span></div><p class="why">Fast and free where forms are known. <span class="cost"><b>Cost:</b> mappings to maintain.</span></p></li>
   <li><div class="dq">Which inbox?</div><div class="chips"><span class="chip">my personal email</span><span class="chip won">its own address</span></div><p class="why">Full access, small blast radius. <span class="cost"><b>Cost:</b> one more account.</span></p></li>
   <li><div class="dq">How many applications?</div><div class="chips"><span class="chip">every match</span><span class="chip won">10 a day, 2 per company a month</span></div><p class="why">Better replies, no flooded inboxes. <span class="cost"><b>Cost:</b> some matches wait.</span></p></li>
-  <li><div class="dq">CAPTCHAs?</div><div class="chips"><span class="chip">a solving service</span><span class="chip won">hand it back to me</span></div><p class="why">The one manual step, by choice. <span class="cost"><b>Cost:</b> a click now and then.</span></p></li>
+  <li><div class="dq">Workday and CAPTCHAs?</div><div class="chips"><span class="chip">fight through them</span><span class="chip won">skip them</span></div><p class="why">Nothing manual, nothing bypassed. <span class="cost"><b>Cost:</b> a few roles a week.</span></p></li>
+  <li><div class="dq">Replies to people?</div><div class="chips"><span class="chip">auto-respond</span><span class="chip won">a "to respond" list</span></div><p class="why">People get a person. <span class="cost"><b>Cost:</b> ten minutes a day.</span></p></li>
+  <li><div class="dq">Which model?</div><div class="chips"><span class="chip">the best for everything</span><span class="chip won">small to find, best to apply</span></div><p class="why">Spend where it acts in my name. <span class="cost"><b>Cost:</b> two models to manage.</span></p></li>
 </ol>
 
 <div class="section-title" id="s-drink"><span class="dot"></span><span class="n">15</span><span class="section-line"></span></div>
@@ -1293,7 +1410,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
   <li><strong>Remember everything in two keys,</strong> because one job wears five IDs.</li>
   <li><strong>Rules first, models last,</strong> and cache what the model says.</li>
   <li><strong>Write the intent before the click,</strong> so a crash never applies twice.</li>
-  <li><strong>Cap yourself before anyone has to,</strong> and send only what's true.</li>
+  <li><strong>Cap yourself before anyone has to,</strong> send only what's true, and never auto-reply to a person.</li>
   <li><strong>Give the agent its own inbox,</strong> and keep everything on your laptop.</li>
 </ol>
 
@@ -1314,7 +1431,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
 <footer>
 <div class="wrap">
 <figure class="bye-fig"><img class="bye-photo" src="../images/bye-wave.webp" width="960" height="587" alt="Ambrose, sitting on the floor in a black hoodie, waving goodbye" loading="lazy" decoding="async"></figure>
-<p>JobHunt is a personal tool for my own job search, run on my own laptop and accounts. It reads public feeds politely, uses other sites only at a human pace, never bypasses a CAPTCHA, and every application and note it sends is true and capped. Counts and costs are from my own runs or are illustrative.</p>
+<p>JobHunt is a personal tool for my own job search, run on my own laptop and accounts. It reads public feeds politely, uses other sites only at a human pace, skips anything that asks if it's a robot, and every application and note it sends is true and capped. Counts and costs are from my own runs or are illustrative.</p>
 <p>More field notes: <a href="seven-oclock-every-morning.html">Seven O'Clock, Every Morning</a>, <a href="file-that-wouldnt-die.html">The File That Wouldn't Die</a>, <a href="teammate-in-my-terminal.html">The Teammate in My Terminal</a>, <a href="agents-service-bay.html">Four Agents Walk Into a Service Bay</a> and <a href="scaling-ad-relevance-apis.html">A Million Questions a Second</a>.</p>
 <p>Hiring for someone who builds things end to end? You may already have heard from my agent. Let's talk: <a href="../">tascano.github.io</a> · <a href="../#intro">watch my 3-minute intro</a></p>
 </div>
@@ -1477,7 +1594,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
     ['v1 · AI finds', 'Public ATS feeds read directly, and an agent running my LinkedIn and Google searches in my own browser, at a human pace.', 'The same job kept coming back: from another source, under another ID, or reposted.', 'Memory: three small SQLite stores.'],
     ['v2 · never twice', '<code>seen.db</code> with source IDs, then fingerprints; <code>run_cache.db</code> for overlapping searches; <code>applications.db</code> as my tracker.', 'I still spent an hour a day filling in forms.', 'An agent that applies.'],
     ['v3 · AI applies', 'Field mappings for the big ATS forms, computer use for everything else, in a signed-in browser profile, with fairness caps built in from day one.', 'Confirmations, replies, account sign-ups and finding who to message were still on me.', 'Its own inbox, and outreach.'],
-    ['v4 · end to end', 'A separate jobs inbox the agent reads and verifies against, accounts it creates itself, a tracker that updates from replies, and an outreach skill that finds the right person.', 'Only CAPTCHAs, by choice.', 'This post.'],
+    ['v4 · end to end', 'A separate jobs inbox it reads and verifies against, a tracker that updates from replies, an end-of-day page of what needs me, and an outreach skill that finds the right person.', 'Nothing much: Workday marathons and CAPTCHAs are simply skipped.', 'This post.'],
   ];
   const grew = document.getElementById('grew');
   tabs(grew, 'v', v => { const [t, what, hurt, next] = V[+v]; grew.querySelector('#gr-card').innerHTML = card(t, [['what it was', what], ['what hurt', hurt], ['so next came', next]]); }, '0');
@@ -1515,11 +1632,21 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
           <tr><td>Voluntary disclosures</td><td>Prefer not to say</td><td>profile</td></tr></table>
         <div class="mk-chips" style="margin-top:10px"><span class="on">Approve and submit</span><span>Edit an answer</span><span>Open the form</span><span>Skip</span></div>
         <p class="mk-small">The screenshot of the filled form is saved with the application.</p>`),
-      needs: browser('localhost:8765 · needs you', `
-        <p class="mk-h">2 things for you</p>
-        <div class="mk-card"><b>Interview invite · Tailspin</b>Arrived in the jobs inbox at 09:12, matched to your application, and forwarded to your phone. <span class="mk-tbtn">Open the thread</span></div>
-        <div class="mk-card"><b>A CAPTCHA at Contoso</b>Not solved and not bypassed: progress is saved on page 3 of 4. <span class="mk-tbtn">Finish this one</span></div>
-        <div class="mk-card"><b>Failed: Fabrikam</b>"This job is no longer accepting applications." Recorded and skipped.</div>`),
+      needs: browser('localhost:8765 · to respond', `
+        <p class="mk-h">3 people are waiting for you</p>
+        <div class="mk-card"><b>Tailspin · recruiter</b>"Are you free Tuesday or Wednesday for 30 minutes?" · received 09:12 <span class="mk-tbtn">Open the thread</span></div>
+        <div class="mk-card"><b>Northwind · hiring manager</b>Replied to your note: "Happy to chat. What draws you to platform work?" <span class="mk-tbtn">Open the thread</span></div>
+        <div class="mk-card"><b>Wingtip · coding assessment</b>Link expires Friday 17:00 <span class="mk-tbtn">Open</span></div>
+        <p class="mk-small">The agent drafts nothing and sends nothing here. It only tells you who's waiting.</p>`),
+      eod: browser('localhost:8765 · end of day', `
+        <p class="mk-h">Thursday, 6 November</p>
+        <div class="mk-grid"><div class="mk-stat"><small>applied today</small><b>7</b></div><div class="mk-stat"><small>to respond</small><b>3</b></div><div class="mk-stat"><small>interviews this week</small><b>2</b></div><div class="mk-stat"><small>applied this month</small><b>118</b></div></div>
+        <div class="mk-lab">Coming up</div>
+        <table class="mk-table"><tr><td>Fri 10:00</td><td>Tailspin · recruiter screen</td><td>30 min</td></tr><tr><td>Mon 14:30</td><td>Wingtip · technical interview</td><td>60 min</td></tr></table>
+        <div class="mk-lab">Applied today</div>
+        <table class="mk-table"><tr><td>Acme · Senior Backend</td><td>Greenhouse</td><td>verified</td></tr><tr><td>Northwind · Platform II</td><td>Ashby</td><td>verified</td></tr><tr><td>+ 5 more</td><td></td><td></td></tr></table>
+        <div class="mk-lab">Skipped, and why</div>
+        <div class="mk-chips"><span>Contoso · CAPTCHA</span><span>Adatum · Workday</span><span>Litware · Workday</span><span>212 · not US</span><span>48 · not engineering</span></div>`),
       board: browser('localhost:8765 · tracker', `
         <div class="mk-kan">
           <div><small>queued · 3</small><span>Contoso · Cloud Infra</span><span>Litware · SRE</span></div>
@@ -1537,12 +1664,13 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
         <div class="mk-lab">Sites</div><div class="mk-chips"><span class="on">Greenhouse · auto</span><span class="on">Lever · auto</span><span class="on">Workday · auto</span><span class="on">LinkedIn · find, human pace</span><span class="on">outreach · 5 a day</span></div>`),
       digest: `<div class="mk-term"><div class="mk-bar"><i></i><i></i><i></i><span>~/jobhunt · zsh</span></div><pre>$ jobhunt run
 ▸ feeds        312/314 read · 2 retried        1,240 jobs
-▸ agent        LinkedIn 6 searches · Google 8 · human pace
+▸ find         small model: 1,240 pages read · Google 15 · LinkedIn 4 · Indeed 2
 ▸ dedupe       310 new · 930 seen before
 ▸ match        46 pass rules · 14 ≥ 0.75 · 10 within caps
-▸ apply        7 applied · 1 account created · 1 CAPTCHA (yours)
+▸ apply        7 applied · skipped: 2 Workday, 1 CAPTCHA
 ▸ inbox        7/7 confirmed · 1 interview invite · 2 rejections
 ▸ outreach     4 notes sent · 1 follow-up
+▸ to respond   3 people wrote back · see End of day
 ✓ done in 21m 40s · model spend today $0.31 · open http://localhost:8765</pre></div>`,
     };
     tabs(scr, 'sc', k => { box.innerHTML = S[k]; }, 'today');
@@ -1572,12 +1700,12 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
                [0, 1, 'I edit one answer and press Approve.'], [1, 5, 'Resume from the saved page.'], [5, 6, 'Submit, exactly once.'], [6, 5, 'Confirmation page.'], [5, 7, 'Applied, with the confirmation saved.', 'applied']],
       auto: [[2, 5, 'A Greenhouse job, a site marked auto, a known form.', 'applying'], [5, 7, 'Intent first: status = applying.'], [5, 6, 'The mapping fills every field and uploads the résumé.'],
              [5, 7, 'Screenshot before submit.'], [5, 6, 'Submit.'], [6, 0, '"Thanks for applying" lands in my inbox.'], [2, 7, 'The inbox check matches it: verified.', 'applied']],
-      account: [[5, 6, 'A Workday job: this employer wants its own account.', 'applying'], [5, 6, 'Signs up with the jobs inbox address.'], [5, 7, 'A generated password goes to the keychain, not a file.'],
-                [6, 5, 'Workday emails a verification link to the jobs inbox.'], [5, 5, 'Opens it in its own inbox: account verified.'], [5, 6, 'Fills the form and submits.'], [5, 7, 'Applied. Next time at this employer, it just signs in.', 'applied']],
-      captcha: [[5, 6, 'Mid-form, the site shows a CAPTCHA.', 'applying'], [5, 5, 'Never solved, never bypassed.', null, 1], [5, 7, 'Page and progress saved.', 'needs_you'],
-                [2, 0, 'A "finish this one" link in the run summary.'], [0, 6, 'I solve it and press submit myself.'], [0, 1, 'Mark it applied.', 'applied']],
+      account: [[2, 5, 'A Workday job makes the shortlist.', 'queued'], [5, 6, 'Opens it: "Create an account to apply".'], [5, 5, 'A new account per employer, and a form that runs for pages.', null, 1],
+                [5, 7, 'Marked skipped, with the reason and the link.', 'skipped'], [2, 4, 'Its slot in today’s caps goes to the next best match.'], [2, 0, 'It shows up under "Skipped, and why" at the end of the day.']],
+      captcha: [[5, 6, 'Mid-form, the site asks: are you a robot?', 'applying'], [5, 5, 'Never solved, never bypassed.', null, 1], [5, 7, 'Marked skipped. No retry today.', 'skipped'],
+                [2, 5, 'The agent moves on to the next job.'], [2, 0, 'Listed under "Skipped, and why".']],
       reply: [[6, 0, 'A recruiter replies to the jobs inbox: "We’d like to schedule a call."'], [5, 7, 'The agent reads it and matches it to the application by company and role.'],
-              [5, 7, 'Status: interview. The card moves on the board.', 'interview'], [5, 0, 'Forwards it to my personal phone, with the job and my answers attached.'], [0, 6, 'I reply and book the call. This part stays human.']],
+              [5, 7, 'Status: interview. The card moves on the board.', 'interview'], [5, 1, 'Adds it to "To respond" and "Coming up". It never replies.'], [1, 0, 'At the end of the day it’s at the top of my list.'], [0, 6, 'I reply and book the call. This part stays human.']],
       dup: [[0, 6, 'I applied to Acme’s backend role by hand, through a referral.'], [0, 1, 'One click: "I applied". (The inbox check would catch it too.)'], [1, 7, 'applications: Acme · backend family · today.'],
             [2, 3, 'Next morning the same role appears on another site, with a new ID.', 'found'], [2, 7, 'Its fingerprint is already in seen.'], [2, 7, 'And Acme’s backend family is inside the 30-day window.', 'skipped']],
       wipe: [[0, 1, '<code>jobhunt export</code>'], [1, 7, 'Every table to JSON and CSV, screenshots zipped.'], [0, 1, '<code>jobhunt wipe</code>, confirmed twice.'], [1, 7, 'Deletes the three stores and the screenshots.'],
@@ -1697,8 +1825,8 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
               ['submit verify', 'stop', 'I approve; it submits and verifies.', {'ap-res': 'applied · verified'}]],
     question: [['intent open map', 'stop', 'A Lever form, filled by mapping.'], ['prof', 'bad', '"Expected salary?" is on my never-list, and "Tell us about a migration you led" has no saved answer.'],
                ['needs', 'stop', 'Saved with a drafted answer from my résumé, for me to approve or rewrite.', {'ap-res': 'needs you'}]],
-    captcha: [['intent open', 'stop', 'Page 3 of a 4-page form.'], ['cu', 'lit', 'The next screen is a CAPTCHA.'], ['needs', 'bad', 'Not solved and not bypassed.'],
-              ['needs', 'stop', 'Progress saved; the run summary has a link that opens it right there.', {'ap-res': 'needs you'}]],
+    captcha: [['intent open', 'stop', 'Page 3 of a 4-page form.'], ['cu', 'lit', 'The next screen asks whether it’s a robot.'], ['needs', 'bad', 'Not solved and not bypassed.'],
+              ['needs', 'stop', 'Marked skipped; the agent moves on to the next job.', {'ap-res': 'skipped · CAPTCHA'}]],
     crash: [['intent open map shot', 'stop', 'Everything filled and screenshotted.'], ['submit', 'bad', 'The laptop sleeps a moment after the submit click.'],
             ['intent', 'lit', 'The next run finds a row still marked applying, with no result.'],
             ['verify', 'stop', 'It checks the inbox first: the confirmation arrived. Marked applied; never submitted again.', {'ap-res': 'applied · recovered'}]],
@@ -1802,6 +1930,8 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       ['dedupe', 'Same title, different teams', 'Three "Software Engineer II" roles at one company.', ['Add team and requisition ID to the fingerprint when the feed has them.', 'If they still collide, the job URL decides.'], 'free'],
       ['dedupe', 'Reposts', 'A role reposted every month to look fresh.', ['Fingerprint, plus a 30-day window per company and role family.'], 'free'],
       ['dedupe', 'Applied outside the tool', 'Referrals and applications I made by hand.', ['One click, "I applied", in the app.', 'The inbox check finds confirmations it didn’t send.'], 'free'],
+      ['match', 'Keyword tourists', 'A Tokyo role that mentions "US clients"; a recruiter role that mentions "backend engineers".', ['Location and role family come from the feed’s fields, never the description.', 'The description can only veto.'], 'free'],
+      ['match', 'Country drift', '"Remote" that means EMEA only, or a city in the wrong country.', ['A location lookup to country and remote scope; unclear means dropped, not guessed.'], 'a small-model call, rarely'],
       ['match', 'Titles lie', '"Member of Technical Staff" could be any level.', ['A title map, plus the years of experience in the description.', 'Ambiguous levels go to review.'], 'free'],
       ['match', 'The model is confidently wrong', 'A 0.9 for a role that needs a clearance I don’t have.', ['Hard rules run first and can’t be overridden: clearance, visa, location.', 'The score must quote the lines it relied on.'], 'a few tokens'],
       ['match', 'Scoring costs creep up', 'More sources mean more descriptions to read.', ['Rules first, a cache keyed by résumé and description, and only new descriptions scored.'], 'cents'],
@@ -1811,13 +1941,13 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       ['apply', 'Résumé parsing', 'The form reads my PDF and fills fields wrongly.', ['After upload, re-read every field and correct it from the profile.', 'The screenshot shows the final state.'], 'free'],
       ['apply', 'A crash mid-submit', 'Did it go through or not?', ['Intent before the click; check before any retry.'], 'free'],
       ['apply', 'A silent failure', 'The page says thanks; no email ever comes.', ['"Unverified" after an hour; never counted as applied.'], 'free'],
-      ['apply', 'Multi-page wizards', 'Workday flows run six pages or more.', ['A checkpoint per page; resume from the last one.'], 'free'],
+      ['apply', 'Multi-page marathons', 'Workday, Taleo and iCIMS want an account per employer and six pages of form.', ['Skipped, with the reason and link kept; the slot goes to the next match.'], 'a few roles a week'],
       ['apply', 'The job closes', 'Between finding it and applying.', ['Detect "no longer accepting" and skip with a reason.'], 'free'],
       ['fair', 'Flooding one employer', 'Ten roles at one company, all "good fits".', ['At most 2 per company in 30 days, best first.'], 'some matches wait'],
       ['fair', 'Terms of service', 'LinkedIn and Google prohibit automated access.', ['My own account only, human pace, a few dozen pages a day.', 'Public feeds first; robots.txt respected on career pages.'], 'risk to my own account'],
       ['fair', 'Messaging too many people', 'Outreach that turns into spam.', ['One person per role, 5 notes a day, one follow-up at most.'], 'free'],
       ['fair', 'The wrong person', 'A note to someone with nothing to do with the role.', ['Rank: post author, then the named team’s manager, then the org’s recruiter.', 'No match above the bar means no note.'], 'free'],
-      ['fair', 'CAPTCHAs', 'A site asking "are you human?"', ['Never solved or bypassed: it stops and asks me.'], 'a click now and then'],
+      ['fair', 'CAPTCHAs', 'A site asking "are you human?"', ['Never solved or bypassed: the role is skipped.'], 'a role now and then'],
       ['fair', 'Telling the truth', 'An agent can make things up.', ['Answers only from my profile, a never-list, and review the first time at each company.'], 'free'],
       ['ops', 'Skipped days', 'I don’t run it for three days.', ['Every run reads since the last successful run, not since yesterday.'], 'free'],
       ['ops', 'Stopped halfway', 'I close the laptop mid-run.', ['Stage checkpoints; the next run resumes where this one stopped.'], 'free'],
@@ -1826,13 +1956,92 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       ['ops', 'Backups', 'A damaged file loses my history.', ['A nightly SQLite backup of applications.db; seen.db can be rebuilt.'], 'a few MB'],
       ['sec', 'Personal data on disk', 'Résumés, answers and screenshots.', ['One data folder in my user account, disk encryption on, no cloud sync.', 'Export and wipe are explicit commands.'], 'free'],
       ['sec', 'Secrets', 'Keys and logins leaking into git or logs.', ['.env for keys only, and git-ignored; sessions in the browser profile; passwords in the keychain.'], 'free'],
-      ['sec', 'A full-access inbox', 'The agent can read and send email.', ['A separate address that only ever holds job mail; my personal inbox is never connected.'], 'one more account'],
+      ['sec', 'A full-access inbox', 'The agent can read and send email.', ['A separate address that only ever holds job mail; my personal inbox is never connected.', 'It never replies to a person.'], 'one more account'],
       ['sec', 'What the model sees', 'Sending personal data to an API.', ['Only résumé text and descriptions go to the scorer.', 'The agent’s browser profile has only the application open, so screenshots show nothing else.'], 'free'],
     ];
     const box = hard.querySelector('#hard-cards');
     const names = {find: 'finding', dedupe: 'duplicates', match: 'matching', apply: 'applying', fair: 'fairness', ops: 'running it', sec: 'privacy'};
     const hn = hard.querySelector('#hard-n'); if (hn) hn.textContent = C.length;
     tabs(hard, 'cat', cat => { box.innerHTML = C.filter(c => cat === 'all' || c[0] === cat).map(([c, t, br, how, cost]) => `<div class="cd"><span class="tag">${names[c]}</span><h3>${t}</h3><p class="br">${br}</p><ul>${how.map(h => `<li>${h}</li>`).join('')}</ul><p class="cost-l">${cost}</p></div>`).join(''); }, 'all');
+  }
+
+  // 03·c · Query builder, the way the search app builds links.
+  const qb = document.getElementById('qb');
+  if (qb) {
+    const st = {qt: 'be', qw: 'gh', qc: 'us', qp: 'd', qs: 'title'};
+    const T = {be: ['backend engineer'], multi: ['backend engineer', 'platform engineer', 'software engineer II'], sde: ['SDE II', 'SDE 2', 'software development engineer II']};
+    const W = {gh: 'site:greenhouse.io', ashby: 'site:jobs.ashbyhq.com', lever: 'site:jobs.lever.co', co: 'site:jobs.ashbyhq.com/acme', careers: '(inurl:careers OR inurl:jobs)', dotjobs: 'site:.jobs'};
+    const C = {us: '("United States" OR USA)', ca: 'Canada', remote: 'remote ("United States" OR US)'};
+    const geo = {us: '103644278', ca: '101174742', remote: '103644278'};
+    const tpr = {h: 'r3600', d: 'r86400', w: 'r604800'}, from = {h: 1, d: 1, w: 7};
+    const out = qb.querySelector('#qb-out');
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const draw = () => {
+      const ts = T[st.qt], strict = st.qs === 'title';
+      const term = t => (strict ? 'intitle:' : '') + `"${t}"`;
+      const title = ts.length > 1 ? '(' + ts.map(term).join(' OR ') + ')' : term(ts[0]);
+      const q = `${title} ${W[st.qw]} ${C[st.qc]} -intern -"staff engineer" -contract`;
+      const g = `https://www.google.com/search?q=${encodeURIComponent(q)}&tbs=qdr:${st.qp}`;
+      const li = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(ts.map(t => `"${t}"`).join(' OR '))}&geoId=${geo[st.qc]}&f_TPR=${tpr[st.qp]}${st.qc === 'remote' ? '&f_WT=2' : ''}&f_E=3%2C4&f_JT=F&sortBy=DD`;
+      const host = st.qc === 'ca' ? 'ca.indeed.com' : 'www.indeed.com';
+      const ind = `https://${host}/jobs?q=${encodeURIComponent(ts[0])}&l=${st.qc === 'remote' ? 'Remote' : st.qc === 'ca' ? 'Canada' : 'United+States'}&fromage=${from[st.qp]}&sort=date`;
+      out.innerHTML = `<div class="mk-lab">Google</div><pre class="qb-q">${esc(q)}</pre><pre class="qb-u">${esc(g)}</pre>
+        <div class="mk-lab">LinkedIn</div><pre class="qb-u">${esc(li)}</pre>
+        <div class="mk-lab">Indeed</div><pre class="qb-u">${esc(ind)}</pre>
+        <p class="readout">${strict ? '<b>Title only:</b> a recruiter post that mentions "backend engineers" in its text no longer matches.' : '<b>Anywhere on the page:</b> more results, including roles that only <i>mention</i> the title. The relevance check (05·b) has to catch those.'}
+        ${st.qp === 'h' ? ' Indeed\'s finest filter is one day, so that link asks for the past day.' : ''}</p>`;
+    };
+    for (const k of Object.keys(st)) {
+      const btns = [...qb.querySelectorAll(`[data-${k}]`)];
+      btns.forEach(b => b.addEventListener('click', () => { press(btns, b); st[k] = b.dataset[k]; draw(); }));
+    }
+    draw();
+  }
+
+  // 03·c · Rotation across platforms.
+  const rot = document.getElementById('rot');
+  if (rot) {
+    const r = rot.querySelector('#rot-r'), kEl = rot.querySelector('#rot-k'), rows = rot.querySelector('#rot-rows'), out = rot.querySelector('#rot-out');
+    const draw = () => {
+      const k = +r.value; kEl.textContent = k;
+      const R = [['Google searches a day', Math.ceil(45 / k), 45], ['LinkedIn result pages a day', Math.ceil(12 * 2 / k), 24], ['Indeed result pages a day', Math.ceil(6 * 2 / k), 12]];
+      rows.innerHTML = R.map(([l, v, m]) => `<div class="hb-row"><div class="hb-label">${l}</div><div class="hb-track"><div class="hb-bar ${k > 1 ? 'teal' : ''}" style="--f:${v / m}"></div><span class="hb-val">${v}</span></div></div>`).join('');
+      out.innerHTML = k === 1 ? 'Every search, every day, each asking for the past day: complete, but the heaviest footprint on every site.'
+        : `Each search runs every ${k} days and asks for <b>the past ${k} days</b>, so coverage is still complete, with <b>${Math.round((1 - 1 / k) * 100)}% fewer</b> visits to each site. The ATS feeds still run every time.`;
+    };
+    r.addEventListener('input', draw); draw();
+  }
+
+  // 05·b · Relevance.
+  story(document.getElementById('rel'), {
+    japan: [['hit', 'lit', 'A Google hit for "backend engineer" "United States": its description says "work with our US clients and data".', {'rl-hit': 'Backend Engineer · Acme KK'}],
+            ['loc', 'bad', 'The feed says location: Tokyo, Japan. Country JP is not on my list.'],
+            ['drop', 'stop', 'Dropped. The words "US clients" never got a vote.', {'rl-res': 'dropped · Japan'}]],
+    nontech: [['hit', 'lit', 'A hit for "backend engineer": "help us hire world-class backend engineers".', {'rl-hit': 'Technical Recruiter, Engineering'}],
+              ['loc', 'stop', 'Seattle, so the country is fine.'],
+              ['fam', 'bad', 'Title family: recruiting. Department: People. Not engineering.'],
+              ['drop', 'stop', 'Dropped, with the reason kept.', {'rl-res': 'dropped · not engineering'}]],
+    emea: [['hit', 'lit', 'A "remote" backend role.', {'rl-hit': 'Senior Backend Engineer · Remote'}],
+           ['loc', 'lit', 'The feed lists Remote, with an office in Dublin: unclear.'],
+           ['fam', 'stop', 'Engineering, senior: in my band.'],
+           ['hard', 'bad', 'The description says "must be based in the EU or UK". A veto.'],
+           ['drop', 'stop', 'Dropped.', {'rl-res': 'dropped · EMEA only'}]],
+    good: [['hit', 'lit', 'A hit from an Ashby feed.', {'rl-hit': 'Backend Engineer II · Remote (US)'}],
+           ['loc', 'stop', 'Remote, scoped to the US.'], ['fam', 'stop', 'Engineering family, level II: in my band.'],
+           ['hard', 'stop', 'No hard lines against me.'], ['keep', 'stop', 'Kept, and passed on to be scored.', {'rl-res': 'kept · fit 0.86'}]],
+  });
+
+  // 08·b · The end of my day.
+  const day = document.getElementById('day');
+  if (day) {
+    const rows = day.querySelector('#day-rows'), out = day.querySelector('#day-out');
+    const L = ['searching across sites', 'filtering out the wrong roles', 'filling in forms', 'tracking what I applied to', 'reading the end-of-day page', 'replying to people'];
+    const D = {before: [60, 30, 75, 15, 0, 15], after: [0, 0, 0, 0, 10, 15]};
+    tabs(day, 'd', k => {
+      rows.innerHTML = D[k].map((v, i) => `<div class="hb-row"><div class="hb-label">${L[i]}</div><div class="hb-track"><div class="hb-bar ${k === 'after' ? 'teal' : ''}" style="--f:${Math.max(v / 75, .004)}"></div><span class="hb-val">${v} min</span></div></div>`).join('');
+      const t = D[k].reduce((a, b) => a + b, 0);
+      out.innerHTML = k === 'before' ? `About <b>${Math.round(t / 6) / 10} hours a day</b>, most of it doing the same thing on different sites.` : `About <b>${t} minutes</b>. The 15 minutes of replying to people didn't shrink, and shouldn't.`;
+    }, 'before');
   }
 })();
 </script>
