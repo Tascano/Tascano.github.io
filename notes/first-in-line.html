@@ -960,22 +960,24 @@ indeed.com/jobs?q=backend&amp;fromage=1                                 # days
 
 <div class="widget" id="qb">
   <div class="widget-title">Interactive · build a search the way the app does</div>
-  <div class="mk-lab">Title</div>
-  <div class="btns" role="group" aria-label="Title"><button class="btn" type="button" data-qt="be" aria-pressed="true">backend engineer</button><button class="btn" type="button" data-qt="multi">3 title variants</button><button class="btn" type="button" data-qt="sde">SDE II</button></div>
+  <div class="mk-lab">Role (what titles say)</div>
+  <div class="btns" role="group" aria-label="Role"><button class="btn" type="button" data-qt="swe" aria-pressed="true">software engineer, any wording</button><button class="btn" type="button" data-qt="be">backend engineer</button><button class="btn" type="button" data-qt="de">data engineer</button></div>
+  <div class="mk-lab">Focus (what descriptions say)</div>
+  <div class="btns" role="group" aria-label="Focus"><button class="btn" type="button" data-qf="be" aria-pressed="true">backend</button><button class="btn" type="button" data-qf="fs">full stack</button><button class="btn" type="button" data-qf="de">data engineering</button><button class="btn" type="button" data-qf="any">any</button></div>
   <div class="mk-lab">Where</div>
   <div class="btns" role="group" aria-label="Where"><button class="btn" type="button" data-qw="gh" aria-pressed="true">Greenhouse</button><button class="btn" type="button" data-qw="ashby">Ashby</button><button class="btn" type="button" data-qw="lever">Lever</button><button class="btn" type="button" data-qw="co">one company</button><button class="btn" type="button" data-qw="careers">career subdomains</button><button class="btn" type="button" data-qw="dotjobs">.jobs domains</button></div>
   <div class="mk-lab">Country</div>
   <div class="btns" role="group" aria-label="Country"><button class="btn" type="button" data-qc="us" aria-pressed="true">United States</button><button class="btn" type="button" data-qc="ca">Canada</button><button class="btn" type="button" data-qc="remote">Remote, US</button></div>
   <div class="mk-lab">Posted</div>
   <div class="btns" role="group" aria-label="Posted"><button class="btn" type="button" data-qp="h">past hour</button><button class="btn" type="button" data-qp="d" aria-pressed="true">past 24 hours</button><button class="btn" type="button" data-qp="w">past week</button></div>
-  <div class="mk-lab">Strict</div>
-  <div class="btns" role="group" aria-label="Strictness"><button class="btn" type="button" data-qs="loose">anywhere on the page</button><button class="btn" type="button" data-qs="title" aria-pressed="true">title only, no noise</button></div>
+  <div class="mk-lab">Matching</div>
+  <div class="btns" role="group" aria-label="Matching"><button class="btn" type="button" data-qs="loose">every word, anywhere</button><button class="btn" type="button" data-qs="title" aria-pressed="true">role in the title, the rest anywhere</button></div>
   <div class="qb-out" id="qb-out"></div>
 </div>
 
 <ol class="steps">
   <li><b>Exact titles in quotes, variants with OR:</b> <code>("backend engineer" OR "platform engineer" OR "software engineer II")</code>. Without quotes, Google happily matches "backend" and "engineer" in different sentences.</li>
-  <li><b><code>intitle:</code> instead of hoping:</b> requiring the title words in the page title stops a sales role that merely mentions "our backend engineers" from showing up.</li>
+  <li><b><code>intitle:</code> for the role, and only the role:</b> titles usually say just "Software Engineer II". The focus (backend, full stack, frontend, data engineering) and the location are usually in the description. So the role family goes in <code>intitle:</code>, which stops a recruiter post that merely mentions "our engineers", while focus and place are matched anywhere on the page.</li>
   <li><b><code>site:</code> per ATS, or per company:</b> <code>site:jobs.ashbyhq.com</code> covers every company on Ashby; <code>site:jobs.ashbyhq.com/acme</code> covers one. Greenhouse, Lever, Workable, SmartRecruiters, Wellfound and the rest each get their own line.</li>
   <li><b>Companies on their own domains:</b> <code>inurl:careers</code> and <code>inurl:jobs</code> catch careers pages and jobs. subdomains, and <code>site:.jobs</code> catches the <code>.jobs</code> top-level domain some employers use.</li>
   <li><b>Minus what you don't want:</b> <code>-intern -"staff engineer" -contract -clearance</code>, and companies I've ruled out.</li>
@@ -1095,22 +1097,23 @@ CREATE TABLE found (run_id TEXT, source_key TEXT, fingerprint TEXT, raw_json TEX
 <div class="section-title" id="s-rel"><span class="dot"></span><span class="n">05·b</span><span class="section-line"></span><span class="pill">correctness</span></div>
 <h2>Is this role really for me?</h2>
 
-<p>Keyword search is generous. A role in Tokyo shows up because its description says "work with US clients and data". A recruiter role shows up because it says "hire backend engineers". So search results are only candidates. Relevance is decided from the job's structured fields, never from words in the description.</p>
+<p>Keyword search is generous. A role in Tokyo shows up because its description says "work with US clients and data". A recruiter role shows up because it says "hire backend engineers". But the description can't be ignored either: a title that only says "Software Engineer" hides whether it's backend, full stack or frontend, and some roles state their location only in the text. So search results are candidates, and each one is read in order: fields first, then the parts of the description that actually say what the job is and where.</p>
 
 <div class="widget" id="rel">
-  <div class="widget-title">Animation · four search hits, one decision each</div>
+  <div class="widget-title">Animation · five search hits, one decision each</div>
   <div class="btns" role="group" aria-label="Pick a hit">
     <button class="btn" type="button" data-s="japan">"US data" in a Tokyo role</button>
     <button class="btn" type="button" data-s="nontech">A recruiter role</button>
     <button class="btn" type="button" data-s="emea">"Remote", but EMEA only</button>
-    <button class="btn" type="button" data-s="good">A real match</button>
+    <button class="btn" type="button" data-s="good">"Software Engineer", backend inside</button>
+    <button class="btn" type="button" data-s="front">"Software Engineer", frontend inside</button>
   </div>
   <div class="journey">
     <svg viewBox="0 0 300 300" aria-hidden="true">
       <g class="node" data-node="hit"><rect x="10" y="6" width="280" height="36" rx="18"/><text x="150" y="28" font-size="11" text-anchor="middle" id="rl-hit" data-reset="a search hit">a search hit</text></g>
       <g class="node" data-node="loc"><rect x="10" y="54" width="280" height="40" rx="6"/><text x="150" y="71" font-size="11" text-anchor="middle">where, from the feed's fields</text><text x="150" y="85" font-size="9.5" text-anchor="middle" class="sub">location → country · remote scope</text></g>
       <g class="node" data-node="fam"><rect x="10" y="106" width="280" height="40" rx="6"/><text x="150" y="123" font-size="11" text-anchor="middle">what, from title + department</text><text x="150" y="137" font-size="9.5" text-anchor="middle" class="sub">engineering family · level band</text></g>
-      <g class="node" data-node="hard"><rect x="10" y="158" width="280" height="40" rx="6"/><text x="150" y="175" font-size="11" text-anchor="middle">hard lines in the description</text><text x="150" y="189" font-size="9.5" text-anchor="middle" class="sub">"must be based in" · clearance · sponsorship</text></g>
+      <g class="node" data-node="hard"><rect x="10" y="158" width="280" height="40" rx="6"/><text x="150" y="175" font-size="11" text-anchor="middle">description: focus · place · vetoes</text><text x="150" y="189" font-size="9.5" text-anchor="middle" class="sub">backend · full stack · "based in" · clearance</text></g>
       <g class="node" data-node="drop"><rect x="10" y="210" width="136" height="36" rx="6"/><text x="78" y="232" font-size="11" text-anchor="middle">drop</text></g>
       <g class="node" data-node="keep"><rect x="154" y="210" width="136" height="36" rx="6"/><text x="222" y="232" font-size="11" text-anchor="middle">keep · score it</text></g>
       <g class="node" data-node="res"><rect x="40" y="258" width="220" height="34" rx="17"/><text x="150" y="279" font-size="11" text-anchor="middle" id="rl-res" data-reset="decision">decision</text></g>
@@ -1120,9 +1123,10 @@ CREATE TABLE found (run_id TEXT, source_key TEXT, fingerprint TEXT, raw_json TEX
 </div>
 
 <ol class="steps">
-  <li><b>Location from fields, not prose.</b> Feeds give a location for every job (Greenhouse's <code>location.name</code>, Lever's location category, Ashby's location and address). A small lookup turns it into a country and a remote scope; anything it can't place goes to a small model, and anything still unclear is dropped, not guessed.</li>
+  <li><b>Location: fields first, then location sentences.</b> Feeds give a location for most jobs (Greenhouse's <code>location.name</code>, Lever's location category, Ashby's location and address), and a small lookup turns it into a country and a remote scope. When the field is empty or just says "Remote", a small model reads the description for sentences that state where the job is ("this role is based in Austin", "US-based remote", "must reside in Canada"). A sentence that only mentions a country ("our US clients") is not a location statement. Anything still unclear is dropped, not guessed.</li>
   <li><b>Role family from title and department.</b> The title must be in my engineering families, and the department too when the feed has one. "Technical Recruiter", "Sales Engineer" and "Engineering Manager, Payroll Ops" all contain the right words and all get dropped.</li>
-  <li><b>The description only gets a veto.</b> It's read for hard lines ("must be located in Japan", "active clearance required", "no sponsorship"), never to say a role is a match.</li>
+  <li><b>Focus from the description.</b> Titles hide it, so the small model reads the responsibilities and requirements (not the company boilerplate) and labels the focus: backend, full stack, frontend, data engineering, ML, mobile. My profile says which I want (backend, full stack, data engineering) and which I skip (frontend-only, mobile). Mixed roles keep their mix, and the fit score weighs it.</li>
+  <li><b>Hard lines are a veto.</b> "Must be located in Japan", "active clearance required" or "no sponsorship" end it, wherever else the role scores well.</li>
   <li><b>Every drop keeps its reason,</b> so a wrong filter shows up in the run summary as a pattern, not a mystery.</li>
 </ol>
 
@@ -1942,7 +1946,8 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       ['dedupe', 'Same title, different teams', 'Three "Software Engineer II" roles at one company.', ['Add team and requisition ID to the fingerprint when the feed has them.', 'If they still collide, the job URL decides.'], 'free'],
       ['dedupe', 'Reposts', 'A role reposted every month to look fresh.', ['Fingerprint, plus a 30-day window per company and role family.'], 'free'],
       ['dedupe', 'Applied outside the tool', 'Referrals and applications I made by hand.', ['One click, "I applied", in the app.', 'The inbox check finds confirmations it didn’t send.'], 'free'],
-      ['match', 'Keyword tourists', 'A Tokyo role that mentions "US clients"; a recruiter role that mentions "backend engineers".', ['Location and role family come from the feed’s fields, never the description.', 'The description can only veto.'], 'free'],
+      ['match', 'Keyword tourists', 'A Tokyo role that mentions "US clients"; a recruiter role that mentions "backend engineers".', ['Location from the feed first, then only sentences that state where the job is.', 'Role family from the title and department.'], 'free'],
+      ['match', 'Titles that hide the focus', '"Software Engineer" could be backend, full stack or frontend.', ['A small model labels the focus from responsibilities and requirements, skipping company boilerplate.', 'My profile lists the focuses I want and the ones I skip.'], 'a small-model call per job'],
       ['match', 'Country drift', '"Remote" that means EMEA only, or a city in the wrong country.', ['A location lookup to country and remote scope; unclear means dropped, not guessed.'], 'a small-model call, rarely'],
       ['match', 'Titles lie', '"Member of Technical Staff" could be any level.', ['A title map, plus the years of experience in the description.', 'Ambiguous levels go to review.'], 'free'],
       ['match', 'The model is confidently wrong', 'A 0.9 for a role that needs a clearance I don’t have.', ['Hard rules run first and can’t be overridden: clearance, visa, location.', 'The score must quote the lines it relied on.'], 'a few tokens'],
@@ -1980,28 +1985,28 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
   // 03·c · Query builder, the way the search app builds links.
   const qb = document.getElementById('qb');
   if (qb) {
-    const st = {qt: 'be', qw: 'gh', qc: 'us', qp: 'd', qs: 'title'};
-    const T = {be: ['backend engineer'], multi: ['backend engineer', 'platform engineer', 'software engineer II'], sde: ['SDE II', 'SDE 2', 'software development engineer II']};
+    const st = {qt: 'swe', qf: 'be', qw: 'gh', qc: 'us', qp: 'd', qs: 'title'};
+    const R = {swe: ['software engineer', 'software developer', 'SDE'], be: ['backend engineer', 'back-end engineer'], de: ['data engineer']};
+    const F = {be: ['backend', 'back-end', 'server-side'], fs: ['full stack', 'full-stack', 'fullstack'], de: ['data engineering', 'data pipelines', 'ETL'], any: []};
     const W = {gh: 'site:greenhouse.io', ashby: 'site:jobs.ashbyhq.com', lever: 'site:jobs.lever.co', co: 'site:jobs.ashbyhq.com/acme', careers: '(inurl:careers OR inurl:jobs)', dotjobs: 'site:.jobs'};
-    const C = {us: '("United States" OR USA)', ca: 'Canada', remote: 'remote ("United States" OR US)'};
+    const C = {us: '("United States" OR USA OR US-based)', ca: '(Canada OR Toronto OR Vancouver)', remote: 'remote ("United States" OR US)'};
     const geo = {us: '103644278', ca: '101174742', remote: '103644278'};
     const tpr = {h: 'r3600', d: 'r86400', w: 'r604800'}, from = {h: 1, d: 1, w: 7};
     const out = qb.querySelector('#qb-out');
     const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    const any = (terms, pre = '') => terms.length > 1 ? '(' + terms.map(t => pre + `"${t}"`).join(' OR ') + ')' : pre + `"${terms[0]}"`;
     const draw = () => {
-      const ts = T[st.qt], strict = st.qs === 'title';
-      const term = t => (strict ? 'intitle:' : '') + `"${t}"`;
-      const title = ts.length > 1 ? '(' + ts.map(term).join(' OR ') + ')' : term(ts[0]);
-      const q = `${title} ${W[st.qw]} ${C[st.qc]} -intern -"staff engineer" -contract`;
+      const strict = st.qs === 'title', role = any(R[st.qt], strict ? 'intitle:' : ''), focus = F[st.qf].length ? ' ' + any(F[st.qf]) : '';
+      const q = `${role}${focus} ${W[st.qw]} ${C[st.qc]} -intern -"staff engineer" -contract`;
       const g = `https://www.google.com/search?q=${encodeURIComponent(q)}&tbs=qdr:${st.qp}`;
-      const li = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(ts.map(t => `"${t}"`).join(' OR '))}&geoId=${geo[st.qc]}&f_TPR=${tpr[st.qp]}${st.qc === 'remote' ? '&f_WT=2' : ''}&f_E=3%2C4&f_JT=F&sortBy=DD`;
+      const kw = R[st.qt].map(t => `"${t}"`).join(' OR ') + (F[st.qf].length ? ` AND (${F[st.qf].map(t => `"${t}"`).join(' OR ')})` : '');
+      const li = `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(kw)}&geoId=${geo[st.qc]}&f_TPR=${tpr[st.qp]}${st.qc === 'remote' ? '&f_WT=2' : ''}&f_E=3%2C4&f_JT=F&sortBy=DD`;
       const host = st.qc === 'ca' ? 'ca.indeed.com' : 'www.indeed.com';
-      const ind = `https://${host}/jobs?q=${encodeURIComponent(ts[0])}&l=${st.qc === 'remote' ? 'Remote' : st.qc === 'ca' ? 'Canada' : 'United+States'}&fromage=${from[st.qp]}&sort=date`;
+      const ind = `https://${host}/jobs?q=${encodeURIComponent(R[st.qt][0] + (F[st.qf].length ? ' ' + F[st.qf][0] : ''))}&l=${st.qc === 'remote' ? 'Remote' : st.qc === 'ca' ? 'Canada' : 'United+States'}&fromage=${from[st.qp]}&sort=date`;
       out.innerHTML = `<div class="mk-lab">Google</div><pre class="qb-q">${esc(q)}</pre><pre class="qb-u">${esc(g)}</pre>
-        <div class="mk-lab">LinkedIn</div><pre class="qb-u">${esc(li)}</pre>
+        <div class="mk-lab">LinkedIn (its keyword search reads the description too)</div><pre class="qb-u">${esc(li)}</pre>
         <div class="mk-lab">Indeed</div><pre class="qb-u">${esc(ind)}</pre>
-        <p class="readout">${strict ? '<b>Title only:</b> a recruiter post that mentions "backend engineers" in its text no longer matches.' : '<b>Anywhere on the page:</b> more results, including roles that only <i>mention</i> the title. The relevance check (05·b) has to catch those.'}
-        ${st.qp === 'h' ? ' Indeed\'s finest filter is one day, so that link asks for the past day.' : ''}</p>`;
+        <p class="readout">${strict ? '<b>Role in the title, the rest anywhere:</b> "Software Engineer II" whose description says backend and "based in Seattle" still matches; a recruiter post that only mentions engineers in its text doesn\'t.' : '<b>Every word, anywhere:</b> more results, including pages that only <i>mention</i> engineers. The relevance check (05·b) has to catch those.'}${st.qp === 'h' ? ' Indeed\'s finest filter is one day, so that link asks for the past day.' : ''} Search only finds candidates; the location and focus are confirmed from each job's own feed and description.</p>`;
     };
     for (const k of Object.keys(st)) {
       const btns = [...qb.querySelectorAll(`[data-${k}]`)];
@@ -2028,7 +2033,7 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
   story(document.getElementById('rel'), {
     japan: [['hit', 'lit', 'A Google hit for "backend engineer" "United States": its description says "work with our US clients and data".', {'rl-hit': 'Backend Engineer · Acme KK'}],
             ['loc', 'bad', 'The feed says location: Tokyo, Japan. Country JP is not on my list.'],
-            ['drop', 'stop', 'Dropped. The words "US clients" never got a vote.', {'rl-res': 'dropped · Japan'}]],
+            ['drop', 'stop', 'Dropped. "Work with our US clients" mentions a country but doesn’t say where the job is, so it never got a vote.', {'rl-res': 'dropped · Japan'}]],
     nontech: [['hit', 'lit', 'A hit for "backend engineer": "help us hire world-class backend engineers".', {'rl-hit': 'Technical Recruiter, Engineering'}],
               ['loc', 'stop', 'Seattle, so the country is fine.'],
               ['fam', 'bad', 'Title family: recruiting. Department: People. Not engineering.'],
@@ -2036,11 +2041,16 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
     emea: [['hit', 'lit', 'A "remote" backend role.', {'rl-hit': 'Senior Backend Engineer · Remote'}],
            ['loc', 'lit', 'The feed lists Remote, with an office in Dublin: unclear.'],
            ['fam', 'stop', 'Engineering, senior: in my band.'],
-           ['hard', 'bad', 'The description says "must be based in the EU or UK". A veto.'],
+           ['hard', 'bad', 'The description says "must be based in the EU or UK": a location sentence, and a veto.'],
            ['drop', 'stop', 'Dropped.', {'rl-res': 'dropped · EMEA only'}]],
-    good: [['hit', 'lit', 'A hit from an Ashby feed.', {'rl-hit': 'Backend Engineer II · Remote (US)'}],
-           ['loc', 'stop', 'Remote, scoped to the US.'], ['fam', 'stop', 'Engineering family, level II: in my band.'],
-           ['hard', 'stop', 'No hard lines against me.'], ['keep', 'stop', 'Kept, and passed on to be scored.', {'rl-res': 'kept · fit 0.86'}]],
+    good: [['hit', 'lit', 'The title says only "Software Engineer II". Location field: "Remote".', {'rl-hit': 'Software Engineer II · Remote'}],
+           ['loc', 'lit', '"Remote" alone is vague, so it reads the description next.'], ['fam', 'stop', 'Engineering family, level II: in my band.'],
+           ['hard', 'stop', 'Description: "US-based remote" (a location sentence), and the responsibilities are APIs, services and Postgres: backend.'],
+           ['keep', 'stop', 'Kept, and scored with a backend focus.', {'rl-res': 'kept · backend · fit 0.86'}]],
+    front: [['hit', 'lit', 'Another "Software Engineer", in Seattle.', {'rl-hit': 'Software Engineer · Seattle'}],
+            ['loc', 'stop', 'Seattle: US.'], ['fam', 'stop', 'Engineering family: fine so far.'],
+            ['hard', 'bad', 'The responsibilities are React, design systems and accessibility: frontend only, which my profile skips.'],
+            ['drop', 'stop', 'Dropped for its focus, not its title.', {'rl-res': 'dropped · frontend only'}]],
   });
 
   // 08·b · The end of my day.
