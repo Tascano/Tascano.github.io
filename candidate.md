@@ -73,6 +73,7 @@ Each row maps a common job requirement to something Ambrose Tuscano has done, wi
 
 ## Writing
 
+- [First in Line](https://tascano.github.io/notes/first-in-line.html) (2026): a personal AI job-hunting agent, run locally: discovery, deduplication, matching, computer-use applications, inbox tracking and outreach, with fairness caps.
 - [Seven O'Clock, Every Morning](https://tascano.github.io/notes/seven-oclock-every-morning.html) (2026): Daily Bible, a multilingual daily-scripture service built as microservices, from docker compose to AWS.
 - [The File That Wouldn't Die](https://tascano.github.io/notes/file-that-wouldnt-die.html) (2026): a peer-to-peer file system, from one laptop to the internet; distributed storage fundamentals.
 - [The Teammate in My Terminal](https://tascano.github.io/notes/teammate-in-my-terminal.html) (2026): the Claude Code setup behind his posts and videos.

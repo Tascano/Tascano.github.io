@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>First in Line — Ambrose Tuscano</title>
+<meta name="description" content="How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.">
+<meta property="og:type" content="article">
+<meta property="og:title" content="First in Line">
+<meta property="og:description" content="A local-first job hunter: fresh roles from ATS feeds, three SQLite stores so nothing is applied to twice, and a computer-use agent with guardrails.">
+<meta property="og:image" content="https://tascano.github.io/images/og-image.jpg">
+<meta name="theme-color" content="#fdb515">
+<link rel="icon" href="../favicon.ico?v=3" sizes="any">
+<script>
+  // Same key as the main page, so the reader's light/dark choice carries over.
+  try { const t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+:root{
+  --accent:#fdb515;
+  --accent-ink:#9a6700;          /* the brand gold, deepened for small text on white (4.9:1) */
+  --accent-wash:rgba(253,181,21,.14);
+  --bg:#fff;
+  --text:#111;
+  --text-secondary:#333;
+  --text-muted:#555;
+  --card-bg:#fafafa;
+  --card-border:#eee;
+  --skill-bg:#f3f3f3;
+  --code-bg:#15171b;
+  --code-border:#15171b;
+  --demand:#C26A00;
+  --capacity:#00826F;
+  --capacity-wash:rgba(0,130,111,.10);
+  --demand-wash:rgba(194,106,0,.10);
+  --mute:#8a8a8a;
+  --track:#dcdcdc;
+  --buffer:#d4d4d4;
+  --buffer-ink:#111;
+  --rec-ink:#fff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+[data-theme="dark"]{
+  --accent-ink:#fdb515;
+  --accent-wash:rgba(253,181,21,.12);
+  --bg:#0f0f0f;
+  --text:#e8e8e8;
+  --text-secondary:#d0d0d0;
+  --text-muted:#a0a0a0;
+  --card-bg:#1a1a1a;
+  --card-border:#2a2a2a;
+  --skill-bg:#262626;
+  --code-bg:#161616;
+  --code-border:#2a2a2a;
+  --demand:#C27E00;
+  --capacity:#22A08B;
+  --capacity-wash:rgba(34,160,139,.14);
+  --demand-wash:rgba(194,126,0,.14);
+  --mute:#737373;
+  --track:#383838;
+  --buffer:#4d4d4d;
+  --buffer-ink:#fff;
+  --rec-ink:#111;
+}
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.7;color:var(--text);background:var(--bg);transition:background .3s ease,color .3s ease;}
+a{color:var(--accent-ink);text-underline-offset:3px;text-decoration-thickness:1px;}
+a:hover{color:var(--text);}
+::selection{background:var(--accent);color:#111;}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px;}
+.scroll-progress{position:fixed;top:0;left:0;width:0;height:4px;background:var(--accent);z-index:1000;}
+.theme-toggle{position:fixed;top:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--card-bg);border:2px solid var(--card-border);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:999;transition:transform .3s ease,border-color .3s ease;}
+.theme-toggle:hover{transform:scale(1.1);border-color:var(--accent);}
+.theme-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+
+/* top bar, like the main page header */
+.topbar{display:flex;align-items:center;gap:12px;padding:28px 0 18px;border-bottom:1px solid var(--card-border);}
+.topbar img{width:44px;height:44px;border-radius:8px;object-fit:cover;}
+.topbar a{text-decoration:none;color:var(--text);font-weight:700;font-size:18px;letter-spacing:.2px;}
+.topbar .last{color:var(--accent);}
+.topbar .home{margin-left:auto;margin-right:64px;font-size:14px;font-weight:600;color:var(--accent-ink);}
+
+/* hero */
+.hero{padding:44px 0 6px;}
+.kicker{display:inline-block;font:700 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:7px 11px;margin-bottom:18px;}
+.hero h1{font-size:clamp(36px,7.4vw,56px);line-height:1.06;letter-spacing:-.015em;margin:0 0 10px;font-weight:800;}
+.hero .alt{font-size:18px;font-style:italic;color:var(--text-muted);margin:0 0 20px;}
+.hero .dek{font-size:19.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 22px;}
+.byline{display:flex;flex-wrap:wrap;gap:6px 16px;font:14px var(--mono);color:var(--text-muted);margin-bottom:30px;}
+.byline b{color:var(--text);}
+
+/* section titles: the main page's dot + gold line */
+.section-title{display:flex;align-items:center;gap:12px;margin:72px 0 6px;}
+.section-title .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.section-title .section-line{flex:1;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+.section-title .n{font:700 13px var(--mono);color:var(--accent-ink);}
+h2{font-size:clamp(25px,4.8vw,32px);line-height:1.2;letter-spacing:-.01em;margin:0 0 18px;font-weight:800;}
+h3{font-size:20px;margin:36px 0 10px;font-weight:700;}
+p{margin:0 0 20px;}
+strong{font-weight:700;}
+.lede{font-size:19.5px;}
+code{font-family:var(--mono);font-size:.86em;background:var(--skill-bg);border-radius:4px;padding:.12em .36em;white-space:nowrap;}
+ul.plain,ol.plain{padding-left:22px;margin:0 0 22px;}
+ul.plain li,ol.plain li{margin-bottom:9px;}
+.note{font-size:15px;color:var(--text-muted);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 26px;}
+
+/* cards */
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:20px 22px;margin:26px 0 32px;}
+.tldr{border-left:4px solid var(--accent);}
+.tldr h2{font-size:21px;margin-bottom:12px;}
+.tldr ol{margin:0;padding-left:20px;}
+.tldr li{margin-bottom:8px;}
+.tldr-foot{margin:14px 0 12px;font-size:15.5px;}
+.tldr details.log{margin:0;}
+
+/* the video's interruptions, on the page */
+.interrupt{border:2px dashed var(--accent);border-radius:14px;padding:18px 18px 4px;margin:34px 0 34px;background:var(--bg);position:relative;}
+.interrupt .tag{position:absolute;top:-12px;left:16px;background:var(--accent);color:#111;font:700 12px var(--mono);letter-spacing:.04em;padding:4px 10px;border-radius:999px;}
+.interrupt p{font-size:16.5px;}
+
+/* code */
+.code{background:var(--code-bg);border:1px solid var(--code-border);border-radius:12px;overflow:hidden;margin:20px 0 8px;}
+.code-bar{display:flex;align-items:center;gap:6px;padding:9px 14px;border-bottom:1px solid rgba(255,255,255,.07);}
+.term-dot{width:10px;height:10px;border-radius:50%;background:#3b3f46;}
+.term-dot:first-child{background:#fdb515;}
+.code-name{margin-left:8px;font:12.5px var(--mono);color:#9aa0a6;}
+.code pre{margin:0;padding:16px 18px 18px;overflow-x:auto;font:13.5px/1.6 var(--mono);color:#e6e6e6;tab-size:4;}
+.code pre code{background:none;padding:0;border-radius:0;font-size:inherit;color:inherit;white-space:pre;}
+.code .k{color:#fdb515;}
+.code .s{color:#a8d59f;}
+.code .c{color:#8b929a;font-style:italic;}
+.code .n{color:#f2c88d;}
+.code .f,.code .b{color:#86c5f0;}
+details.more + .out{margin-top:22px;}
+.out{position:relative;margin:0 0 30px;background:var(--card-bg);border:1px solid var(--card-border);border-left:4px solid var(--accent);border-radius:0 10px 10px 0;}
+.out pre{margin:0;padding:14px 16px 12px;overflow-x:auto;font:13px/1.55 var(--mono);color:var(--text);}
+.out-label{position:absolute;top:-9px;right:12px;background:var(--bg);padding:0 6px;font:700 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+.term-body{padding:16px 20px 18px;font:14.5px/1.75 var(--mono);color:#e6e6e6;}
+.term-body .p{color:#fdb515;}
+.term-body .dim{color:#9aa0a6;}
+.cursor{display:inline-block;width:8px;height:16px;background:#fdb515;vertical-align:-3px;animation:blink 1.1s steps(1) infinite;}
+@keyframes blink{0%,49%{opacity:1;}50%,100%{opacity:0;}}
+
+/* collapsibles */
+details.more.flat{margin-top:0;}
+details.more{margin:-14px 0 30px;border:1px solid var(--card-border);border-radius:10px;background:var(--card-bg);}
+details.more summary{cursor:pointer;padding:10px 14px;font:600 13.5px var(--mono);color:var(--text-muted);list-style:none;}
+details.more summary::-webkit-details-marker{display:none;}
+details.more summary::before{content:"+ ";color:var(--accent-ink);font-weight:800;}
+details.more[open] summary::before{content:"− ";}
+details.more > .code,details.more > .out,details.more > .table-scroll{margin-left:12px;margin-right:12px;}
+details.more > .out{margin-bottom:14px;}
+
+/* formula */
+.formula{font:14.5px/1.9 var(--mono);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 22px;overflow-x:auto;white-space:nowrap;}
+
+/* figures and tables */
+figure{margin:28px 0 36px;}
+figure svg{width:100%;height:auto;display:block;}
+figcaption{font:13px/1.5 var(--mono);color:var(--text-muted);margin-top:10px;}
+.fig-frame{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:16px 12px;}
+.fig-frame svg{max-width:580px;margin:0 auto;}
+.arch text{font-family:var(--mono);}
+.arch .t{fill:var(--text);} .arch .tm{fill:var(--text-muted);} .arch .ta{fill:var(--accent-ink);}
+.arch .bx{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;}
+.arch .bx-main{fill:var(--bg);stroke:var(--text);stroke-width:1.5;}
+.arch .pipe{fill:#15171b;stroke:var(--card-border);stroke-width:1.5;}
+.arch .pipe-t{fill:#e6e6e6;font-family:system-ui,sans-serif;font-weight:700;} .arch .pipe-a{fill:#fdb515;}
+.arch .chip{fill:var(--accent-wash);stroke:var(--accent-ink);stroke-width:1.2;}
+.arch .chip-teal{fill:var(--capacity-wash);stroke:var(--capacity);stroke-width:1.2;}
+.arch .ln{stroke:var(--text-muted);stroke-width:1.5;fill:none;}
+.arch .la{stroke:var(--accent-ink);stroke-width:2;fill:none;}
+.arch .mk{fill:var(--text-muted);} .arch .mka{fill:var(--accent-ink);}
+.arch .rule{stroke:var(--card-border);}
+.table-scroll{overflow-x:auto;margin:0 0 30px;}
+.spec-table{width:100%;border-collapse:collapse;font-size:15px;}
+.spec-table th,.spec-table td{text-align:left;padding:10px;border-bottom:1px solid var(--card-border);vertical-align:top;}
+.spec-table thead th{font:700 12px var(--mono);color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid var(--accent);}
+.spec-table td:first-child{font-weight:600;}
+.spec-table.num td{font-family:var(--mono);text-align:right;padding:5px 10px;font-size:13px;font-weight:400;}
+.spec-table.num th{text-align:right;}
+.spec-table.fail td{font-size:14.5px;}
+.spec-table.fail td:first-child{width:30%;}
+
+/* widgets */
+.widget{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:16px;margin:26px 0 34px;}
+.widget-title{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.btn{font:600 14px system-ui,sans-serif;padding:8px 14px;min-height:38px;border-radius:999px;border:2px solid var(--card-border);background:var(--bg);color:var(--text);cursor:pointer;transition:border-color .2s;}
+.btn:hover{border-color:var(--accent);}
+.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#111;}
+.btn:focus-visible,.bf-input:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+.journey{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
+.journey svg{width:100%;height:auto;display:block;max-width:360px;margin:0 auto;}
+.journey text{font-family:var(--mono);fill:var(--text);}
+.journey .sub{fill:var(--text-muted);}
+.journey .node rect{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;transition:fill .25s,stroke .25s;}
+.journey .node.lit rect{fill:var(--accent-wash);stroke:var(--accent);}
+.journey .node.stop rect{fill:var(--capacity-wash);stroke:var(--capacity);stroke-width:2.5;}
+.journey #dot{fill:var(--accent);stroke:var(--bg);}
+.log{list-style:none;margin:0;padding:0;font:13px/1.55 var(--mono);min-height:150px;}
+.log li{padding:6px 0;border-bottom:1px dashed var(--card-border);}
+.log li b{color:var(--accent-ink);}
+.meters{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font:13px var(--mono);color:var(--text-muted);}
+.meters b{color:var(--text);}
+.bf-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.bf-input{flex:1 1 180px;min-width:0;min-height:40px;padding:8px 10px;font:15px var(--mono);border:2px solid var(--card-border);border-radius:10px;background:var(--bg);color:var(--text);}
+.bits{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;margin:12px 0 6px;}
+.bit{aspect-ratio:1;border-radius:6px;background:var(--bg);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;font:600 11px var(--mono);color:var(--text-muted);transition:background .2s;}
+.bit.on{background:var(--accent);border-color:var(--accent);color:#111;}
+.bit.probe{outline:2px solid var(--text);outline-offset:1px;}
+.bit.probe.zero{outline:3px solid var(--capacity);}
+.bf-result{font-size:15.5px;margin:10px 0 4px;min-height:48px;}
+.bf-items,.bf-stats{font:12.5px var(--mono);color:var(--text-muted);word-break:break-word;}
+.bf-stats{margin-top:6px;}
+
+/* charts */
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:26px 0 10px;font-size:14px;color:var(--text-muted);}
+.legend span{display:inline-flex;align-items:center;gap:7px;}
+.lk{display:inline-block;width:16px;height:2px;border-radius:1px;}
+.lk-dem{background:var(--demand);} .lk-cap{background:var(--capacity);}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;}
+.sw-gap{background:var(--demand);opacity:.25;}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+.chart{position:relative;margin:0;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:10px 8px 4px;}
+.chart-title{font-size:14.5px;font-weight:700;margin:0 0 4px 6px;}
+.chart .ax{font:10.5px var(--mono);fill:var(--text-muted);}
+.chart .grid{stroke:var(--card-border);}
+.chart .note{stroke:var(--text-muted);}
+.chart .s-dem{stroke:var(--demand);} .chart .s-cap{stroke:var(--capacity);}
+.chart .s-gap{fill:var(--demand);fill-opacity:.2;}
+.chart .xhair{stroke:var(--text);}
+.chart .hit{cursor:crosshair;}
+.tip{position:absolute;pointer-events:none;z-index:2;background:#111;color:#f2f2f2;border-radius:6px;padding:7px 9px;font:12px/1.5 var(--mono);white-space:nowrap;}
+[data-theme="dark"] .tip{background:#f2f2f2;color:#111;}
+.tip .row{display:flex;align-items:center;gap:7px;}
+.tip i{display:inline-block;width:12px;height:2px;}
+
+footer{border-top:1px solid var(--card-border);margin-top:30px;padding:30px 0 70px;}
+footer p{font-size:15px;color:var(--text-muted);}
+.bye-fig{margin:0 0 22px;}
+.bye-photo{display:block;width:100%;max-width:420px;height:auto;border-radius:16px;border:1px solid var(--card-border);background:#fff;}
+
+@media (max-width:640px){
+  body{font-size:16.5px;}
+  .theme-toggle{top:14px;right:14px;width:44px;height:44px;font-size:18px;}
+  .topbar .home{margin-right:52px;}
+  .hero{padding-top:30px;}
+  .journey,.charts{grid-template-columns:1fr;}
+  .bits{grid-template-columns:repeat(8,minmax(0,1fr));}
+  .code pre{font-size:12.5px;}
+}
+@media (max-width:420px){ .topbar .home{display:none;} }
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  .cursor{animation:none;}
+}
+
+/* pick your hat */
+.hats .btns{margin:2px 0 14px;}
+.hat ul{margin:0;padding-left:20px;}
+.hat li{margin-bottom:8px;}
+
+/* stat tiles */
+.stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:20px 0 10px;}
+.stat{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px;}
+.stat .v{font:600 30px/1.1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:-.01em;margin-bottom:6px;}
+.stat .l{font-size:14.5px;line-height:1.45;color:var(--text-secondary);}
+.stat .src{display:block;margin-top:8px;font:12px/1.4 var(--mono);}
+.stats-cap{font:13px/1.5 var(--mono);color:var(--text-muted);margin:0 0 30px;}
+
+/* charts drawn as plain HTML bars, and shared chart chrome */
+.viz{position:relative;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px 16px 12px;margin:24px 0 30px;}
+.viz-title{font-size:14.5px;font-weight:700;margin:0 0 12px;}
+.viz-cap{font:13px/1.5 var(--mono);color:var(--text-muted);margin:12px 0 0;}
+.hb{display:grid;gap:10px;}
+.hb-row{font-size:14px;border-radius:6px;outline-offset:3px;}
+.hb-row:focus-visible{outline:2px solid var(--accent);}
+.hb-label{color:var(--text-secondary);margin-bottom:3px;line-height:1.3;}
+.hb-track{display:flex;align-items:center;gap:8px;}
+.hb-bar{flex:none;height:14px;border-radius:0 4px 4px 0;width:calc((100% - 92px) * var(--f));min-width:3px;background:var(--demand);transition:background .2s;}
+.hb-bar.teal{background:var(--capacity);} .hb-bar.mute{background:var(--mute);}
+.hb-val{font:600 13px var(--mono);color:var(--text);white-space:nowrap;}
+.hb-row.sel .hb-bar{background:var(--demand);} .gcbars .hb-bar{background:var(--mute);}
+.gcbars .hb-row.sel .hb-label{color:var(--text);font-weight:700;}
+.plot svg{width:100%;height:auto;display:block;max-width:560px;margin:0 auto;}
+.plot .ax{font:10.5px var(--mono);fill:var(--text-muted);}
+.plot .lab{font:600 11px var(--mono);fill:var(--text);}
+.plot .grid{stroke:var(--card-border);}
+.plot .base{stroke:var(--text-muted);}
+.plot .s-dem{fill:var(--demand);} .plot .s-mute{fill:var(--mute);}
+.plot .s-line{stroke:var(--demand);fill:none;} .plot .s-wash{fill:var(--demand-wash);}
+.plot .band{fill:var(--text-muted);fill-opacity:.14;}
+.plot .hl{fill:var(--text);}
+.plot .hit{cursor:crosshair;}
+.legend.tight{margin:4px 0 10px;}
+
+/* the budget, as one segmented bar */
+.seg{display:flex;gap:2px;height:28px;margin:4px 0 10px;}
+.seg span{display:flex;align-items:center;padding-left:8px;border-radius:4px;font:600 12.5px var(--mono);white-space:nowrap;}
+.seg .net{background:var(--mute);color:#111;}
+.seg .dec{background:var(--capacity);color:var(--rec-ink);}
+.seg .buf{background:var(--buffer);color:var(--buffer-ink);}
+.sw-net{background:var(--mute);} .sw-dec{background:var(--capacity);} .sw-buf{background:var(--buffer);}
+
+/* Little's law */
+.range{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font:13px var(--mono);color:var(--text-muted);}
+.range label b{color:var(--text);}
+.range input{flex:1 1 200px;accent-color:var(--accent-ink);min-height:32px;}
+.dots{display:grid;grid-template-columns:repeat(25,minmax(0,1fr));gap:3px;max-width:440px;margin:14px 0 12px;}
+.dots i{aspect-ratio:1;border-radius:50%;background:var(--track);transition:background .12s;}
+.dots i.on{background:var(--demand);}
+.readout{font-size:15.5px;margin:4px 0 0;min-height:50px;}
+
+/* search vs lookup grid */
+.rgrid{display:grid;grid-template-columns:auto repeat(10,minmax(0,1fr));gap:4px;align-items:center;font:11px var(--mono);margin:4px 0 12px;}
+.rgrid .rh{color:var(--text-muted);text-align:center;}
+.rgrid .rl{color:var(--text);padding-right:6px;white-space:nowrap;}
+.rgrid .rl.page{font-weight:700;color:var(--accent-ink);}
+.rgrid .cell{aspect-ratio:1;border-radius:4px;background:var(--bg);border:1px solid var(--card-border);position:relative;transition:outline-color .2s;}
+.rgrid .cell.s::before{content:"";position:absolute;inset:2px;border-radius:2px;background:var(--capacity);opacity:var(--a);}
+.rgrid .cell.scan{outline:2px solid var(--text);outline-offset:1px;}
+.rgrid .cell.hit{outline:3px solid var(--accent);outline-offset:1px;}
+.rgrid .cell.miss{outline:3px dashed var(--demand);outline-offset:1px;}
+.key{display:flex;flex-wrap:wrap;gap:6px 16px;font:12.5px var(--mono);color:var(--text-muted);margin:0 0 10px;}
+.key span{display:inline-flex;align-items:center;gap:6px;}
+.key i{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--card-border);background:var(--bg);}
+.key i.s{background:var(--capacity);border-color:var(--capacity);}
+
+/* the publish animation reuses the journey layout */
+.journey .node.bad rect{fill:var(--demand-wash);stroke:var(--demand);stroke-width:2.5;stroke-dasharray:6 4;}
+.journey .node.dim{opacity:.4;}
+.journey .ver{font-weight:700;}
+
+/* playbook */
+.checks{list-style:none;padding:0;margin:0 0 26px;}
+.checks li{padding:9px 0 9px 30px;border-top:1px solid var(--card-border);position:relative;font-size:16px;}
+.checks li::before{content:"✓";position:absolute;left:4px;top:8px;font-weight:800;color:var(--capacity);}
+.checks b{font-family:var(--mono);font-size:13.5px;letter-spacing:.02em;margin-right:6px;}
+
+/* nine decisions */
+.dec-list{list-style:none;margin:8px 0 30px;padding:0;counter-reset:d;}
+.dec-list > li{border-top:1px solid var(--card-border);padding:14px 0 12px;}
+.dec-list .dq{font-weight:700;margin-bottom:8px;line-height:1.4;}
+.dec-list .dq::before{counter-increment:d;content:counter(d) " · ";font:700 13px var(--mono);color:var(--accent-ink);}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.chip{font:12.5px/1.4 var(--mono);padding:3px 10px;border-radius:999px;border:1px solid var(--card-border);color:var(--text-muted);background:var(--bg);}
+.chip.won{background:var(--accent);border-color:var(--accent);color:#111;font-weight:700;}
+.chip.won::before{content:"✓ ";}
+.chip.rec{background:var(--capacity);border-color:var(--capacity);color:var(--rec-ink);font-weight:700;}
+.chip.rec::before{content:"✓ ";}
+.chip.rec::after{content:" · recommended";font-weight:400;}
+.dec-list .why{font-size:15.5px;margin:0;line-height:1.5;}
+.dec-list .cost{font-size:14px;color:var(--text-muted);margin-left:4px;}
+.dec-list .cost b{color:var(--text-secondary);}
+
+/* the principles map */
+html{scroll-padding-top:16px;}
+.pmap{border-left:4px solid var(--accent);}
+.pmap .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:12px;}
+.pgroups{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:14px 18px;}
+.pgroups div{display:flex;flex-direction:column;gap:5px;}
+.pgroups b{font-size:14.5px;}
+.pgroups a{font:13px/1.35 var(--mono);text-decoration:none;color:var(--text-secondary);}
+.pgroups a::before{content:"→ ";color:var(--accent-ink);}
+.pgroups a:hover{color:var(--accent-ink);}
+
+/* fan-out */
+.calls{display:flex;flex-wrap:wrap;gap:4px;margin:14px 0 10px;}
+.calls i{width:14px;height:14px;border-radius:3px;background:var(--capacity);}
+.meter{height:10px;border-radius:5px;background:var(--track);overflow:hidden;margin:0 0 10px;max-width:440px;}
+.meter span{display:block;height:100%;width:0;background:var(--demand);border-radius:5px;transition:width .3s;}
+
+/* pipeline and failover diagrams */
+.journey .wire{stroke:var(--card-border);stroke-width:1.5;}
+.journey .hosts rect{fill:var(--mute);}
+.journey .node.host rect{fill:var(--mute);stroke:none;}
+.journey .node.host.bad rect{fill:var(--demand);stroke:none;}
+.arch .hotk{stroke:var(--demand);stroke-width:1.8;}
+.arch .hotp{fill:var(--demand-wash);stroke:var(--demand);stroke-width:2;stroke-dasharray:5 3;}
+
+/* three stat tiles in a row */
+.stats.three{grid-template-columns:repeat(3,minmax(0,1fr));}
+@media (max-width:640px){.stats.three .stat{padding:12px;} .stats.three .v{font-size:24px;} .stats.three .l{font-size:13px;}}
+
+/* the whole-system animation */
+.tour-cap{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;margin:0 0 12px;min-height:66px;font-size:15.5px;line-height:1.45;}
+.tour-n{flex:none;font:700 12px/1.9 var(--mono);color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:0 8px;}
+.journey.tour{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);}
+.journey.tour svg{max-width:400px;}
+.tour .fan line{stroke:var(--card-border);stroke-width:1.5;}
+.tour .fan.lit line,.tour .fan.stop line{stroke:var(--accent-ink);stroke-width:2;}
+.tour .tour-dot{fill:var(--accent);stroke:var(--bg);}
+.tour-steps{list-style:none;margin:0;padding:0;counter-reset:t;}
+.tour-steps li{counter-increment:t;}
+.tour-steps button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px dashed var(--card-border);padding:6px 0 6px 30px;position:relative;font:12.5px/1.45 var(--mono);color:var(--text-muted);cursor:pointer;}
+.tour-steps button::before{content:counter(t);position:absolute;left:0;top:6px;width:22px;text-align:right;font-weight:700;color:var(--accent-ink);}
+.tour-steps li.on button{color:var(--text);font-weight:700;}
+.tour-steps button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media (max-width:640px){.tour-steps{display:none;} .journey.tour{grid-template-columns:1fr;}}
+
+/* request timing */
+.plot .wf-bar{fill:var(--mute);}
+.plot .wf-bar.done{fill:var(--capacity);}
+.plot .wf-bar.drop{fill:var(--demand);}
+.plot .dl{stroke:var(--demand);}
+.plot .wf-x{font:700 11px var(--mono);fill:var(--text);}
+
+/* numbered safeguards */
+.arch .badge{fill:var(--accent);}
+.arch .badge-n{fill:#111;font-weight:700;font-family:var(--mono);}
+
+/* the video version, same player as the main page's intro */
+.watch{margin:0 0 26px;}
+.intro-video{border-radius:12px;overflow:hidden;border:1px solid var(--card-border);background:#000;box-shadow:0 10px 30px rgba(0,0,0,.12);transition:border-color .3s ease,box-shadow .3s ease;}
+.intro-video:hover{border-color:var(--accent);box-shadow:0 10px 30px rgba(253,181,21,.2);}
+.intro-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000;}
+.play-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;cursor:pointer;background:#000;}
+.play-facade img{display:block;width:100%;height:100%;object-fit:cover;}
+.play-btn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.play-btn svg{width:76px;height:76px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.35));transition:transform .2s ease;}
+.play-btn circle{fill:var(--accent);}
+.play-btn path{fill:#111;}
+.play-facade:hover .play-btn svg,.play-facade:focus-visible .play-btn svg{transform:scale(1.08);}
+.play-facade:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+.play-len{position:absolute;right:10px;bottom:10px;padding:2px 7px;border-radius:4px;font-size:13px;font-weight:600;color:#fff;background:rgba(0,0,0,.7);}
+.intro-note{font-size:14px;color:var(--text-muted);margin:10px 0 0;}
+
+/* shared bits from the earlier posts */
+.origin{border-left:4px solid var(--capacity);background:var(--capacity-wash);}
+.origin .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text);margin-bottom:8px;}
+.origin p{margin:0;font-size:15.5px;}
+.section-title .pill{font:700 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);border:1px solid var(--accent-ink);border-radius:999px;padding:2px 8px;flex:none;}
+.term-body .p{display:inline-block;min-width:2ch;}
+.small-note{font:13px/1.5 var(--mono);color:var(--text-muted);margin:-6px 0 26px;}
+.journey .frame{fill:none;stroke:var(--card-border);stroke-width:1.5;stroke-dasharray:5 4;}
+.ringwrap svg{display:block;width:100%;max-width:420px;height:auto;margin:0 auto;}
+:root{--c0:#2F6FD0;--c1:#00826F;--c2:#C26A00;--c3:#8E44AD;}
+[data-theme="dark"]{--c0:#5A9BF0;--c1:#22A08B;--c2:#D98B1C;--c3:#B67BD6;}
+
+/* 02 · framing */
+.bytes{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px;min-height:44px;}
+.bytes .ck{display:inline-flex;border:1px solid var(--card-border);border-radius:7px;padding:3px;background:var(--bg);transition:background .25s,border-color .25s;}
+.bytes .ck span{font:600 14px/1.6 var(--mono);min-width:15px;text-align:center;border-radius:3px;white-space:pre;}
+.bytes .ck span.mk{color:var(--accent-ink);}
+.bytes .ck.hdr{background:var(--skill-bg);}
+.bytes .ck.rd{border-color:var(--accent);background:var(--accent-wash);}
+.bytes .ck.ok{border-color:var(--capacity);background:var(--capacity-wash);}
+.bytes .ck.bad{border-color:var(--demand);background:var(--demand-wash);border-style:dashed;}
+.bytes .ck.left{opacity:.45;border-style:dashed;}
+.bytes .wait{font:600 13px/2.1 var(--mono);color:var(--demand);}
+
+/* 03 · locks, 12 · speed */
+.plot .lk-wait{fill:var(--accent);fill-opacity:.28;}
+.plot .lk-r{fill:var(--capacity);} .plot .lk-w{fill:var(--demand);}
+.plot .b-A{fill:var(--c0);} .plot .b-B{fill:var(--c1);} .plot .b-C{fill:var(--c2);}
+.plot .b-slow{fill:var(--demand);} .plot .b-cut{fill:var(--demand);fill-opacity:.3;}
+.plot .hline{stroke:var(--accent-ink);stroke-width:1.5;stroke-dasharray:4 3;}
+.plot .bl{font:700 10px var(--mono);fill:#fff;}
+
+/* 04 · ring */
+.rg-base{fill:none;stroke:var(--card-border);stroke-width:2;}
+.rg-k{stroke:var(--bg);stroke-width:1;transition:fill .5s;}
+.rg-k.o0,.rg-t.o0{fill:var(--c0);stroke:var(--c0);} .rg-k.o1,.rg-t.o1{fill:var(--c1);stroke:var(--c1);}
+.rg-k.o2,.rg-t.o2{fill:var(--c2);stroke:var(--c2);} .rg-k.o3,.rg-t.o3{fill:var(--c3);stroke:var(--c3);}
+.rg-k{stroke:var(--bg) !important;}
+.rg-k.moved{stroke:var(--text) !important;stroke-width:2;}
+.rg-t{stroke-width:2;fill:none;opacity:.8;}
+.rg-c{font:600 12px var(--mono);fill:var(--text);}
+.rg-s{font:11px var(--mono);fill:var(--text-muted);}
+.rg-leg{font:600 11px var(--mono);}
+.rg-leg.o0{fill:var(--c0);} .rg-leg.o1{fill:var(--c1);} .rg-leg.o2{fill:var(--c2);} .rg-leg.o3{fill:var(--c3);}
+
+/* 05 · quorum */
+.q-ctl{display:flex;flex-wrap:wrap;gap:4px 22px;}
+.q-l{font:700 14px var(--mono);align-self:center;margin-right:4px;}
+.q-nodes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:6px 0 12px;}
+.q-node{font:inherit;color:var(--text);background:var(--bg);border:1.5px solid var(--card-border);border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;transition:background .25s,border-color .25s,opacity .25s;}
+.q-node b{display:block;font-size:15px;}
+.q-node .v{display:block;font:700 20px var(--mono);margin:4px 0 2px;}
+.q-node small{display:block;font:12px var(--mono);color:var(--text-muted);min-height:16px;}
+.q-node.down{opacity:.5;border-style:dashed;border-color:var(--demand);}
+.q-node.got{border-color:var(--capacity);background:var(--capacity-wash);}
+.q-node.asked{box-shadow:0 0 0 3px var(--accent);}
+.q-node.stale.asked{background:var(--demand-wash);}
+
+/* 08 · gossip */
+.gs-n circle{fill:var(--bg);stroke:var(--card-border);stroke-width:2;transition:fill .3s,stroke .3s;}
+.gs-n text{font:600 11px var(--mono);fill:var(--text);}
+.gs-n.dead circle{fill:var(--demand-wash);stroke:var(--demand);stroke-dasharray:4 3;}
+.gs-n.sus circle{stroke:var(--accent);stroke-width:3;}
+.gs-n.know circle{fill:var(--capacity-wash);stroke:var(--capacity);}
+.gs-l{stroke:var(--accent-ink);stroke-width:2;opacity:0;animation:gsl 1s ease-out;}
+@keyframes gsl{0%{opacity:0;}20%{opacity:.9;}100%{opacity:0;}}
+.gs-c{font:600 12px var(--mono);fill:var(--text);}
+
+/* 09 · merkle */
+.mk-n rect{fill:var(--bg);stroke:var(--card-border);stroke-width:1.5;transition:fill .3s,stroke .3s,opacity .3s;}
+.mk-n text{font:10px var(--mono);fill:var(--text);}
+.mk-n text.b{fill:var(--text-muted);}
+.mk-n.same rect{fill:var(--capacity-wash);stroke:var(--capacity);}
+.mk-n.diff rect{fill:var(--demand-wash);stroke:var(--demand);stroke-width:2.5;}
+.mk-n.fix rect{fill:var(--accent-wash);stroke:var(--accent);stroke-width:2.5;}
+.mk-n.skip{opacity:.35;}
+.mk-e{stroke:var(--card-border);stroke-width:1.2;}
+.mk-l{font:600 10.5px var(--mono);fill:var(--text-muted);}
+
+/* 10 · erasure coding */
+.ec-grid{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px;min-height:76px;}
+.ec-s{width:54px;border:1.5px solid var(--card-border);border-radius:9px;padding:5px 4px;text-align:center;background:var(--bg);transition:opacity .3s,border-color .3s;}
+.ec-s small{display:block;font:10.5px var(--mono);color:var(--text-muted);}
+.ec-s b{display:block;font:700 12.5px var(--mono);border-radius:5px;padding:5px 0;margin-top:3px;}
+.ec-s b.f{background:var(--capacity-wash);color:var(--capacity);}
+.ec-s b.d{background:var(--accent-wash);color:var(--accent-ink);}
+.ec-s b.p{background:var(--demand-wash);color:var(--demand);}
+.ec-s.lost{opacity:.3;border-style:dashed;border-color:var(--demand);}
+.ec-bar{height:10px;border-radius:999px;background:var(--track);overflow:hidden;margin:2px 0 8px;}
+.ec-bar i{display:block;height:100%;background:var(--accent);transition:width .5s;}
+
+/* 15 · dashboard (as in the agents post) */
+.d-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:8px 0 10px;}
+.d-tile{border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;background:var(--bg);}
+.d-tile .l{font-size:13px;color:var(--text-muted);}
+.d-tile .v{font:600 24px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:2px 0 4px;}
+.d-tile svg{display:block;width:100%;height:30px;}
+.d-tile svg path{fill:none;stroke:var(--capacity);stroke-width:2;}
+.d-tile.bad{border-color:var(--demand);}
+.d-tile.bad svg path{stroke:var(--demand);}
+.d-tile.warn{border-color:var(--accent);}
+.d-alarm{min-height:46px;font-size:15px;padding:8px 12px;border-radius:10px;background:var(--capacity-wash);border:1px solid var(--capacity);}
+.d-alarm.on{background:var(--demand-wash);border-color:var(--demand);}
+@media (max-width:640px){.d-tiles{grid-template-columns:repeat(2,minmax(0,1fr));}.q-nodes{gap:6px;}}
+
+@media (prefers-reduced-motion:reduce){.gs-l{animation:none;}}
+
+/* 01 · the morning message */
+.phone{max-width:380px;margin:10px auto 4px;border:1.5px solid var(--card-border);border-radius:22px;background:var(--bg);padding:12px;box-shadow:0 6px 24px rgba(0,0,0,.08);}
+.phone.wa{background:linear-gradient(var(--capacity-wash),var(--capacity-wash)),var(--bg);}
+.pv-top{display:flex;justify-content:space-between;font:600 11.5px var(--mono);color:var(--text-muted);margin-bottom:8px;}
+.pv-art{height:170px;border-radius:12px;background:radial-gradient(circle at 50% 78%,#ffe7a3 0,#f6b94b 22%,#c96a2b 46%,#3b2a4a 80%);position:relative;overflow:hidden;margin-bottom:10px;}
+.pv-art::before{content:"";position:absolute;left:0;right:0;bottom:0;height:46%;background:linear-gradient(transparent,rgba(30,40,20,.85));clip-path:polygon(0 60%,18% 35%,34% 55%,52% 25%,70% 50%,86% 32%,100% 52%,100% 100%,0 100%);}
+.pv-art::after{content:"✝";position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:34px;color:rgba(255,248,225,.9);}
+.pv-bubble{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:14.5px;line-height:1.5;}
+.pv-bubble b{display:block;font:700 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:4px;}
+.pv-video{display:flex;align-items:center;gap:10px;}
+.pv-video i{flex:none;width:38px;height:38px;border-radius:50%;background:var(--accent);color:#111;display:grid;place-items:center;font-style:normal;font-weight:700;}
+
+/* 03 · local vs AWS */
+.port{display:grid;gap:6px;margin:8px 0 10px;}
+.port div{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center;padding:8px 12px;border:1px solid var(--card-border);border-radius:10px;background:var(--bg);transition:background .35s,border-color .35s;}
+.port div b{font:700 12.5px var(--mono);}
+.port div span{font-size:14px;transition:opacity .25s;}
+.port.aws div{border-color:var(--accent);background:var(--accent-wash);}
+.port span.fade{opacity:0;}
+@media (max-width:640px){.port div{grid-template-columns:1fr;gap:2px;}}
+
+/* 10 · quality gate */
+.gate-grid{display:grid;grid-template-columns:minmax(150px,1.4fr) repeat(4,minmax(0,1fr));gap:4px;margin:8px 0 10px;font-size:13.5px;}
+.gate-grid > div{padding:6px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--card-border);text-align:center;transition:background .3s,border-color .3s;}
+.gate-grid > div.h{font:700 11.5px var(--mono);background:none;border:0;}
+.gate-grid > div.l{text-align:left;}
+.gate-grid > div.ok{background:var(--capacity-wash);border-color:var(--capacity);}
+.gate-grid > div.bad{background:var(--demand-wash);border-color:var(--demand);font-weight:700;}
+.gate-grid > div.hold{background:var(--accent-wash);border-color:var(--accent);}
+@media (max-width:640px){.gate-grid{grid-template-columns:minmax(110px,1.3fr) repeat(4,minmax(0,1fr));font-size:12px;}}
+
+/* 06 · time zones, 07 · pacing */
+.plot .tz-bar{fill:var(--track);transition:fill .3s;}
+.plot .tz-bar.on{fill:var(--accent);}
+.plot .tz-bar.done{fill:var(--capacity);}
+.plot .cursor{stroke:var(--text);stroke-width:1.5;stroke-dasharray:3 3;}
+.plot .limit{stroke:var(--demand);stroke-width:2;stroke-dasharray:6 4;}
+.plot .sent{fill:var(--capacity);fill-opacity:.35;stroke:var(--capacity);stroke-width:2;}
+.plot .err{fill:var(--demand);fill-opacity:.45;}
+.plot .bar-r{fill:var(--c0);} .plot .bar-w{fill:var(--c1);} .plot .bar-t{fill:var(--c2);} .plot .bar-i{fill:var(--c3);} .plot .bar-o{fill:var(--mute);}
+
+/* 13 · rebuild steps */
+.steps{counter-reset:s;list-style:none;padding:0;margin:8px 0 22px;display:grid;gap:8px;}
+.steps li{counter-increment:s;position:relative;padding:10px 12px 10px 48px;border:1px solid var(--card-border);border-radius:10px;background:var(--card-bg);font-size:15px;}
+.steps li::before{content:counter(s);position:absolute;left:12px;top:10px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#111;font:700 13px/24px var(--mono);text-align:center;}
+/* 08 · the ladder */
+.ladder{list-style:none;margin:6px 0 12px;padding:0;counter-reset:l;display:grid;gap:6px;}
+.ladder li{counter-increment:l;display:grid;grid-template-columns:28px 1fr auto;column-gap:10px;align-items:center;padding:9px 12px;border:1px solid var(--card-border);border-radius:10px;background:var(--bg);transition:background .25s,border-color .25s;}
+.ladder li::before{content:counter(l);grid-row:span 2;font:700 15px var(--mono);color:var(--accent-ink);text-align:center;}
+.ladder li b{font-size:15px;}
+.ladder li span{grid-column:2;font-size:13px;color:var(--text-muted);}
+.ladder li i{grid-column:3;grid-row:1 / span 2;font:700 12.5px var(--mono);font-style:normal;}
+.ladder li.try{border-color:var(--accent);background:var(--accent-wash);}
+.ladder li.fail{border-color:var(--demand);background:var(--demand-wash);border-style:dashed;}
+.ladder li.ok{border-color:var(--capacity);background:var(--capacity-wash);}
+
+/* 01·b · product mockups */
+.mock{margin:10px 0 2px;}
+.mk-browser{border:1.5px solid var(--card-border);border-radius:12px;overflow:hidden;background:var(--bg);box-shadow:0 6px 24px rgba(0,0,0,.08);}
+.mk-bar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--card-bg);border-bottom:1px solid var(--card-border);font:12px var(--mono);color:var(--text-muted);}
+.mk-bar i{width:9px;height:9px;border-radius:50%;background:var(--track);display:inline-block;}
+.mk-bar span{margin-left:8px;background:var(--bg);border:1px solid var(--card-border);border-radius:6px;padding:2px 10px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mk-body{padding:18px;}
+.mk-h{font-size:22px;font-weight:800;line-height:1.2;margin:0 0 6px;}
+.mk-sub{color:var(--text-muted);font-size:14.5px;margin:0 0 14px;}
+.mk-lab{font:700 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--text-muted);margin:12px 0 6px;}
+.mk-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.mk-chips span{border:1.5px solid var(--card-border);border-radius:999px;padding:5px 12px;font-size:14px;}
+.mk-chips span.on{border-color:var(--accent);background:var(--accent-wash);font-weight:700;}
+.mk-input{border:1.5px solid var(--card-border);border-radius:10px;padding:9px 12px;font-size:15px;color:var(--text-muted);background:var(--bg);}
+.mk-check{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:var(--text-secondary);margin-top:12px;}
+.mk-check b{flex:none;width:18px;height:18px;border-radius:4px;background:var(--capacity);color:#fff;font-size:12px;display:grid;place-items:center;}
+.mk-btn{display:inline-block;margin-top:14px;background:var(--accent);color:#111;font-weight:800;border-radius:10px;padding:10px 18px;font-size:15px;}
+.mk-small{font-size:12.5px;color:var(--text-muted);margin-top:10px;}
+.mk-email{max-width:560px;margin:0 auto;}
+.mk-email .art{height:190px;border-radius:10px;background:radial-gradient(circle at 50% 78%,#ffe7a3 0,#f6b94b 22%,#c96a2b 46%,#3b2a4a 80%);margin:10px 0;}
+.mk-card{border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--card-bg);font-size:14.5px;}
+.mk-card b{display:block;font:700 11px var(--mono);letter-spacing:.05em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:4px;}
+.mk-row{display:flex;gap:10px;align-items:center;}
+.mk-play{flex:none;width:34px;height:34px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-weight:800;color:#111;}
+.mk-wave{flex:1;height:22px;background:repeating-linear-gradient(90deg,var(--accent-ink) 0 2px,transparent 2px 6px);opacity:.5;border-radius:4px;}
+.mk-foot{font-size:12px;color:var(--text-muted);text-align:center;border-top:1px solid var(--card-border);padding-top:10px;margin-top:12px;}
+.mk-phone{max-width:340px;margin:0 auto;border:1.5px solid var(--card-border);border-radius:26px;overflow:hidden;background:#e9e3d8;box-shadow:0 6px 24px rgba(0,0,0,.1);}
+[data-theme="dark"] .mk-phone{background:#0d1418;}
+.mk-wtop{background:#0a6c5d;color:#fff;padding:10px 14px;font-weight:700;font-size:14.5px;display:flex;gap:10px;align-items:center;}
+.mk-wtop i{width:30px;height:30px;border-radius:50%;background:#fff;color:#0a6c5d;display:grid;place-items:center;font-style:normal;}
+.mk-wtop small{display:block;font-weight:400;font-size:11.5px;opacity:.85;}
+.mk-chat{padding:10px;display:grid;gap:6px;}
+.mk-msg{max-width:84%;background:#fff;color:#111;border-radius:10px;padding:7px 9px;font-size:13.5px;line-height:1.4;box-shadow:0 1px 1px rgba(0,0,0,.08);}
+[data-theme="dark"] .mk-msg{background:#1f2c33;color:#e9edef;}
+.mk-msg.me{justify-self:end;background:#d9fdd3;}
+[data-theme="dark"] .mk-msg.me{background:#005c4b;}
+.mk-msg .t{display:block;text-align:right;font-size:10.5px;opacity:.6;margin-top:2px;}
+.mk-msg .img{height:150px;border-radius:7px;background:radial-gradient(circle at 50% 78%,#ffe7a3 0,#f6b94b 22%,#c96a2b 46%,#3b2a4a 80%);margin-bottom:5px;}
+.mk-quick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+.mk-quick span{background:#fff;color:#0a6c5d;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;}
+[data-theme="dark"] .mk-quick span{background:#1f2c33;color:#53bdeb;}
+.mk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;}
+.mk-stat{border:1px solid var(--card-border);border-radius:10px;padding:10px;background:var(--card-bg);}
+.mk-stat small{display:block;font-size:12px;color:var(--text-muted);}
+.mk-stat b{font-size:20px;}
+.mk-stage{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0;}
+.mk-stage span{font:600 12px var(--mono);padding:4px 9px;border-radius:999px;background:var(--capacity-wash);border:1px solid var(--capacity);}
+.mk-stage span.w{background:var(--accent-wash);border-color:var(--accent);}
+.mk-stage span.b{background:var(--demand-wash);border-color:var(--demand);}
+.mk-table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px;}
+.mk-table td,.mk-table th{border-bottom:1px solid var(--card-border);padding:6px;text-align:left;}
+.mk-table th{font:700 11px var(--mono);color:var(--text-muted);text-transform:uppercase;}
+.mk-tbtn{font:700 12px var(--mono);border:1.5px solid var(--accent-ink);color:var(--accent-ink);border-radius:6px;padding:2px 8px;}
+
+/* 01·c · subscriber flows */
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px;}
+.states span{font:600 12px var(--mono);padding:4px 10px;border-radius:999px;border:1.5px solid var(--card-border);background:var(--bg);transition:background .3s,border-color .3s;}
+.states span.on{border-color:var(--accent);background:var(--accent-wash);}
+.states span.now{border-color:var(--capacity);background:var(--capacity-wash);box-shadow:0 0 0 3px var(--capacity-wash);}
+.states span.end{border-color:var(--demand);background:var(--demand-wash);}
+.plot .ll{stroke:var(--card-border);stroke-width:1.5;stroke-dasharray:4 4;}
+.plot .actor{fill:var(--card-bg);stroke:var(--card-border);stroke-width:1.5;}
+.plot .actor-t{font:600 10.5px var(--mono);fill:var(--text);}
+.plot .msg{stroke:var(--accent-ink);stroke-width:1.8;fill:none;}
+.plot .msg.ret{stroke-dasharray:5 4;stroke:var(--text-muted);}
+.plot .msg.bad{stroke:var(--demand);}
+.plot .badge{fill:var(--accent);} .plot .badge-t{font:700 10px var(--mono);fill:#111;}
+.plot .badge.bad{fill:var(--demand);}
+.seqlog li{display:flex;gap:8px;} .seqlog li b.n{flex:none;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#111;font:700 11px/20px var(--mono);text-align:center;}
+.seqlog li b.n.bad{background:var(--demand);color:#fff;}
+
+/* challenges */
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0;}
+@media (max-width:640px){.split2{grid-template-columns:1fr;}}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;margin-top:10px;}
+.cd{border:1px solid var(--card-border);border-radius:12px;background:var(--bg);padding:12px;font-size:14px;line-height:1.45;animation:gin .3s ease;}
+.cd .tag{font:700 10.5px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--accent-ink);}
+.cd h3{font-size:15.5px;margin:4px 0 6px;}
+.cd .br{color:var(--demand);font-size:13.5px;margin:0 0 6px;}
+.cd .br::before{content:"breaks: ";font:700 11px var(--mono);}
+.cd ul{margin:0;padding-left:18px;}
+.cd li{margin:2px 0;}
+@keyframes gin{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.plot .win{fill:var(--accent);fill-opacity:.55;} .plot .zero{stroke:var(--demand);stroke-width:2;}
+
+.plot .wv circle{fill:var(--accent);stroke:var(--card-bg);stroke-width:2;}
+.bl-card{border:1px solid var(--card-border);border-radius:10px;padding:12px 14px;margin-top:10px;background:var(--card-bg);}
+.bl-card h3{margin:0 0 8px;font-size:16px;}
+.bl-card dl{display:grid;grid-template-columns:170px 1fr;gap:6px 12px;margin:0;font-size:14.5px;}
+.bl-card dt{font:700 11px var(--mono);text-transform:uppercase;color:var(--text-muted);padding-top:3px;}
+.bl-card dd{margin:0;}
+@media (max-width:600px){.bl-card dl{grid-template-columns:1fr;}.bl-card dd{margin-bottom:6px;}}
+.cd .cost-l{margin:8px 0 0;font:12px var(--mono);color:var(--text-muted);}
+.cd .cost-l::before{content:"costs: ";font-weight:700;color:var(--accent-ink);}
+
+.field{border-left:3px solid var(--accent);background:var(--card-bg);border-radius:0 10px 10px 0;padding:10px 14px;margin:14px 0 22px;}
+.field .tag{display:block;font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--accent-ink);margin-bottom:4px;}
+.field p{margin:0;font-size:15px;}
+
+.todo{background:var(--demand);color:#fff;padding:0 4px;border-radius:3px;font:700 12px var(--mono);}
+.mk-job{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+.mk-job b{display:block;}
+.mk-jm{display:flex;gap:6px;flex-wrap:wrap;font:11.5px var(--mono);color:var(--text-muted);}
+.mk-jm span{border:1px solid var(--card-border);border-radius:999px;padding:1px 8px;}
+.mk-jm .fit{background:var(--accent);color:#111;border-color:transparent;font-weight:700;}
+.mk-jm .tg{color:var(--accent-ink);}
+.mk-kan{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;}
+.mk-kan>div{border:1px solid var(--card-border);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;background:var(--card-bg);}
+.mk-kan small{font:700 11px var(--mono);text-transform:uppercase;color:var(--text-muted);}
+.mk-kan span{font-size:13px;border:1px solid var(--card-border);border-radius:6px;padding:5px 7px;background:var(--bg,transparent);}
+#flows .plot svg{max-height:520px;}
+
+.callout{border:2px dashed var(--accent);border-radius:10px;padding:12px 16px;margin:12px 0 18px;font-size:16px;background:var(--card-bg);}
+.mk-term{border:1px solid var(--card-border);border-radius:10px;overflow:hidden;background:#0d1117;}
+.mk-term pre{margin:0;padding:14px 16px;color:#d6e2ee;font:12.5px/1.65 var(--mono);white-space:pre-wrap;}
+</style>
+<script type="application/ld+json" id="ld-post">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "First in Line", "description": "How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.", "datePublished": "2026-11-06", "dateModified": "2026-11-06", "url": "https://tascano.github.io/notes/first-in-line.html", "image": "https://tascano.github.io/images/og-image.jpg", "author": {"@id": "https://tascano.github.io/#person"}, "keywords": ["AI agents", "computer use", "Playwright", "SQLite", "deduplication", "job search automation", "ATS APIs", "Greenhouse", "Lever", "Ashby", "LinkedIn", "outreach", "local-first"]}</script>
+</head>
+<body>
+<div class="scroll-progress" aria-hidden="true"></div>
+<button class="theme-toggle" type="button" aria-label="Toggle dark mode">🌙</button>
+
+<div class="wrap">
+<nav class="topbar" aria-label="Site">
+  <img src="../images/avatar.webp?v=3" alt="" width="44" height="44">
+  <a href="../">Ambrose <span class="last">Tuscano</span></a>
+  <a class="home" href="../#intro">Watch my 3-min intro</a>
+</nav>
+
+<header class="hero">
+  <span class="kicker">Field notes · Automation</span>
+  <h1>First in Line</h1>
+  <p class="alt">or: the job hunter I built for myself, running on my laptop</p>
+  
+  <p class="dek">It started with one wish: be among the first people to apply when a role opens. First I built a small site to find roles fast and apply by hand. Then, one piece at a time, I handed the rest to AI. Today it's JobHunt: I type one command on my laptop, and an agent finds new roles across ATS feeds, job boards and search engines, makes sure I never apply to the same one twice, scores them against my résumé, fills in applications in my own browser, reads replies in its own inbox, and finds the person to message. This is what it does, how, and why.</p>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>15 min read</span></div>
+</header>
+
+<div class="card origin" role="note">
+  <div class="q">What this is</div>
+  <p>A personal tool I built for my own job search. It runs on my laptop, for me. The first piece, a fast search site, is still public at <a href="https://jobsfinder.streamlit.app/">jobsfinder.streamlit.app</a>. Counts and costs come from my own runs or are illustrative, and are labelled that way.</p>
+</div>
+
+<article>
+<section class="card tldr hats" aria-labelledby="tldr">
+<h2 id="tldr">The short version, for whichever hat you're wearing</h2>
+<div class="btns" role="group" aria-label="Pick a role">
+  <button class="btn" type="button" data-hat="all" aria-pressed="true">Everyone</button>
+  <button class="btn" type="button" data-hat="eng" aria-pressed="false">Engineer</button>
+  <button class="btn" type="button" data-hat="arch" aria-pressed="false">Architect</button>
+  <button class="btn" type="button" data-hat="em" aria-pressed="false">Manager</button>
+</div>
+<div class="hat" data-for="all">
+<ul>
+  <li><strong>One command, nothing manual:</strong> I type <code>jobhunt run</code>, and an agent finds, filters, applies, tracks and reaches out, end to end.</li>
+  <li><strong>Never the same job twice:</strong> three small SQLite stores remember what I've seen, what I've applied to, and what today's run already found.</li>
+  <li><strong>It has its own inbox:</strong> a separate email address for applying and tracking, so it can read confirmations and replies without ever touching my personal mail.</li>
+  <li><strong>It plays fair:</strong> answers only from my profile, caps itself so no employer gets flooded, and hands CAPTCHAs back to me.</li>
+</ul>
+</div>
+<div class="hat" data-for="eng" hidden>
+<ul>
+  <li><strong>Dedupe on two keys:</strong> the source's own job ID, and a fingerprint of company, title and location, because one job appears on five sites with five IDs.</li>
+  <li><strong>Known forms are filled by rules, unknown ones by computer use:</strong> the model only sees what rules can't handle, and every submit is preceded by a screenshot and followed by a check.</li>
+  <li><strong>An intent row before every submit:</strong> a crash can't turn into a duplicate application.</li>
+</ul>
+</div>
+<div class="hat" data-for="arch" hidden>
+<ul>
+  <li><strong>Adapters per source type:</strong> official ATS feeds first (exact posting times, allowed to read), filtered search links second, career pages last.</li>
+  <li><strong>Local by design:</strong> one process started from a terminal, SQLite instead of a database server, and my own browser instead of cloud browsers.</li>
+  <li><strong>Secrets never in <code>.env</code>:</strong> API keys there, website sessions in a dedicated browser profile, any password in the OS keychain.</li>
+</ul>
+</div>
+<div class="hat" data-for="em" hidden>
+<ul>
+  <li><strong>The goal is fewer, better, earlier applications,</strong> not more of them: a fit threshold, 10 a day at most, and no more than 2 roles per company a month.</li>
+  <li><strong>Terms of service are a design input:</strong> public feeds first; the agent uses LinkedIn and Google only at a human pace, in my own account, and never bypasses a CAPTCHA.</li>
+  <li><strong>About ten dollars a month</strong> in model calls; everything else runs free on the laptop.</li>
+</ul>
+</div>
+</section>
+
+<nav class="card pmap" aria-labelledby="pmap-t">
+<div class="q" id="pmap-t">The five things I care about, and where they show up</div>
+<div class="pgroups">
+  <div><b>Freshness</b><a href="#s-sources">where new roles come from</a><a href="#s-fresh">how fast I see them</a><a href="#s-origin">why it started</a></div>
+  <div><b>Correctness</b><a href="#s-dedupe">never twice</a><a href="#s-match">matching</a><a href="#s-flows">every flow</a></div>
+  <div><b>Reliability</b><a href="#s-apply">how the agent applies</a><a href="#s-fail">pull any plug</a><a href="#s-secrets">logins &amp; CAPTCHAs</a></div>
+  <div><b>Respect</b><a href="#s-fair">job boards &amp; employers</a><a href="#s-outreach">reaching the right person</a></div>
+  <div><b>End to end</b><a href="#s-inbox">its own inbox</a><a href="#s-cost">ten dollars a month</a><a href="#s-hard">every hard problem</a></div>
+</div>
+</nav>
+
+<div class="section-title" id="s-origin"><span class="dot"></span><span class="n">00</span><span class="section-line"></span><span class="pill">freshness</span></div>
+<h2>It started with wanting to be first</h2>
+
+<p>Applying in the first hours after a role opens is widely reported to raise your odds of hearing back several times over (see the further reading). I was checking a dozen sites a day and still finding roles two days late. So I built a site to find them fast, and then, piece by piece, let AI take over everything I was still doing by hand.</p>
+
+<div class="widget" id="grew">
+  <div class="widget-title">Interactive · how it grew</div>
+  <div class="btns" role="group" aria-label="Pick a version">
+    <button class="btn" type="button" data-v="0" aria-pressed="true">v0 · a search site</button>
+    <button class="btn" type="button" data-v="1">v1 · AI finds</button>
+    <button class="btn" type="button" data-v="2">v2 · never twice</button>
+    <button class="btn" type="button" data-v="3">v3 · AI applies</button>
+    <button class="btn" type="button" data-v="4">v4 · end to end</button>
+  </div>
+  <div class="bl-card" id="gr-card" aria-live="polite"></div>
+</div>
+
+<div class="section-title" id="s-screens"><span class="dot"></span><span class="n">01</span><span class="section-line"></span></div>
+<h2>What I actually use</h2>
+
+<p>It's a local app. I start it from my terminal, and a small page on <code>localhost</code> shows what it did. Nothing is hosted, and there's no scheduler: it runs when I tell it to.</p>
+
+<div class="widget" id="screens">
+  <div class="widget-title">Mockups · click through the app</div>
+  <div class="btns" role="group" aria-label="Pick a screen">
+    <button class="btn" type="button" data-sc="today" aria-pressed="true">Today</button>
+    <button class="btn" type="button" data-sc="search">Search</button>
+    <button class="btn" type="button" data-sc="review">Review an application</button>
+    <button class="btn" type="button" data-sc="needs">Needs you</button>
+    <button class="btn" type="button" data-sc="board">Tracker</button>
+    <button class="btn" type="button" data-sc="settings">Settings</button>
+    <button class="btn" type="button" data-sc="digest">The terminal</button>
+  </div>
+  <div class="mock" id="mock"></div>
+</div>
+
+<div class="section-title" id="s-flows"><span class="dot"></span><span class="n">01·b</span><span class="section-line"></span><span class="pill">correctness</span></div>
+<h2>Every flow, from setup to "delete everything"</h2>
+
+<p>Every job moves through one small state machine. Pick a flow to see who talks to whom, and where the job ends up.</p>
+
+<div class="widget" id="flows">
+  <div class="widget-title">Animation · ten flows, as sequence diagrams</div>
+  <div class="btns" role="group" aria-label="Pick a flow">
+    <button class="btn" type="button" data-f="setup">First-time setup</button>
+    <button class="btn" type="button" data-f="run">The daily run</button>
+    <button class="btn" type="button" data-f="search">Search right now</button>
+    <button class="btn" type="button" data-f="review">Review, then submit</button>
+    <button class="btn" type="button" data-f="auto">Fully automatic</button>
+    <button class="btn" type="button" data-f="account">A site needing an account</button>
+    <button class="btn" type="button" data-f="captcha">A CAPTCHA</button>
+    <button class="btn" type="button" data-f="reply">A reply arrives</button>
+    <button class="btn" type="button" data-f="dup">Already applied by hand</button>
+    <button class="btn" type="button" data-f="wipe">Export or delete everything</button>
+  </div>
+  <div class="states" id="fl-states"></div>
+  <div class="plot"><svg id="fl-svg" viewBox="0 0 600 410" role="img" aria-labelledby="fl-t"><title id="fl-t">A sequence diagram between me, the app, the daily runner, the job sources, the matcher, the browser agent, the job site and the SQLite stores.</title></svg></div>
+  <ol class="log seqlog" id="fl-log" aria-live="polite"><li>Pick a flow.</li></ol>
+</div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">every command</span></div><pre><code>jobhunt setup                       profile, résumés, criteria, the jobs inbox, then sign in to sites once
+jobhunt run                         the whole thing: find, filter, apply, track, reach out
+jobhunt watch                       keeps re-checking favourite companies hourly while the terminal is open
+jobhunt search "backend" --since 1h search right now, nothing is applied
+jobhunt review                      approve, edit or skip what the agent filled in
+jobhunt open                        the local app on http://localhost:8765
+jobhunt mode notify|review|auto     how far the agent may go
+jobhunt pause 7d                    stop applying; still finds and records
+jobhunt doctor                      sources, sessions, keys and disk, checked
+jobhunt export | jobhunt wipe       everything as JSON + CSV, or delete it all</code></pre></div>
+
+<div class="section-title" id="s-arch"><span class="dot"></span><span class="n">02</span><span class="section-line"></span></div>
+<h2>One run, end to end</h2>
+
+<p>No servers, no queues and no scheduler: one process that I start, with each stage writing to SQLite before the next one begins, so a run that stops halfway picks up where it left off. Press play to follow one morning.</p>
+
+<div class="widget" id="arch">
+  <div class="widget-title">Animation · from one command to the summary</div>
+  <div class="btns" role="group" aria-label="Animation controls">
+    <button class="btn" type="button" data-t="play">▶ Play</button>
+    <button class="btn" type="button" data-t="prev" aria-label="Previous step">◀</button>
+    <button class="btn" type="button" data-t="next" aria-label="Next step">▶</button>
+    <button class="btn" type="button" data-t="0">1 · Find</button>
+    <button class="btn" type="button" data-t="4">2 · Decide</button>
+    <button class="btn" type="button" data-t="7">3 · Apply</button>
+  </div>
+  <div class="tour-cap" aria-live="polite"><span class="tour-n">0 / 11</span><span class="tour-t">Press play to follow one run.</span></div>
+  <div class="journey tour">
+    <svg viewBox="0 0 360 560" role="img" aria-labelledby="arch-t">
+      <title id="arch-t">The JobHunt run. I start the runner from a terminal; which reads ATS feeds, job boards and career pages through source adapters, normalises the jobs, removes duplicates using a run cache and a seen-jobs store, filters and scores them, applies caps, and hands the chosen jobs to a browser agent that fills applications in a dedicated browser profile. Results go to the applications store; the agent's own inbox verifies them, and outreach messages the right person.</title>
+      <g class="node" data-node="sched"><rect x="8" y="6" width="344" height="30" rx="15"/><text x="180" y="25" font-size="11" text-anchor="middle">me, in a terminal: jobhunt run</text></g>
+      <line class="wire" x1="180" y1="36" x2="180" y2="46"/>
+      <g class="node" data-node="run"><rect x="8" y="46" width="344" height="34" rx="6"/><text x="180" y="62" font-size="11.5" font-weight="700" text-anchor="middle">runner</text><text x="180" y="74" font-size="9.5" text-anchor="middle" class="sub">one process · a lock file · stage checkpoints</text></g>
+      <line class="wire" x1="62" y1="80" x2="62" y2="92"/><line class="wire" x1="180" y1="80" x2="180" y2="92"/><line class="wire" x1="298" y1="80" x2="298" y2="92"/>
+      <g class="node" data-node="ats"><rect x="8" y="92" width="108" height="42" rx="6"/><text x="62" y="109" font-size="11" text-anchor="middle">ATS feeds</text><text x="62" y="124" font-size="9.5" text-anchor="middle" class="sub">3 public APIs</text></g>
+      <g class="node" data-node="boards"><rect x="126" y="92" width="108" height="42" rx="6"/><text x="180" y="109" font-size="11" text-anchor="middle">boards &amp; search</text><text x="180" y="124" font-size="9.5" text-anchor="middle" class="sub">the agent browses</text></g>
+      <g class="node" data-node="pages"><rect x="244" y="92" width="108" height="42" rx="6"/><text x="298" y="109" font-size="11" text-anchor="middle">career pages</text><text x="298" y="124" font-size="9.5" text-anchor="middle" class="sub">once a day</text></g>
+      <line class="wire" x1="180" y1="134" x2="180" y2="146"/>
+      <g class="node" data-node="norm"><rect x="8" y="146" width="344" height="30" rx="6"/><text x="180" y="165" font-size="11" text-anchor="middle">normalise · one shape for every source</text></g>
+      <line class="wire" x1="180" y1="176" x2="180" y2="188"/>
+      <g class="node" data-node="cache"><rect x="8" y="188" width="168" height="40" rx="6"/><text x="92" y="205" font-size="11" text-anchor="middle">run_cache.db</text><text x="92" y="219" font-size="9.5" text-anchor="middle" class="sub">found in this run</text></g>
+      <g class="node" data-node="seen"><rect x="184" y="188" width="168" height="40" rx="6"/><text x="268" y="205" font-size="11" text-anchor="middle">seen.db</text><text x="268" y="219" font-size="9.5" text-anchor="middle" class="sub">every job ever seen</text></g>
+      <line class="wire" x1="180" y1="228" x2="180" y2="240"/>
+      <g class="node" data-node="rules"><rect x="8" y="240" width="168" height="40" rx="6"/><text x="92" y="257" font-size="11" text-anchor="middle">rules</text><text x="92" y="271" font-size="9.5" text-anchor="middle" class="sub">free · title, level, place</text></g>
+      <g class="node" data-node="score"><rect x="184" y="240" width="168" height="40" rx="6"/><text x="268" y="257" font-size="11" text-anchor="middle">fit score</text><text x="268" y="271" font-size="9.5" text-anchor="middle" class="sub">a model, cached</text></g>
+      <line class="wire" x1="180" y1="280" x2="180" y2="292"/>
+      <g class="node" data-node="caps"><rect x="8" y="292" width="344" height="30" rx="6"/><text x="180" y="311" font-size="11" text-anchor="middle">caps · 10 a day · 2 per company a month</text></g>
+      <line class="wire" x1="180" y1="322" x2="180" y2="334"/>
+      <g class="node" data-node="agent"><rect x="8" y="334" width="344" height="40" rx="8"/><text x="180" y="351" font-size="11.5" font-weight="700" text-anchor="middle">browser agent</text><text x="180" y="366" font-size="9.5" text-anchor="middle" class="sub">Playwright · my browser profile · computer use when needed</text></g>
+      <line class="wire" x1="92" y1="374" x2="92" y2="386"/><line class="wire" x1="268" y1="374" x2="268" y2="386"/>
+      <g class="node" data-node="site"><rect x="8" y="386" width="168" height="40" rx="6"/><text x="92" y="403" font-size="11" text-anchor="middle">the job site</text><text x="92" y="417" font-size="9.5" text-anchor="middle" class="sub">form · upload · submit</text></g>
+      <g class="node" data-node="apps"><rect x="184" y="386" width="168" height="40" rx="6"/><text x="268" y="403" font-size="11" text-anchor="middle">applications.db</text><text x="268" y="417" font-size="9.5" text-anchor="middle" class="sub">intent · result · proof</text></g>
+      <line class="wire" x1="180" y1="426" x2="180" y2="438"/>
+      <g class="node" data-node="out"><rect x="8" y="438" width="344" height="40" rx="8"/><text x="180" y="455" font-size="11.5" font-weight="700" text-anchor="middle">jobs inbox · outreach · summary</text><text x="180" y="470" font-size="9.5" text-anchor="middle" class="sub">verify · track replies · message the right person</text></g>
+      <g class="node" data-node="me"><rect x="60" y="490" width="240" height="34" rx="17"/><text x="180" y="511" font-size="11.5" text-anchor="middle">me, with coffee</text></g>
+      <circle class="tour-dot" cx="340" cy="8" r="6" stroke-width="2" opacity="0"/>
+    </svg>
+    <ol class="tour-steps"></ol>
+  </div>
+</div>
+
+<div class="section-title" id="s-sources"><span class="dot"></span><span class="n">03</span><span class="section-line"></span><span class="pill">freshness</span><span class="pill">respect</span></div>
+<h2>Where new roles come from</h2>
+
+<p>"Search 90+ boards" sounds like one problem. It's five, because each kind of source says different things about when a job was posted, and has different rules about who may read it. I don't do any of it by hand: public feeds are read directly, and everything else the agent does in my own browser, the way I used to.</p>
+
+<div class="widget" id="sources">
+  <div class="widget-title">Interactive · five kinds of source</div>
+  <div class="btns" role="group" aria-label="Pick a source">
+    <button class="btn" type="button" data-src="ats" aria-pressed="true">ATS feeds</button>
+    <button class="btn" type="button" data-src="boards">Job boards</button>
+    <button class="btn" type="button" data-src="google">Search engines</button>
+    <button class="btn" type="button" data-src="pages">Career pages</button>
+    <button class="btn" type="button" data-src="posts">Hiring posts</button>
+  </div>
+  <div class="bl-card" id="src-card" aria-live="polite"></div>
+</div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the time filters, per source</span></div><pre><code># ATS feeds: read directly, exact timestamps
+GET https://boards-api.greenhouse.io/v1/boards/{company}/jobs     # first_published, updated_at
+GET https://api.lever.co/v0/postings/{company}?mode=json           # createdAt (ms)
+GET https://api.ashbyhq.com/posting-api/job-board/{company}        # publishedAt
+
+# Job boards: the agent opens these in my browser and reads the results
+linkedin.com/jobs/search/?keywords=backend&amp;f_TPR=r3600              # r3600 = past hour, r86400 = day
+indeed.com/jobs?q=backend&amp;fromage=1                                 # days
+
+# Search engines: the agent runs these to find companies hiring on each ATS
+"backend engineer" site:jobs.ashbyhq.com      + past 24 hours
+"platform engineer" site:boards.greenhouse.io + past 24 hours</code></pre></div>
+
+<ol class="steps">
+  <li><b>Known pages are scripted, not reasoned about.</b> A LinkedIn or Google results page has a stable layout, so Playwright loads the filtered URL and reads the results straight from the page. A model only steps in when a page looks different from what the script expects.</li>
+  <li><b>Search engines grow the company list.</b> Every <code>site:</code> result on Greenhouse, Lever or Ashby reveals a company and its feed. New ones go into <code>companies.yaml</code>, so tomorrow that company is read directly, with exact times.</li>
+  <li><b>Human pace, on purpose.</b> One page at a time, pauses between them, a few dozen pages a day, all in my own signed-in browser. LinkedIn's and Google's terms prohibit automated access, so this is a risk I take with my own accounts, and the reason it stays slow and small.</li>
+</ol>
+
+<aside class="field"><span class="tag">From my work · Amazon Ads</span><p>The data lake I built at Amazon Ads had one promise: data no more than 30 minutes old. Freshness only counts if you measure it, so every job here records both when it was posted and when I first saw it.</p></aside>
+
+<div class="section-title" id="s-fresh"><span class="dot"></span><span class="n">03·b</span><span class="section-line"></span><span class="pill">freshness</span></div>
+<h2>How fast I see a new role</h2>
+
+<p>I start a run every morning, so on average a role waits half a day before I see it. For favourite companies, <code>jobhunt watch</code> keeps going in a terminal tab and re-reads their feeds every hour: same code, a smaller list, no model calls unless something is new.</p>
+
+<div class="widget" id="fresh">
+  <div class="widget-title">Interactive · time from "posted" to "in front of me"</div>
+  <div class="btns" role="group" aria-label="Pick a setup">
+    <button class="btn" type="button" data-fr="daily" aria-pressed="true">A run each morning</button>
+    <button class="btn" type="button" data-fr="hourly">+ watch mode</button>
+    <button class="btn" type="button" data-fr="manual">Checking sites by hand</button>
+  </div>
+  <div class="hb" id="fr-rows"></div>
+  <p class="readout" id="fr-out" aria-live="polite"></p>
+  <p class="small-note" style="margin:0">illustrative: roles posted at random times of day; watch mode covers about 30 companies</p>
+</div>
+
+<div class="section-title" id="s-dedupe"><span class="dot"></span><span class="n">04</span><span class="section-line"></span><span class="pill">correctness</span></div>
+<h2>Never the same job twice</h2>
+
+<p>Three small SQLite files, each answering one question. Splitting them keeps each one tiny, and means I can delete today's scratch data without touching my history.</p>
+
+<div class="split2">
+  <div class="mk-card"><b>seen.db · "have I ever seen this job?"</b>Only keys: the source's job ID and a fingerprint, with when I first saw it. Kept forever; a few MB after a year.</div>
+  <div class="mk-card"><b>applications.db · "what did I do about it?"</b>Every application: résumé used, answers given, mode, status, screenshot, replies. The tracker reads this.</div>
+</div>
+<div class="split2" style="margin-top:8px">
+  <div class="mk-card"><b>run_cache.db · "did this run already find it?"</b>Everything found today, so two searches that return the same role process it once. Kept 7 days, for debugging.</div>
+  <div class="mk-card"><b>why not one file?</b>One file works too. Three make the lifetimes obvious: forever, my record, and scratch.</div>
+</div>
+
+<div class="widget" id="dedupe">
+  <div class="widget-title">Animation · four ways the same job comes back</div>
+  <div class="btns" role="group" aria-label="Pick a case">
+    <button class="btn" type="button" data-s="twice">Two searches, one run</button>
+    <button class="btn" type="button" data-s="cross">On two different sources</button>
+    <button class="btn" type="button" data-s="repost">Reposted with a new ID</button>
+    <button class="btn" type="button" data-s="hand">I applied by hand</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 300" aria-hidden="true">
+      <g class="node" data-node="in"><rect x="10" y="6" width="280" height="36" rx="18"/><text x="150" y="28" font-size="11" text-anchor="middle" id="dd-in" data-reset="a job, just found">a job, just found</text></g>
+      <g class="node" data-node="key"><rect x="10" y="54" width="280" height="40" rx="6"/><text x="150" y="71" font-size="11" text-anchor="middle">two keys</text><text x="150" y="85" font-size="9.5" text-anchor="middle" class="sub">source:job_id · hash(company, title, place)</text></g>
+      <g class="node" data-node="rc"><rect x="10" y="106" width="136" height="40" rx="6"/><text x="78" y="123" font-size="11" text-anchor="middle">run_cache</text><text x="78" y="137" font-size="9.5" text-anchor="middle" class="sub">today</text></g>
+      <g class="node" data-node="sn"><rect x="154" y="106" width="136" height="40" rx="6"/><text x="222" y="123" font-size="11" text-anchor="middle">seen</text><text x="222" y="137" font-size="9.5" text-anchor="middle" class="sub">forever</text></g>
+      <g class="node" data-node="ap"><rect x="10" y="158" width="280" height="40" rx="6"/><text x="150" y="175" font-size="11" text-anchor="middle">applications</text><text x="150" y="189" font-size="9.5" text-anchor="middle" class="sub">company + role family, last 30 days</text></g>
+      <g class="node" data-node="skip"><rect x="10" y="210" width="136" height="36" rx="6"/><text x="78" y="232" font-size="11" text-anchor="middle">skip</text></g>
+      <g class="node" data-node="go"><rect x="154" y="210" width="136" height="36" rx="6"/><text x="222" y="232" font-size="11" text-anchor="middle">carry on</text></g>
+      <g class="node" data-node="res"><rect x="40" y="258" width="220" height="34" rx="17"/><text x="150" y="279" font-size="11" text-anchor="middle" id="dd-res" data-reset="result">result</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a case.</li></ol></div>
+  </div>
+</div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the three stores</span></div><pre><code>-- seen.db: tiny, permanent
+CREATE TABLE seen (source_key  TEXT PRIMARY KEY,         -- 'greenhouse:acme:4012345'
+                   fingerprint TEXT NOT NULL,             -- sha1(company|title|city), normalised
+                   first_seen  TEXT NOT NULL);
+CREATE INDEX seen_fp ON seen(fingerprint);
+
+-- applications.db: my record
+CREATE TABLE applications (id INTEGER PRIMARY KEY, source_key TEXT UNIQUE, fingerprint TEXT,
+  company TEXT, title TEXT, url TEXT, resume TEXT, mode TEXT,      -- notify | review | auto
+  status TEXT,          -- queued | applying | needs_you | applied | failed | skipped | interview | offer | rejected
+  answers_json TEXT, screenshot TEXT, applied_at TEXT, notes TEXT);
+
+-- run_cache.db: scratch for one run, kept 7 days
+CREATE TABLE found (run_id TEXT, source_key TEXT, fingerprint TEXT, raw_json TEXT,
+                    PRIMARY KEY (run_id, source_key));</code></pre></div>
+
+<p class="small-note">All three run in WAL mode, and a lock file guarantees one runner at a time, so SQLite never sees two writers. The local app only reads.</p>
+
+<aside class="field"><span class="tag">From my work · Amazon Ads</span><p>I worked on a multimodal system that found duplicate ads by what they contained, not by their IDs. Same lesson here: an ID tells you where a job came from, a fingerprint tells you what it is.</p></aside>
+<div class="section-title" id="s-match"><span class="dot"></span><span class="n">05</span><span class="section-line"></span><span class="pill">correctness</span><span class="pill">cost</span></div>
+<h2>Deciding what's worth applying to</h2>
+
+<p>Cheap checks first, the model last. Rules cost nothing and throw out most roles; the model only reads what's left, and every score is cached by a hash of résumé and job description, so nothing is scored twice.</p>
+
+<div class="widget" id="funnel">
+  <div class="widget-title">Interactive · one morning's funnel</div>
+  <label class="range"><span>fit threshold: <b id="fn-t">0.75</b></span><input id="fn-r" type="range" min="50" max="95" value="75" aria-label="Fit threshold"></label>
+  <div class="hb" id="fn-rows"></div>
+  <p class="readout" id="fn-out" aria-live="polite"></p>
+  <p class="small-note" style="margin:0">illustrative: one day of new roles for a backend / cloud search</p>
+</div>
+
+<ol class="steps">
+  <li><b>Normalise first:</b> title words (Sr → Senior, SDE II → Software Engineer II), location to a city or "remote", and the level to a number.</li>
+  <li><b>Rules:</b> title must match my families, the level my band, the location my list. My blocklist of companies and keywords applies here.</li>
+  <li><b>Score:</b> the model gets my résumé and the description, and returns a 0–1 fit with one sentence of reasons and the résumé to use. Under 0.75, it's only listed in the email.</li>
+  <li><b>If the model is down,</b> a keyword overlap score is used and everything goes to review instead of auto.</li>
+</ol>
+
+<aside class="field"><span class="tag">From my work · Nissan</span><p>Tell Me More, the dealership chatbot I shipped, had a Rubric agent whose only job was to judge an answer before a customer saw it. Review mode is that agent's job here, and for now it's me.</p></aside>
+<div class="section-title" id="s-apply"><span class="dot"></span><span class="n">06</span><span class="section-line"></span><span class="pill">reliability</span></div>
+<h2>How the agent applies</h2>
+
+<p>Yes, it uses computer use, but only where it has to. For the big ATS forms I've seen before, a mapping fills each field directly: fast, free and predictable. When a form is new or changes, a computer-use model looks at a screenshot and the page's accessibility tree and decides the next click or keystroke. Both run in Playwright, in a browser profile on my laptop that is signed in as me.</p>
+
+<div class="widget" id="apply">
+  <div class="widget-title">Animation · one application, five ways it can go</div>
+  <div class="btns" role="group" aria-label="Pick a case">
+    <button class="btn" type="button" data-s="known">A Greenhouse form</button>
+    <button class="btn" type="button" data-s="unknown">A form it's never seen</button>
+    <button class="btn" type="button" data-s="question">A question it can't answer</button>
+    <button class="btn" type="button" data-s="captcha">A CAPTCHA</button>
+    <button class="btn" type="button" data-s="crash">It crashes mid-submit</button>
+  </div>
+  <div class="journey">
+    <svg viewBox="0 0 300 352" aria-hidden="true">
+      <g class="node" data-node="intent"><rect x="10" y="6" width="280" height="36" rx="6"/><text x="150" y="22" font-size="11" text-anchor="middle">write intent</text><text x="150" y="35" font-size="9.5" text-anchor="middle" class="sub">applications: status = applying</text></g>
+      <g class="node" data-node="open"><rect x="10" y="52" width="280" height="36" rx="6"/><text x="150" y="68" font-size="11" text-anchor="middle">open the job in my profile</text><text x="150" y="81" font-size="9.5" text-anchor="middle" class="sub">detect the ATS from the page</text></g>
+      <g class="node" data-node="map"><rect x="10" y="98" width="136" height="40" rx="6"/><text x="78" y="115" font-size="11" text-anchor="middle">field mapping</text><text x="78" y="129" font-size="9.5" text-anchor="middle" class="sub">known forms · no model</text></g>
+      <g class="node" data-node="cu"><rect x="154" y="98" width="136" height="40" rx="6"/><text x="222" y="115" font-size="11" text-anchor="middle">computer use</text><text x="222" y="129" font-size="9.5" text-anchor="middle" class="sub">screenshot → action</text></g>
+      <g class="node" data-node="prof"><rect x="10" y="148" width="280" height="40" rx="6"/><text x="150" y="165" font-size="11" text-anchor="middle">answers from profile.yaml only</text><text x="150" y="179" font-size="9.5" text-anchor="middle" class="sub">never invents · unsure means stop</text></g>
+      <g class="node" data-node="shot"><rect x="10" y="198" width="280" height="36" rx="6"/><text x="150" y="214" font-size="11" text-anchor="middle">screenshot before submit</text><text x="150" y="227" font-size="9.5" text-anchor="middle" class="sub">review mode stops here for me</text></g>
+      <g class="node" data-node="submit"><rect x="10" y="244" width="136" height="40" rx="6"/><text x="78" y="261" font-size="11" text-anchor="middle">submit</text><text x="78" y="275" font-size="9.5" text-anchor="middle" class="sub">exactly once</text></g>
+      <g class="node" data-node="needs"><rect x="154" y="244" width="136" height="40" rx="6"/><text x="222" y="261" font-size="11" text-anchor="middle">needs you</text><text x="222" y="275" font-size="9.5" text-anchor="middle" class="sub">one click to finish</text></g>
+      <g class="node" data-node="verify"><rect x="40" y="296" width="220" height="40" rx="20"/><text x="150" y="314" font-size="11" text-anchor="middle" id="ap-res" data-reset="verify">verify</text><text x="150" y="327" font-size="9.5" text-anchor="middle" class="sub">confirmation page or email</text></g>
+    </svg>
+    <div><ol class="log" aria-live="polite"><li>Pick a case.</li></ol></div>
+  </div>
+</div>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">profile.yaml · the only source of answers</span></div><pre><code>name: Ambrose Tuscano
+email: ${PROFILE_EMAIL}            # from .env, never committed
+work_authorization: { US: authorized, needs_sponsorship: ask_me }
+notice_period: 2 weeks
+resumes: { backend: resumes/backend.pdf, ml: resumes/ml-platform.pdf }
+answers:
+  years_python: 6
+  willing_to_relocate: [Seattle, Vancouver, remote]
+voluntary_disclosures: decline     # EEO questions: "prefer not to say"
+never: [salary_expectation, cover_letter_claims_not_in_resume]   # always stop and ask</code></pre></div>
+
+<ol class="steps">
+  <li><b>Intent before action.</b> The row is written as <code>applying</code> before the browser touches the form. If anything dies, the next run sees the intent and checks the site and my inbox before it ever tries again.</li>
+  <li><b>Known forms by rules.</b> Greenhouse, Lever and Ashby forms have stable field names; a small mapping fills them in under ten seconds with no model call.</li>
+  <li><b>Unknown forms by computer use.</b> The model gets the screenshot, the accessibility tree and my profile, proposes one action at a time, and every action is logged. It may only click inside the application page.</li>
+  <li><b>Free-text questions</b> ("why this company?") are drafted from my résumé and the job description, and always held for review the first time I apply to a company.</li>
+  <li><b>Proof:</b> a screenshot before submit, the confirmation page after, and the confirmation email matched by company. No confirmation within an hour means the tracker says "unverified", not "applied".</li>
+</ol>
+
+<aside class="field"><span class="tag">From my work · Amazon Ads</span><p>I built Step Functions workflows that evaluated ads at more than 5,000 transactions a second. What made retries safe there makes them safe here: write down what you're about to do, before you do it.</p></aside>
+<div class="section-title" id="s-skills"><span class="dot"></span><span class="n">06·b</span><span class="section-line"></span></div>
+<h2>The agent's skills</h2>
+
+<p>The agent isn't one big prompt. It's eight small skills, each a folder with instructions and a script, which the runner calls in order and I can test on their own.</p>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">skills/</span></div><pre><code>find/      source adapters: ATS feeds, boards, career pages     → normalised jobs
+dedupe/    run cache, seen store, fingerprints                    → only new jobs
+match/     rules, then a cached fit score                         → ranked shortlist
+tailor/    pick the résumé, draft answers from profile.yaml       → an answer sheet
+apply/     field mappings + computer use in my browser profile    → a submitted form
+verify/    confirmation page and inbox check                      → applied | unverified
+track/     applications.db, replies from email, the local board   → statuses
+outreach/  the four people searches, a three-sentence note, caps    → the right person, messaged</code></pre></div>
+
+<div class="section-title" id="s-secrets"><span class="dot"></span><span class="n">07</span><span class="section-line"></span><span class="pill">reliability</span><span class="pill">respect</span></div>
+<h2>Logins, secrets and CAPTCHAs</h2>
+
+<p>The rule: <code>.env</code> holds keys and settings, never passwords. Website sessions live in a browser profile that only the agent uses. Any password it creates goes to the operating system's keychain.</p>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">.env.example and sites.yaml</span></div><pre><code># .env: keys and settings only
+MODEL_API_KEY=...                      # fit scores and computer use
+JOBS_INBOX=ambrosetuscanojobs@gmail.com  # the agent's own address (section 07·b)
+BROWSER_PROFILE=~/.jobhunt/browser     # sessions live here, not passwords
+MODE=auto                              # notify | review | auto, overridable per site
+
+# sites.yaml: what the agent may do, per site
+greenhouse.io:  { account: none,        find: feed,  apply: auto }
+lever.co:       { account: none,        find: feed,  apply: auto }
+ashbyhq.com:    { account: none,        find: feed,  apply: auto }
+myworkdayjobs:  { account: per_company, find: agent, apply: auto }   # creates the account itself
+icims.com:      { account: per_company, find: agent, apply: auto }
+linkedin.com:   { account: mine,        find: agent, apply: via_company_site, pace: human }
+google.com:     { account: none,        find: agent, pace: human }</code></pre></div>
+
+<ol class="steps">
+  <li><b>Sign in once.</b> <code>jobhunt setup</code> opens the agent's browser profile, and I sign in to LinkedIn and the jobs inbox, two-factor included. Sessions are reused until they expire.</li>
+  <li><b>Accounts are created by the agent.</b> Workday and iCIMS want an account per employer. The agent signs up with the jobs inbox address, generates a strong password into the keychain, opens the verification email in its own inbox, and carries on. No step for me.</li>
+  <li><b>Passwords never touch a file.</b> They live in the operating system's keychain (macOS Keychain, Windows Credential Manager) through <code>keyring</code>, keyed by site and company.</li>
+  <li><b>CAPTCHAs are the one thing it hands back.</b> They're never solved or bypassed. Because it's my real browser on my home connection, they're rare. When one appears, the agent saves its place, and the summary has a link that opens the page right where it stopped.</li>
+</ol>
+
+<div class="section-title" id="s-inbox"><span class="dot"></span><span class="n">07·b</span><span class="section-line"></span><span class="pill">reliability</span></div>
+<h2>An inbox of its own</h2>
+
+<p>I made a separate email address just for job hunting, and gave the agent the keys to it. Everything job-related lands there, and nothing else. That means I can let it read every message without it ever seeing my personal mail.</p>
+
+<div class="callout"><b>So if you've heard from ambrosetuscanojobs@gmail.com, it was probably my AI.</b> Politely, truthfully, and within its daily limit.</div>
+
+<ol class="steps">
+  <li><b>How it gets in:</b> the agent's browser profile is signed in to the inbox for reading verification links. For everything else it uses the Gmail API with an OAuth token kept in the keychain, and no other account's data.</li>
+  <li><b>Verification:</b> every "thanks for applying" email is matched to its application by company and role. An application with no confirmation after an hour is "unverified", never "applied".</li>
+  <li><b>Accounts:</b> sign-up codes and "confirm your email" links are opened automatically, which is what lets Workday-style sites run end to end.</li>
+  <li><b>Replies:</b> rejections close the card, interview invitations move it to "interview" and forward to my personal phone, and anything unclear is summarised in the run summary.</li>
+  <li><b>Why a separate address:</b> the blast radius. If the agent misreads or mis-sends, it does so in a mailbox that only ever held job mail, and recruiters see one consistent address for everything.</li>
+</ol>
+
+<div class="section-title" id="s-outreach"><span class="dot"></span><span class="n">08</span><span class="section-line"></span><span class="pill">respect</span></div>
+<h2>Finding the person behind the role</h2>
+
+<p>An application is one way in. A short note to the right person is often the better one. These are the four ways I find that person, the same steps I once wrote up for a friend. Methods 1 and 3 worked best for me; 2 and 4 matter just as much, especially at smaller companies where a job post may never reach LinkedIn.</p>
+
+<div class="widget" id="reach">
+  <div class="widget-title">Interactive · four ways to find who's hiring</div>
+  <div class="btns" role="group" aria-label="Pick a method">
+    <button class="btn" type="button" data-m="0" aria-pressed="true">1 · Hiring posts</button>
+    <button class="btn" type="button" data-m="1">2 · Company people search</button>
+    <button class="btn" type="button" data-m="2">3 · Who engaged with the post</button>
+    <button class="btn" type="button" data-m="3">4 · Clues in the job description</button>
+  </div>
+  <div class="bl-card" id="reach-card" aria-live="polite"></div>
+</div>
+
+<p>The <code>outreach</code> skill does all four in my browser, after an application goes in:</p>
+<ol class="steps">
+  <li><b>Find:</b> run the four searches for the company and role, at a human pace, and collect the people: who posted, who engaged, who manages the team the description names.</li>
+  <li><b>Rank:</b> a hiring post's author first, then a manager in the named team, then a recruiter for that org. One person per role, never a crowd.</li>
+  <li><b>Write:</b> a note of three sentences, built only from my profile and the job: which role, one relevant thing I've done, and a thank-you. No invented connections, no flattery.</li>
+  <li><b>Send, within limits:</b> at most 5 notes a day, one per role, and one polite follow-up at most, a week later. Everything is logged against the application.</li>
+</ol>
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">one note, as the skill drafts it</span></div><pre><code>Hi Priya, I saw your post about the Platform team hiring an SDE II.
+I just applied: I built event-driven pipelines on AWS at Amazon Ads and
+now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div>
+
+<div class="section-title" id="s-fair"><span class="dot"></span><span class="n">09</span><span class="section-line"></span><span class="pill">respect</span></div>
+<h2>Playing fair with job boards and employers</h2>
+
+<p>The easy version of this tool is a spam cannon: apply to everything, message everyone, as fast as possible. That burns recruiters' time, gets you ignored, and gets accounts blocked. Mine is built to send fewer, better applications.</p>
+
+<div class="widget" id="fair">
+  <div class="widget-title">Interactive · one month, two ways</div>
+  <div class="btns" role="group" aria-label="Pick a strategy">
+    <button class="btn" type="button" data-q="spray" aria-pressed="true">Apply to every match</button>
+    <button class="btn" type="button" data-q="aim">My rules</button>
+  </div>
+  <div class="hb" id="fair-rows"></div>
+  <p class="readout" id="fair-out" aria-live="polite"></p>
+  <p class="small-note" style="margin:0">illustrative: a month of backend roles; reply rates are assumptions, not measurements</p>
+</div>
+
+<ol class="steps">
+  <li><b>Public feeds first.</b> ATS job-board feeds are published to be read; I read them politely, one request at a time per host, and respect <code>robots.txt</code> on career pages.</li>
+  <li><b>Honest about the grey areas.</b> LinkedIn's and Google's terms prohibit automated access. The agent uses them only in my own account, at a human pace and volume, and never collects more than I would read myself. If either asked me to stop, it would.</li>
+  <li><b>No CAPTCHA solving, no fake identities, no rotating IPs.</b> If a site doesn't want a bot right now, the bot steps back and I decide.</li>
+  <li><b>Caps an employer would agree with:</b> a fit threshold, 10 applications a day, at most 2 roles per company in 30 days, 5 notes a day, one person per role.</li>
+  <li><b>Everything sent is true.</b> Answers and notes come only from my profile and the job. An application is still me talking to an employer.</li>
+</ol>
+
+<div class="section-title" id="s-fail"><span class="dot"></span><span class="n">10</span><span class="section-line"></span><span class="pill">reliability</span></div>
+<h2>Pull any plug</h2>
+
+<p>Everything here will fail one day. For each part: what I'd notice, how the tool finds out, and what it does on its own.</p>
+
+<div class="widget" id="blast">
+  <div class="widget-title">Interactive · what happens when this fails</div>
+  <div class="btns" role="group" aria-label="Pick a part" id="bl-btns"></div>
+  <div class="bl-card" id="bl-card" aria-live="polite"></div>
+</div>
+
+<aside class="field"><span class="tag">From my work · Microsoft · Azure Resource Graph</span><p>On a high-throughput pipeline I added per-record metric dimensions, because averages hid what was missing. Every job here carries its own reason: skipped as a duplicate, below the threshold, over a cap, or waiting for me.</p></aside>
+<div class="section-title" id="s-cost"><span class="dot"></span><span class="n">11</span><span class="section-line"></span><span class="pill">cost</span></div>
+<h2>About ten dollars a month</h2>
+
+<p>The laptop, SQLite and Playwright are free. The only bill is model calls, and three habits keep it small: rules before the model, a cache keyed by résumé and job, and scripts instead of computer use on pages and forms I've seen before.</p>
+
+<div class="widget" id="cost">
+  <div class="widget-title">Interactive · monthly model cost</div>
+  <label class="range"><span>new roles a day: <b id="c-n">300</b></span><input id="c-r" type="range" min="50" max="2000" step="50" value="300" aria-label="New roles a day"></label>
+  <div class="hb" id="c-rows"></div>
+  <p class="readout" id="c-out" aria-live="polite"></p>
+  <p class="small-note" style="margin:0">illustrative per-call prices; 10 applications a day</p>
+</div>
+
+
+
+
+
+<div class="section-title" id="s-build"><span class="dot"></span><span class="n">12</span><span class="section-line"></span></div>
+<h2>Set it up yourself</h2>
+
+<ol class="steps">
+  <li><b>Install:</b> Python 3.12, <code>pip install -r requirements.txt</code>, and <code>playwright install chromium</code>. That's the whole stack.</li>
+  <li><b>Make a jobs inbox:</b> a fresh email address used for nothing else, and a Gmail API token for it.</li>
+  <li><b>Fill in <code>.env</code> and <code>profile.yaml</code>,</b> and drop your résumés in <code>resumes/</code>.</li>
+  <li><b>Run <code>jobhunt setup</code>:</b> sign in to LinkedIn and the jobs inbox in the agent's profile, then a dry run that finds and scores but sends nothing.</li>
+  <li><b>Earn trust per site:</b> review mode until a site has a clean record, then auto. Outreach starts as drafts for a week, then sends.</li>
+  <li><b>Then just run it:</b> <code>jobhunt run</code> each morning, and <code>jobhunt watch</code> in a spare tab if you want favourites hourly.</li>
+</ol>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">the repository</span></div><pre><code>jobhunt/
+  jobhunt/      cli.py  runner.py  app.py (localhost board)  db.py  lock.py
+  skills/       find/ dedupe/ match/ tailor/ apply/ verify/ track/ outreach/
+  adapters/     greenhouse.py  lever.py  ashby.py  careerpage.py  linkedin.py  search.py
+  mappings/     greenhouse.yaml  lever.yaml  ashby.yaml  workday.yaml   # field → profile key
+  data/         seen.db  applications.db  run_cache.db  screenshots/
+  config/       profile.yaml  sites.yaml  companies.yaml  .env
+  tests/        adapters (recorded pages)  forms (saved pages)  dedupe  e2e (dry run)</code></pre></div>
+
+<aside class="field"><span class="tag">From my work · Microsoft · Azure Resource Graph</span><p>I rolled out new graph-relationship rules one region at a time, watching each before the next. Auto mode gets the same treatment here: one site at a time, and only after review mode has a clean record on it.</p></aside>
+
+<div class="section-title" id="s-hard"><span class="dot"></span><span class="n">13</span><span class="section-line"></span></div>
+<h2>Every hard problem, and how I handle it</h2>
+
+<p><b id="hard-n">Thirty</b> things that will happen sooner or later, each with the fix and what the fix costs. Filter by where they bite.</p>
+
+<div class="widget" id="hard">
+  <div class="widget-title">Catalogue · what breaks, and the fix</div>
+  <div class="btns" role="group" aria-label="Filter">
+    <button class="btn" type="button" data-cat="all" aria-pressed="true">All</button>
+    <button class="btn" type="button" data-cat="find">Finding</button>
+    <button class="btn" type="button" data-cat="dedupe">Duplicates</button>
+    <button class="btn" type="button" data-cat="match">Matching</button>
+    <button class="btn" type="button" data-cat="apply">Applying</button>
+    <button class="btn" type="button" data-cat="fair">Fairness</button>
+    <button class="btn" type="button" data-cat="ops">Running it</button>
+    <button class="btn" type="button" data-cat="sec">Privacy</button>
+  </div>
+  <div class="cards" id="hard-cards"></div>
+</div>
+
+<div class="interrupt"><span class="tag">Sorry, quick interruption</span>
+<p>Keyword matching is very enthusiastic. Give it "Java" and no other filters, and it will tell you, with total confidence, that a barista job is a perfect fit.</p>
+</div>
+
+<div class="section-title" id="s-decisions"><span class="dot"></span><span class="n">14</span><span class="section-line"></span></div>
+<h2>Decisions, one page</h2>
+
+<ol class="dec-list">
+  <li><div class="dq">How does it start?</div><div class="chips"><span class="chip">a scheduler</span><span class="chip won">one command in my terminal</span></div><p class="why">It runs when I'm at the laptop and can see it. <span class="cost"><b>Cost:</b> I have to type it.</span></p></li>
+  <li><div class="dq">Which database?</div><div class="chips"><span class="chip">Postgres + Redis</span><span class="chip won">three SQLite files</span></div><p class="why">One writer, zero setup. <span class="cost"><b>Cost:</b> none at this size.</span></p></li>
+  <li><div class="dq">Where do jobs come from?</div><div class="chips"><span class="chip">scrape every board</span><span class="chip won">feeds first, then the agent</span></div><p class="why">Exact timestamps, and the least grey area. <span class="cost"><b>Cost:</b> a company list to grow.</span></p></li>
+  <li><div class="dq">How are forms filled?</div><div class="chips"><span class="chip">computer use for all</span><span class="chip won">mappings, then computer use</span></div><p class="why">Fast and free where forms are known. <span class="cost"><b>Cost:</b> mappings to maintain.</span></p></li>
+  <li><div class="dq">Which inbox?</div><div class="chips"><span class="chip">my personal email</span><span class="chip won">its own address</span></div><p class="why">Full access, small blast radius. <span class="cost"><b>Cost:</b> one more account.</span></p></li>
+  <li><div class="dq">How many applications?</div><div class="chips"><span class="chip">every match</span><span class="chip won">10 a day, 2 per company a month</span></div><p class="why">Better replies, no flooded inboxes. <span class="cost"><b>Cost:</b> some matches wait.</span></p></li>
+  <li><div class="dq">CAPTCHAs?</div><div class="chips"><span class="chip">a solving service</span><span class="chip won">hand it back to me</span></div><p class="why">The one manual step, by choice. <span class="cost"><b>Cost:</b> a click now and then.</span></p></li>
+</ol>
+
+<div class="section-title" id="s-drink"><span class="dot"></span><span class="n">15</span><span class="section-line"></span></div>
+<h2>The well-earned drink</h2>
+
+<p>Every Brew Miles trip ends with one:</p>
+
+<ol class="plain">
+  <li><strong>Read the sources that want to be read,</strong> and you get exact times for free.</li>
+  <li><strong>Remember everything in two keys,</strong> because one job wears five IDs.</li>
+  <li><strong>Rules first, models last,</strong> and cache what the model says.</li>
+  <li><strong>Write the intent before the click,</strong> so a crash never applies twice.</li>
+  <li><strong>Cap yourself before anyone has to,</strong> and send only what's true.</li>
+  <li><strong>Give the agent its own inbox,</strong> and keep everything on your laptop.</li>
+</ol>
+
+<div class="card reading"><div class="q">Further reading</div>
+<details class="more flat"><summary>Show the docs and research this leans on</summary>
+<ul class="plain" style="padding:0 18px 6px 34px">
+  <li><a href="https://developers.greenhouse.io/job-board.html" target="_blank" rel="noopener">Greenhouse Job Board API</a>, <a href="https://github.com/lever/postings-api" target="_blank" rel="noopener">Lever Postings API</a> and <a href="https://developers.ashbyhq.com/docs/public-job-posting-api" target="_blank" rel="noopener">Ashby public job posting API</a>.</li>
+  <li><a href="https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context" target="_blank" rel="noopener">Playwright persistent browser contexts</a>, and <a href="https://docs.anthropic.com/en/docs/agents-and-tools/tool-use/computer-use-tool" target="_blank" rel="noopener">computer use</a> (Anthropic docs).</li>
+  <li><a href="https://www.sqlite.org/wal.html" target="_blank" rel="noopener">SQLite write-ahead logging</a>, and <a href="https://pypi.org/project/keyring/" target="_blank" rel="noopener">keyring</a> for the OS keychain.</li>
+  <li><a href="https://www.linkedin.com/legal/user-agreement" target="_blank" rel="noopener">LinkedIn User Agreement</a> (section 8.2 on automation) and <a href="https://policies.google.com/terms" target="_blank" rel="noopener">Google Terms of Service</a>.</li>
+  <li>On applying early: <a href="https://www.businessinsider.com/job-opening-apply-fast-linkedin-indeed-2025-7" target="_blank" rel="noopener">Business Insider on applying within minutes</a> and <a href="https://www.topresume.com/career-advice/the-early-bird-gets-the-job-the-best-time-to-submit-your-resume" target="_blank" rel="noopener">TopResume on the first 72 hours</a>.</li>
+</ul>
+</details>
+</div>
+</article>
+</div>
+
+<footer>
+<div class="wrap">
+<figure class="bye-fig"><img class="bye-photo" src="../images/bye-wave.webp" width="960" height="587" alt="Ambrose, sitting on the floor in a black hoodie, waving goodbye" loading="lazy" decoding="async"></figure>
+<p>JobHunt is a personal tool for my own job search, run on my own laptop and accounts. It reads public feeds politely, uses other sites only at a human pace, never bypasses a CAPTCHA, and every application and note it sends is true and capped. Counts and costs are from my own runs or are illustrative.</p>
+<p>More field notes: <a href="seven-oclock-every-morning.html">Seven O'Clock, Every Morning</a>, <a href="file-that-wouldnt-die.html">The File That Wouldn't Die</a>, <a href="teammate-in-my-terminal.html">The Teammate in My Terminal</a>, <a href="agents-service-bay.html">Four Agents Walk Into a Service Bay</a> and <a href="scaling-ad-relevance-apis.html">A Million Questions a Second</a>.</p>
+<p>Hiring for someone who builds things end to end? You may already have heard from my agent. Let's talk: <a href="../">tascano.github.io</a> · <a href="../#intro">watch my 3-minute intro</a></p>
+</div>
+</footer>
+
+<script>
+(() => {
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+  const press = (group, btn) => group.forEach(b => b.setAttribute('aria-pressed', b === btn));
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const el = (parent, tag, attrs, text) => {
+    const e = document.createElementNS(svgNS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    parent.appendChild(e);
+    return e;
+  };
+
+  // Theme toggle and reading progress, same behaviour as the main page.
+  const html = document.documentElement, toggle = document.querySelector('.theme-toggle');
+  const setIcon = () => { toggle.textContent = html.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'; };
+  setIcon();
+  toggle.addEventListener('click', () => {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    setIcon();
+  });
+  const bar = document.querySelector('.scroll-progress');
+  addEventListener('scroll', () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+  }, {passive: true});
+
+  // The video version: load the player only when someone presses play (phones and slow connections get 720p).
+  document.querySelectorAll('.play-facade').forEach(facade => {
+    facade.addEventListener('click', () => {
+      const player = document.createElement('video');
+      const conn = navigator.connection || {};
+      const small = window.matchMedia('(max-width: 900px)').matches || conn.saveData || /(^|-)(2g|3g)$/.test(conn.effectiveType || '');
+      player.src = (small && facade.dataset.srcSmall) || facade.dataset.src;
+      player.controls = true;
+      player.playsInline = true;
+      player.autoplay = true;
+      player.setAttribute('aria-label', facade.getAttribute('aria-label'));
+      facade.replaceWith(player);
+      player.play().catch(() => {});
+      player.focus();
+    }, {once: true});
+  });
+
+  // Pick your hat: one short version per role.
+  document.querySelectorAll('.hats').forEach(box => {
+    const btns = [...box.querySelectorAll('[data-hat]')], panels = box.querySelectorAll('.hat');
+    btns.forEach(b => b.addEventListener('click', () => {
+      press(btns, b);
+      panels.forEach(p => { p.hidden = p.dataset.for !== b.dataset.hat; });
+    }));
+  });
+
+  // Small helpers: a 32-bit hash (FNV-1a, then mixed so similar names spread out) and a seeded random generator.
+  const hash = s => {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    h ^= h >>> 16; h = Math.imul(h, 0x85ebca6b); h ^= h >>> 13; h = Math.imul(h, 0xc2b2ae35); h ^= h >>> 16;
+    return h >>> 0;
+  };
+  const hex = s => hash(s).toString(16).padStart(8, '0').slice(0, 4);
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+  // A step-through tour: a dot moves between boxes, one caption per step, steps listed beside it.
+  const tour = (root, at, steps) => {
+    if (!root) return;
+    const svg = root.querySelector('svg'), dot = svg.querySelector('.tour-dot'), cap = root.querySelector('.tour-t'), num = root.querySelector('.tour-n');
+    const list = root.querySelector('.tour-steps'), playBtn = root.querySelector('[data-t="play"]');
+    let cur = -1, timer = null, run = 0, pos = [+dot.getAttribute('cx'), +dot.getAttribute('cy')];
+    const move = (to, animate) => {
+      const from = pos, me = ++run;
+      pos = to;
+      if (!animate) { dot.setAttribute('cx', to[0]); dot.setAttribute('cy', to[1]); return; }
+      const t0 = performance.now();
+      const frame = now => {
+        if (me !== run) return;
+        const k = Math.min(1, (now - t0) / 650), e = k < .5 ? 2 * k * k : 1 - (-2 * k + 2) ** 2 / 2;
+        dot.setAttribute('cx', from[0] + (to[0] - from[0]) * e); dot.setAttribute('cy', from[1] + (to[1] - from[1]) * e);
+        if (k < 1) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    };
+    const go = i => {
+      i = Math.max(0, Math.min(steps.length - 1, i));
+      const prev = cur;
+      cur = i;
+      svg.querySelectorAll('.node').forEach(n => n.classList.remove('lit', 'stop', 'bad'));
+      steps.forEach(([, nodes, cls], j) => {
+        if (j > i) return;
+        const state = j === i || cls === 'bad' ? cls : 'stop';
+        nodes.split(' ').forEach(n => { const e = svg.querySelector(`[data-node="${n}"]`); e.classList.remove('lit', 'stop', 'bad'); e.classList.add(state); });
+      });
+      cap.textContent = steps[i][3];
+      num.textContent = `${i + 1} / ${steps.length}`;
+      [...list.children].forEach((li, j) => li.classList.toggle('on', j === i));
+      dot.setAttribute('opacity', 1);
+      move(at[steps[i][0]], prev === i - 1 && !reduce);
+    };
+    const stop = () => { clearTimeout(timer); timer = null; playBtn.textContent = '▶ Play'; playBtn.setAttribute('aria-pressed', 'false'); };
+    const tick = () => { go(cur + 1); if (cur >= steps.length - 1) return stop(); timer = setTimeout(tick, 2400); };
+    steps.forEach((step, i) => {
+      const li = document.createElement('li'), b = document.createElement('button');
+      b.type = 'button'; b.textContent = step[3];
+      b.addEventListener('click', () => { stop(); go(i); });
+      li.append(b); list.append(li);
+    });
+    playBtn.addEventListener('click', () => {
+      if (timer) return stop();
+      if (cur >= steps.length - 1) cur = -1;
+      playBtn.textContent = '❚❚ Pause'; playBtn.setAttribute('aria-pressed', 'true');
+      tick();
+    });
+    root.querySelector('[data-t="prev"]').addEventListener('click', () => { stop(); go(cur - 1); });
+    root.querySelector('[data-t="next"]').addEventListener('click', () => { stop(); go(cur + 1); });
+    root.querySelectorAll('[data-t]').forEach(b => { if (/^\d+$/.test(b.dataset.t)) b.addEventListener('click', () => { stop(); go(+b.dataset.t); }); });
+  };
+
+  // Story widgets: each step lights parts of a diagram, can rewrite labels, and adds a line to the log.
+  const story = (root, scenarios) => {
+    if (!root) return;
+    const log = root.querySelector('.log'), btns = [...root.querySelectorAll('[data-s]')], states = ['lit', 'stop', 'bad', 'dim'];
+    let token = 0;
+    btns.forEach(btn => btn.addEventListener('click', async () => {
+      const run = ++token;
+      press(btns, btn);
+      root.querySelectorAll('.node').forEach(n => n.classList.remove(...states));
+      root.querySelectorAll('[data-reset]').forEach(e => { e.textContent = e.dataset.reset; });
+      log.innerHTML = '';
+      for (const [names, cls, text, set] of scenarios[btn.dataset.s]) {
+        await sleep(log.children.length ? 1100 : 0);
+        if (run !== token) return;
+        names.split(' ').forEach(n => { const e = root.querySelector(`[data-node="${n}"]`); e.classList.remove(...states); e.classList.add(cls); });
+        for (const id in set || {}) root.querySelector('#' + id).textContent = set[id];
+        const li = document.createElement('li'); li.innerHTML = text; log.appendChild(li);
+      }
+    }));
+  };
+
+
+  // A card with labelled rows, used by several widgets.
+  const card = (title, rows) => `<h3>${title}</h3><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+  const tabs = (root, attr, render, first) => {
+    if (!root) return;
+    const btns = [...root.querySelectorAll(`[data-${attr}]`)];
+    btns.forEach(b => b.addEventListener('click', () => { press(btns, b); render(b.dataset[attr]); }));
+    press(btns, btns.find(b => b.dataset[attr] === first) || btns[0]); render(first);
+  };
+
+  // 00 · How it grew.
+  const V = [
+    ['v0 · a search site', 'A small Streamlit site (still public at jobsfinder.streamlit.app) that builds time-filtered searches across job boards and ATS sites, so I could find roles fast and apply by hand.', 'Running the same searches every morning, re-reading the same jobs, and typing the same answers into the same forms.', 'Letting AI do the finding.'],
+    ['v1 · AI finds', 'Public ATS feeds read directly, and an agent running my LinkedIn and Google searches in my own browser, at a human pace.', 'The same job kept coming back: from another source, under another ID, or reposted.', 'Memory: three small SQLite stores.'],
+    ['v2 · never twice', '<code>seen.db</code> with source IDs, then fingerprints; <code>run_cache.db</code> for overlapping searches; <code>applications.db</code> as my tracker.', 'I still spent an hour a day filling in forms.', 'An agent that applies.'],
+    ['v3 · AI applies', 'Field mappings for the big ATS forms, computer use for everything else, in a signed-in browser profile, with fairness caps built in from day one.', 'Confirmations, replies, account sign-ups and finding who to message were still on me.', 'Its own inbox, and outreach.'],
+    ['v4 · end to end', 'A separate jobs inbox the agent reads and verifies against, accounts it creates itself, a tracker that updates from replies, and an outreach skill that finds the right person.', 'Only CAPTCHAs, by choice.', 'This post.'],
+  ];
+  const grew = document.getElementById('grew');
+  tabs(grew, 'v', v => { const [t, what, hurt, next] = V[+v]; grew.querySelector('#gr-card').innerHTML = card(t, [['what it was', what], ['what hurt', hurt], ['so next came', next]]); }, '0');
+
+  // 01 · Mockups.
+  const scr = document.getElementById('screens');
+  if (scr) {
+    const box = scr.querySelector('#mock');
+    const browser = (url, body) => `<div class="mk-browser"><div class="mk-bar"><i></i><i></i><i></i><span>${url}</span></div><div class="mk-body">${body}</div></div>`;
+    const job = (t, c, ago, src, fit, tag) => `<div class="mk-card mk-job"><div><b>${t}</b>${c}</div><div class="mk-jm"><span>${ago}</span><span>${src}</span>${fit ? `<span class="fit">${fit}</span>` : ''}${tag ? `<span class="tg">${tag}</span>` : ''}</div></div>`;
+    const S = {
+      today: browser('localhost:8765 · today', `
+        <p class="mk-h">Thursday, 6 November · run finished 06:52</p>
+        <div class="mk-grid"><div class="mk-stat"><small>found</small><b>1,240</b></div><div class="mk-stat"><small>new to me</small><b>310</b></div><div class="mk-stat"><small>good fits</small><b>14</b></div><div class="mk-stat"><small>applied</small><b>7</b></div></div>
+        <div class="mk-stage" style="margin-top:10px"><span>✓ feeds 312/314</span><span>✓ dedupe</span><span>✓ rules 46</span><span>✓ scored 46 (19 cached)</span><span>✓ caps 10</span><span class="w">2 need you</span><span class="w">1 failed</span></div>
+        <div class="mk-lab">Applied this morning</div>
+        ${job('Senior Backend Engineer', 'Acme · Seattle or remote', 'posted 3 h ago', 'Greenhouse', '0.91', 'verified')}
+        ${job('Platform Engineer II', 'Northwind · remote (US)', 'posted 9 h ago', 'Ashby', '0.84', 'verified')}
+        <p class="mk-small">2 sources failed and were retried · started with <code>jobhunt run</code> · watch mode: 30 companies</p>`),
+      search: browser('localhost:8765 · search', `
+        <div class="mk-input">platform engineer · backend</div>
+        <div class="mk-lab">Posted</div><div class="mk-chips"><span class="on">past hour</span><span>past 24 h</span><span>past week</span><span>custom</span></div>
+        <div class="mk-lab">Where</div><div class="mk-chips"><span class="on">remote</span><span class="on">Seattle</span><span>Vancouver</span></div>
+        <div class="mk-lab">Sources</div><div class="mk-chips"><span class="on">ATS feeds · 312</span><span>board links</span><span>career pages</span></div>
+        ${job('Cloud Infrastructure Engineer', 'Contoso · remote', '38 min ago', 'Lever', '', 'new')}
+        ${job('Backend Engineer, Payments', 'Fabrikam · Seattle', '52 min ago', 'Greenhouse', '', 'seen 6 Oct')}
+        <p class="mk-small">Search never applies. Save a job to the tracker, or queue it for the agent.</p>`),
+      review: browser('localhost:8765 · review', `
+        <p class="mk-h">Platform Engineer II · Northwind</p>
+        <p class="mk-sub">Ashby form, filled by mapping · résumé: backend.pdf · fit 0.84: "6 years Python, AWS serverless, observability"</p>
+        <table class="mk-table"><tr><th>field</th><th>answer</th><th>from</th></tr>
+          <tr><td>Work authorization</td><td>Authorized, US</td><td>profile</td></tr>
+          <tr><td>Notice period</td><td>2 weeks</td><td>profile</td></tr>
+          <tr><td>Why Northwind?</td><td>Drafted: "Your event pipeline work…" (62 words)</td><td>résumé + job</td></tr>
+          <tr><td>Voluntary disclosures</td><td>Prefer not to say</td><td>profile</td></tr></table>
+        <div class="mk-chips" style="margin-top:10px"><span class="on">Approve and submit</span><span>Edit an answer</span><span>Open the form</span><span>Skip</span></div>
+        <p class="mk-small">The screenshot of the filled form is saved with the application.</p>`),
+      needs: browser('localhost:8765 · needs you', `
+        <p class="mk-h">2 things for you</p>
+        <div class="mk-card"><b>Interview invite · Tailspin</b>Arrived in the jobs inbox at 09:12, matched to your application, and forwarded to your phone. <span class="mk-tbtn">Open the thread</span></div>
+        <div class="mk-card"><b>A CAPTCHA at Contoso</b>Not solved and not bypassed: progress is saved on page 3 of 4. <span class="mk-tbtn">Finish this one</span></div>
+        <div class="mk-card"><b>Failed: Fabrikam</b>"This job is no longer accepting applications." Recorded and skipped.</div>`),
+      board: browser('localhost:8765 · tracker', `
+        <div class="mk-kan">
+          <div><small>queued · 3</small><span>Contoso · Cloud Infra</span><span>Litware · SRE</span></div>
+          <div><small>applied · 41</small><span>Acme · Sr Backend</span><span>Northwind · Platform II</span></div>
+          <div><small>interview · 3</small><span>Tailspin · Backend</span><span>Wingtip · Data Platform</span></div>
+          <div><small>closed · 12</small><span>Fabrikam · rejected</span><span>Adatum · role filled</span></div>
+        </div>
+        <p class="mk-small">Statuses move on their own when a reply email matches an application. Export to CSV any time.</p>`),
+      settings: browser('localhost:8765 · settings', `
+        <div class="mk-lab">Mode</div><div class="mk-chips"><span>notify</span><span class="on">review</span><span>auto (per site)</span></div>
+        <div class="mk-lab">Looking for</div><div class="mk-input">backend · platform · cloud · ML platform · levels II–Senior</div>
+        <div class="mk-lab">Places</div><div class="mk-chips"><span class="on">remote (US, CA)</span><span class="on">Seattle</span><span class="on">Vancouver</span></div>
+        <div class="mk-lab">Limits</div><div class="mk-chips"><span class="on">fit ≥ 0.75</span><span class="on">10 a day</span><span class="on">2 per company / 30 days</span></div>
+        <div class="mk-lab">Never apply to</div><div class="mk-input">my current employer · staffing agencies · "unpaid"</div>
+        <div class="mk-lab">Sites</div><div class="mk-chips"><span class="on">Greenhouse · auto</span><span class="on">Lever · auto</span><span class="on">Workday · auto</span><span class="on">LinkedIn · find, human pace</span><span class="on">outreach · 5 a day</span></div>`),
+      digest: `<div class="mk-term"><div class="mk-bar"><i></i><i></i><i></i><span>~/jobhunt · zsh</span></div><pre>$ jobhunt run
+▸ feeds        312/314 read · 2 retried        1,240 jobs
+▸ agent        LinkedIn 6 searches · Google 8 · human pace
+▸ dedupe       310 new · 930 seen before
+▸ match        46 pass rules · 14 ≥ 0.75 · 10 within caps
+▸ apply        7 applied · 1 account created · 1 CAPTCHA (yours)
+▸ inbox        7/7 confirmed · 1 interview invite · 2 rejections
+▸ outreach     4 notes sent · 1 follow-up
+✓ done in 21m 40s · model spend today $0.31 · open http://localhost:8765</pre></div>`,
+    };
+    tabs(scr, 'sc', k => { box.innerHTML = S[k]; }, 'today');
+  }
+
+  // 01·b · Flows as sequence diagrams.
+  const flows = document.getElementById('flows');
+  if (flows) {
+    const svg = flows.querySelector('#fl-svg'), log = flows.querySelector('#fl-log'), stEl = flows.querySelector('#fl-states'), btns = [...flows.querySelectorAll('[data-f]')];
+    const actors = ['me', 'app', 'runner', 'sources', 'matcher', 'agent', 'job site', 'SQLite'];
+    const states = ['found', 'new', 'matched', 'queued', 'applying', 'needs_you', 'applied', 'interview', 'skipped'];
+    stEl.innerHTML = states.map(s => `<span data-st="${s}">${s}</span>`).join('');
+    const AX = i => 38 + i * 75;
+    el(svg, 'defs', {}).innerHTML = '<marker id="fl-ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>';
+    actors.forEach((a, i) => { el(svg, 'line', {x1: AX(i), x2: AX(i), y1: 32, y2: 402, class: 'll'}); el(svg, 'rect', {x: AX(i) - 35, y: 6, width: 70, height: 26, rx: 6, class: 'actor'}); el(svg, 'text', {x: AX(i), y: 23, 'text-anchor': 'middle', class: 'actor-t'}, a); });
+    const layer = el(svg, 'g', {});
+    const F = {
+      setup: [[0, 1, '<code>jobhunt setup</code>: profile, résumés, criteria and companies.'], [1, 7, 'Creates the three stores and the lock file.'], [1, 5, 'Opens the agent’s own browser profile.'],
+              [0, 6, 'I sign in once to LinkedIn and the jobs inbox, two-factor included.'], [5, 1, 'Sessions stay in the profile. No passwords on disk.'], [1, 2, 'A dry run: find and score, send nothing.'],
+              [2, 0, 'The summary: 1,240 found, 14 good fits, 0 applied.'], [0, 1, 'Review mode until each site earns auto.']],
+      run: [[0, 2, 'I type <code>jobhunt run</code>: it takes the lock and opens a run.'], [2, 3, 'Feeds read directly; the agent runs LinkedIn and Google searches.', 'found'], [2, 7, 'Dedupe against run_cache and seen: 310 are new.', 'new'],
+            [2, 4, 'Rules first, then cached fit scores.'], [4, 2, '14 score above 0.75; the caps keep 10.', 'matched'], [2, 7, 'Each one queued, with the résumé to use.', 'queued'],
+            [2, 5, 'The agent works through the queue.', 'applying'], [5, 6, 'Fill, screenshot, submit.'], [5, 7, '7 applied and confirmed in the jobs inbox.', 'applied'], [2, 0, 'Outreach sent, summary printed, lock released.']],
+      search: [[0, 1, 'Search "platform engineer", past hour, remote.'], [1, 7, 'Reuses anything fetched in the last 15 minutes.'], [1, 3, 'Otherwise reads only the sources I picked.', 'found'],
+               [3, 1, 'Results, newest first: "posted 38 min ago".'], [1, 7, 'Marks which are new to me, and which I saw before.', 'new'], [0, 1, 'Save one to the tracker, or queue it for the agent.', 'queued']],
+      review: [[5, 6, 'Fills an Ashby form from profile.yaml.', 'applying'], [5, 7, 'Answers and screenshot saved; stops before submit.', 'needs_you'], [1, 0, 'The app shows the form, the answers and the job, side by side.'],
+               [0, 1, 'I edit one answer and press Approve.'], [1, 5, 'Resume from the saved page.'], [5, 6, 'Submit, exactly once.'], [6, 5, 'Confirmation page.'], [5, 7, 'Applied, with the confirmation saved.', 'applied']],
+      auto: [[2, 5, 'A Greenhouse job, a site marked auto, a known form.', 'applying'], [5, 7, 'Intent first: status = applying.'], [5, 6, 'The mapping fills every field and uploads the résumé.'],
+             [5, 7, 'Screenshot before submit.'], [5, 6, 'Submit.'], [6, 0, '"Thanks for applying" lands in my inbox.'], [2, 7, 'The inbox check matches it: verified.', 'applied']],
+      account: [[5, 6, 'A Workday job: this employer wants its own account.', 'applying'], [5, 6, 'Signs up with the jobs inbox address.'], [5, 7, 'A generated password goes to the keychain, not a file.'],
+                [6, 5, 'Workday emails a verification link to the jobs inbox.'], [5, 5, 'Opens it in its own inbox: account verified.'], [5, 6, 'Fills the form and submits.'], [5, 7, 'Applied. Next time at this employer, it just signs in.', 'applied']],
+      captcha: [[5, 6, 'Mid-form, the site shows a CAPTCHA.', 'applying'], [5, 5, 'Never solved, never bypassed.', null, 1], [5, 7, 'Page and progress saved.', 'needs_you'],
+                [2, 0, 'A "finish this one" link in the run summary.'], [0, 6, 'I solve it and press submit myself.'], [0, 1, 'Mark it applied.', 'applied']],
+      reply: [[6, 0, 'A recruiter replies to the jobs inbox: "We’d like to schedule a call."'], [5, 7, 'The agent reads it and matches it to the application by company and role.'],
+              [5, 7, 'Status: interview. The card moves on the board.', 'interview'], [5, 0, 'Forwards it to my personal phone, with the job and my answers attached.'], [0, 6, 'I reply and book the call. This part stays human.']],
+      dup: [[0, 6, 'I applied to Acme’s backend role by hand, through a referral.'], [0, 1, 'One click: "I applied". (The inbox check would catch it too.)'], [1, 7, 'applications: Acme · backend family · today.'],
+            [2, 3, 'Next morning the same role appears on another site, with a new ID.', 'found'], [2, 7, 'Its fingerprint is already in seen.'], [2, 7, 'And Acme’s backend family is inside the 30-day window.', 'skipped']],
+      wipe: [[0, 1, '<code>jobhunt export</code>'], [1, 7, 'Every table to JSON and CSV, screenshots zipped.'], [0, 1, '<code>jobhunt wipe</code>, confirmed twice.'], [1, 7, 'Deletes the three stores and the screenshots.'],
+             [1, 5, 'Deletes the browser profile: every session signed out.'], [1, 0, 'Done. Nothing was ever stored anywhere else.']],
+    };
+    let token = 0;
+    btns.forEach(b => b.addEventListener('click', async () => {
+      const run = ++token, steps = F[b.dataset.f];
+      press(btns, b);
+      layer.innerHTML = ''; log.innerHTML = '';
+      stEl.querySelectorAll('span').forEach(s => { s.className = ''; });
+      for (let k = 0; k < steps.length; k++) {
+        const [a, c, text, st, bad] = steps[k], y = 52 + k * 35;
+        await sleep(k ? 950 : 150); if (run !== token) return;
+        const cls = 'msg' + (bad ? ' bad' : a > c ? ' ret' : '');
+        if (a === c) el(layer, 'path', {d: `M${AX(a)},${y - 8} h26 v16 h-24`, class: cls, 'marker-end': 'url(#fl-ar)', color: bad ? 'var(--demand)' : 'var(--accent-ink)'});
+        else el(layer, 'line', {x1: AX(a), x2: AX(c) + (c > a ? -4 : 4), y1: y, y2: y, class: cls, 'marker-end': 'url(#fl-ar)', color: bad ? 'var(--demand)' : 'var(--accent-ink)'});
+        const mx = a === c ? AX(a) + 40 : (AX(a) + AX(c)) / 2;
+        el(layer, 'circle', {cx: mx, cy: y, r: 9, class: 'badge' + (bad ? ' bad' : '')});
+        el(layer, 'text', {x: mx, y: y + 3.5, 'text-anchor': 'middle', class: 'badge-t'}, String(k + 1));
+        const li = document.createElement('li'); li.innerHTML = `<b class="n${bad ? ' bad' : ''}">${k + 1}</b><span>${text}</span>`; log.appendChild(li);
+        if (st) {
+          stEl.querySelectorAll('span').forEach(s => { if (s.classList.contains('now')) s.className = 'on'; });
+          stEl.querySelector(`[data-st="${st}"]`).className = ['skipped', 'needs_you'].includes(st) ? 'end now' : 'now';
+        }
+      }
+    }));
+  }
+
+  // 02 · One run.
+  tour(document.getElementById('arch'), {
+    sched: [340, 8], run: [340, 48], ats: [104, 94], boards: [222, 94], pages: [340, 94], norm: [340, 148], cache: [164, 190], seen: [340, 190],
+    rules: [164, 242], score: [340, 242], caps: [340, 294], agent: [340, 336], site: [164, 388], apps: [340, 388], out: [340, 440], me: [288, 492],
+  }, [
+    ['sched', 'sched', 'lit', 'I type <code>jobhunt run</code> in a terminal. No scheduler: it runs when I’m at the laptop to see it.'],
+    ['run', 'run', 'lit', 'The runner takes a lock file, so a second copy exits at once, and picks up from any checkpoint a stopped run left.'],
+    ['ats', 'ats boards pages', 'lit', 'Feeds are read directly; the agent runs LinkedIn and Google searches in my browser, at a human pace.'],
+    ['norm', 'norm', 'lit', 'Every job is put into one shape: company, title, level, place, posted time, URL.'],
+    ['seen', 'cache seen', 'lit', 'Dedupe: anything already found this run, or ever seen before by ID or fingerprint, is dropped.'],
+    ['rules', 'rules', 'lit', 'Free rules throw out most of what’s left: wrong title, level or place, or on my blocklist.'],
+    ['score', 'score', 'lit', 'The model scores the few that remain against my résumé; scores are cached.'],
+    ['caps', 'caps', 'lit', 'Caps decide what happens today: 10 at most, 2 per company a month, best first.'],
+    ['agent', 'agent', 'lit', 'The browser agent fills each form in my own signed-in browser profile, creating accounts where it must.'],
+    ['apps', 'site apps', 'lit', 'Every step lands in applications.db: intent, answers, screenshot, result.'],
+    ['me', 'out me', 'stop', 'The jobs inbox confirms each one, outreach messages the right person, and the summary is waiting.'],
+  ]);
+
+  // 03 · Sources.
+  const SRC = {
+    ats: ['ATS feeds · Greenhouse, Lever, Ashby', [['what it gives', 'Every open role a company has, as JSON. Companies publish these feeds so their jobs can be listed elsewhere.'], ['how fresh', '<b>Exact.</b> Each job carries its first-published or created time, so "posted in the last hour" is a simple filter.'], ['who does it', 'The runner, directly: no browser, no model. One request per company, politely.'], ['why', 'The backbone. About 300 companies in <code>companies.yaml</code>, and most of my matches come from here.']]],
+    boards: ['Job boards · LinkedIn, Indeed', [['what it gives', 'Almost every job, including from companies I don\'t know yet.'], ['how fresh', 'Good: the time filter lives in the URL, <code>f_TPR=r3600</code> (past hour) on LinkedIn and <code>fromage=1</code> (past day) on Indeed.'], ['who does it', 'The agent, in my signed-in browser: it loads the filtered search and reads the results, at a human pace.'], ['the catch', 'Their terms prohibit automated access, so it stays slow and small, on my own account, and that risk is mine.']]],
+    google: ['Search engines · site: searches', [['what it gives', 'Searches like <code>site:jobs.ashbyhq.com "backend"</code> limited to the past 24 hours reveal companies hiring on each ATS.'], ['how fresh', 'Index time, not posting time: hours late, sometimes days.'], ['who does it', 'The agent, in my browser: a handful of searches a run. Each new company and its feed goes into <code>companies.yaml</code>.'], ['why', 'This is exactly what v0 did by hand. Now it quietly grows the list that the feeds then cover with exact times.']]],
+    pages: ['Career pages', [['what it gives', 'Roles at companies with their own job site.'], ['how fresh', 'Often no date at all, so I use the time I first saw the job, and the app says so.'], ['who does it', 'A small script per site, or the agent when a page is new. <code>robots.txt</code> checked, once a day.'], ['why', 'A last resort, with a contract test that fails loudly when the page changes.']]],
+    posts: ['Hiring posts', [['what it gives', 'Managers and recruiters posting "my team is hiring", often before the role reaches any board.'], ['how fresh', 'Often the earliest signal there is.'], ['who does it', 'The agent, using method 1 from section 08: a posts search filtered by company.'], ['why', 'It finds roles early, and it also finds the person to message.']]],
+  };
+  const sources = document.getElementById('sources');
+  tabs(sources, 'src', k => { sources.querySelector('#src-card').innerHTML = card(...SRC[k]); }, 'ats');
+
+  // 03·b · Freshness.
+  const fresh = document.getElementById('fresh');
+  if (fresh) {
+    const rows = fresh.querySelector('#fr-rows'), out = fresh.querySelector('#fr-out');
+    const D = {daily: [12, 12, 24], hourly: [.5, 12, 1], manual: [36, 48, 168]};
+    const fmt = h => h < 1 ? Math.round(h * 60) + ' min' : h < 48 ? h + ' h' : Math.round(h / 24) + ' days';
+    const labels = ['typical wait, favourite companies', 'typical wait, everyone else', 'worst case, favourite companies'];
+    const text = {daily: 'One run each morning: a role waits <b>about 12 hours</b> on average, and up to a day.', hourly: 'With <code>jobhunt watch</code> open, favourite companies show up within <b>about half an hour</b>; everything else arrives with the next run.', manual: 'By hand, I was finding roles <b>two days late</b>, and some only after a week.'};
+    tabs(fresh, 'fr', k => {
+      rows.innerHTML = D[k].map((h, i) => `<div class="hb-row"><div class="hb-label">${labels[i]}</div><div class="hb-track"><div class="hb-bar ${k === 'manual' ? '' : 'teal'}" style="--f:${Math.max(Math.sqrt(h / 168), .03)}"></div><span class="hb-val">${fmt(h)}</span></div></div>`).join('');
+      out.innerHTML = text[k];
+    }, 'daily');
+  }
+
+  // 04 · Dedupe.
+  story(document.getElementById('dedupe'), {
+    twice: [['in', 'lit', 'Search A finds Acme’s Senior Backend Engineer.', {'dd-in': 'Acme · Sr Backend · search A'}],
+            ['key rc', 'stop', 'Not in today’s run_cache: stored, and it carries on.'], ['go', 'stop', 'Scored and queued once.'],
+            ['in', 'lit', 'Search B finds the same job a minute later.', {'dd-in': 'Acme · Sr Backend · search B'}],
+            ['rc', 'bad', 'Same source key, already in run_cache.'], ['skip', 'stop', 'Dropped before any scoring.', {'dd-res': 'processed once'}]],
+    cross: [['in', 'lit', 'The same role turns up on Acme’s own career page, under that page’s own ID.', {'dd-in': 'Acme · Sr Backend · careers id 3918…'}],
+            ['key', 'stop', 'Different source, different ID: the source key is new.'],
+            ['sn', 'bad', 'But the fingerprint <code>acme|senior backend engineer|seattle</code> was first seen yesterday on Greenhouse.'],
+            ['skip', 'stop', 'Skipped as a duplicate of greenhouse:acme:4012345.', {'dd-res': 'skipped · seen yesterday'}]],
+    repost: [['in', 'lit', 'Acme reposts the role with a new ID and a tweaked title.', {'dd-in': 'Acme · Backend Engineer (Sr) · new id'}],
+             ['key sn', 'stop', 'Neither key matches: it looks brand new.'],
+             ['ap', 'bad', 'But applications shows Acme, backend family, applied 12 days ago.'],
+             ['skip', 'stop', 'Inside the 30-day company window: skipped, with the reason recorded.', {'dd-res': 'skipped · applied 12 days ago'}]],
+    hand: [['in', 'lit', 'I applied to Northwind by hand, through a referral, and pressed "I applied".', {'dd-in': 'Northwind · Platform II · by hand'}],
+           ['ap', 'stop', 'A row in applications, marked manual.'],
+           ['in', 'lit', 'Next morning the feed lists the same role.', {'dd-in': 'Northwind · Platform II · from feed'}],
+           ['key sn', 'stop', 'New to seen, so it carries on to the last check.'],
+           ['ap', 'bad', 'Company and role family match my manual application.'], ['skip', 'stop', 'Skipped. The agent never applies on top of me.', {'dd-res': 'skipped · you applied'}]],
+  });
+
+  // 05 · Funnel.
+  const funnel = document.getElementById('funnel');
+  if (funnel) {
+    const r = funnel.querySelector('#fn-r'), tEl = funnel.querySelector('#fn-t'), rows = funnel.querySelector('#fn-rows'), out = funnel.querySelector('#fn-out');
+    const draw = () => {
+      const t = r.value / 100, above = Math.max(0, Math.round(46 * Math.pow(Math.max(0, 1 - (t - .5) / .5), 1.7))), today = Math.min(10, above);
+      tEl.textContent = t.toFixed(2);
+      const S = [['found by the sources', 1240], ['new to me', 310], ['pass the free rules', 46], [`fit ≥ ${t.toFixed(2)}`, above], ['within today\'s caps', today]];
+      rows.innerHTML = S.map(([l, v], i) => `<div class="hb-row"><div class="hb-label">${l}</div><div class="hb-track"><div class="hb-bar ${i > 2 ? '' : 'teal'}" style="--f:${Math.max(Math.sqrt(v / 1240), .02)}"></div><span class="hb-val">${v.toLocaleString('en-US')}</span></div></div>`).join('');
+      out.innerHTML = above > 10 ? `<b>${above} good fits, 10 go today.</b> The rest wait, best first, for tomorrow's caps.` :
+        above === 0 ? 'Nothing clears the bar today. That\'s fine: the email still lists the closest ones.' :
+        `<b>${above} good fit${above > 1 ? 's' : ''}, all within the caps.</b> The model read 46 descriptions, not 1,240.`;
+    };
+    r.addEventListener('input', draw); draw();
+  }
+
+  // 06 · Applying.
+  story(document.getElementById('apply'), {
+    known: [['intent', 'lit', 'Intent written first: Acme · Senior Backend · applying.'], ['open', 'stop', 'Opens the job in my profile and recognises a Greenhouse form.'],
+            ['map', 'stop', 'The mapping fills 11 fields and uploads backend.pdf. No model call.'], ['prof', 'stop', 'Two custom questions answered from profile.yaml: work authorization, notice period.'],
+            ['shot submit', 'stop', 'Screenshot saved, then one submit.'], ['verify', 'stop', 'Confirmation page, then the email at 06:41.', {'ap-res': 'applied · verified'}]],
+    unknown: [['intent open', 'stop', 'A company’s own form. No mapping fits.'], ['cu', 'lit', 'Computer use: screenshot and accessibility tree in, one action out ("type the email into field 3"). Every action is logged.'],
+              ['prof', 'stop', 'Every value it types comes from profile.yaml.'], ['shot', 'stop', 'Screenshot. This site is in review mode, so it stops for my approval.'],
+              ['submit verify', 'stop', 'I approve; it submits and verifies.', {'ap-res': 'applied · verified'}]],
+    question: [['intent open map', 'stop', 'A Lever form, filled by mapping.'], ['prof', 'bad', '"Expected salary?" is on my never-list, and "Tell us about a migration you led" has no saved answer.'],
+               ['needs', 'stop', 'Saved with a drafted answer from my résumé, for me to approve or rewrite.', {'ap-res': 'needs you'}]],
+    captcha: [['intent open', 'stop', 'Page 3 of a 4-page form.'], ['cu', 'lit', 'The next screen is a CAPTCHA.'], ['needs', 'bad', 'Not solved and not bypassed.'],
+              ['needs', 'stop', 'Progress saved; the run summary has a link that opens it right there.', {'ap-res': 'needs you'}]],
+    crash: [['intent open map shot', 'stop', 'Everything filled and screenshotted.'], ['submit', 'bad', 'The laptop sleeps a moment after the submit click.'],
+            ['intent', 'lit', 'The next run finds a row still marked applying, with no result.'],
+            ['verify', 'stop', 'It checks the inbox first: the confirmation arrived. Marked applied; never submitted again.', {'ap-res': 'applied · recovered'}]],
+  });
+
+  // 08 · Outreach: four ways to find the person.
+  const M = [
+    ['1 · Search hiring posts', [['the steps', 'LinkedIn search for "SDE 2 hiring" or "hiring backend engineer" → Filters → <b>Posts</b> → More filters → <b>Author company</b>: the company I applied to.'], ['why it works', 'It surfaces managers and recruiters actively hiring for that role. They are usually the best people to message.'], ['best for', 'Everyone. <b>One of the two that worked best for me.</b>'], ['what the agent does', 'Runs the search per company and role, reads the newest posts, and keeps the authors whose post matches the role.']]],
+    ['2 · Search people inside the company', [['the steps', 'Company page → <b>People</b> → search "hiring", "hiring SDE", "technical hiring", "recruiter" or "engineering manager".'], ['why it works', 'Many recruiters and managers mention hiring in their headline or bio, so they show up quickly.'], ['best for', 'Smaller and non-FAANG companies, where roles may never be posted on LinkedIn.'], ['what the agent does', 'Runs the five searches, keeps people in the right org and location, and prefers recent "hiring" mentions.']]],
+    ['3 · Who engaged with the job post', [['the steps', 'Open the post about the role and check its likes and comments.'], ['why it works', 'If the post names the team or org, people from that same org who liked it are close to the hiring decision, and easy to reach.'], ['best for', 'Roles posted by a manager or recruiter. <b>The other one that worked best for me.</b>'], ['what the agent does', 'Reads the reactions on the matching post, keeps people from the named org at that company, and ranks them by title.']]],
+    ['4 · Clues in the job description', [['the steps', 'Look for "you will work with the Payments team" or "reporting to the Platform Engineering Manager". Then company page → People → search Engineering Manager, Software Engineering Manager, Backend Engineering Manager, Director of Engineering, filtered by location.'], ['why it works', 'Managers of the named team are often the actual hiring managers.'], ['best for', 'Smaller companies and specific teams, where one manager owns the role.'], ['what the agent does', 'Extracts the team and manager title from the description, runs the people search, and matches the team name in their profile.']]],
+  ];
+  const reach = document.getElementById('reach');
+  tabs(reach, 'm', i => { reach.querySelector('#reach-card').innerHTML = card(...M[+i]); }, '0');
+
+  // 09 · Fair.
+  const fair = document.getElementById('fair');
+  if (fair) {
+    const rows = fair.querySelector('#fair-rows'), out = fair.querySelector('#fair-out');
+    const L = ['applications sent', 'most sent to one company', 'recruiter minutes spent reading', 'replies (assumed rate)'];
+    const D = {spray: [600, 9, 1200, 12], aim: [210, 2, 420, 17]}, M = [600, 9, 1200, 17];
+    tabs(fair, 'q', q => {
+      rows.innerHTML = D[q].map((v, i) => `<div class="hb-row"><div class="hb-label">${L[i]}</div><div class="hb-track"><div class="hb-bar ${q === 'aim' ? 'teal' : ''}" style="--f:${v / M[i]}"></div><span class="hb-val">${v.toLocaleString('en-US')}</span></div></div>`).join('');
+      out.innerHTML = q === 'spray' ? 'Every match, everywhere: <b>600 applications</b>, nine to one company, and 20 hours of strangers\' time, for a 2% reply rate.'
+        : 'Above the bar, capped: <b>a third of the applications</b>, never more than two per company, and, at an assumed 8% reply rate, more replies, not fewer.';
+    }, 'spray');
+  }
+
+  // 09 · Pull any plug.
+  const blast = document.getElementById('blast');
+  if (blast) {
+    const P = [
+      ['I skip a few days', 'Nothing, beyond a longer first run.', 'The time of the last successful run, stored in the run cache.', 'Each run reads everything posted since the last <i>successful</i> run, not since "yesterday", so nothing is missed.'],
+      ['I close the laptop mid-run', 'The summary never printed.', 'A run with no end marker.', 'The next <code>jobhunt run</code> resumes from the last finished stage; intent rows protect anything mid-submit.'],
+      ['A source changes or goes down', 'Fewer jobs from one company.', 'Each source’s count against its 14-day normal; contract tests on recorded feeds.', 'Retries with backoff (1, 5, 15 minutes). After five failed runs the source is switched off and listed in the email.'],
+      ['The model API is down', 'Nothing was auto-applied today.', 'Errors from the scorer.', 'A keyword-overlap score stands in, and everything goes to review. Forms that need computer use wait for tomorrow.'],
+      ['A session expires', 'An item under "needs you".', 'The agent lands on a login page.', 'It stops for that site only, and the email asks me to sign in again. Every other site carries on.'],
+      ['A form changes', 'One site moves from auto to review.', 'A required field the mapping couldn’t fill.', 'Falls back to computer use, in review mode, and flags the mapping for an update.'],
+      ['A crash mid-submit', 'Nothing, if it works.', 'A row still marked "applying" at the next run.', 'Checks the confirmation page and inbox before anything else; never resubmits without checking.'],
+      ['Two runs at once', 'Nothing.', 'The lock file holds a process id.', 'The second run exits; a stale lock from a dead process is cleared.'],
+      ['The job closes in between', 'A "skipped" line in the email.', '"No longer accepting applications" on the page.', 'Recorded with the reason, never retried.'],
+      ['A database file is damaged', 'The app won’t open.', 'SQLite integrity check at the start of every run.', 'A nightly <code>.backup</code> copy restores applications.db; seen.db can be rebuilt from it and the feeds.'],
+    ];
+    const bb = blast.querySelector('#bl-btns'), cardEl = blast.querySelector('#bl-card');
+    P.forEach((p, i) => { const b = document.createElement('button'); b.className = 'btn'; b.type = 'button'; b.textContent = p[0]; b.dataset.i = i; bb.append(b); });
+    tabs(blast, 'i', i => { const [n, felt, det, act] = P[+i]; cardEl.innerHTML = card(`⚡ ${n}`, [['what I notice', felt], ['it finds out from', det], ['what it does', act]]); }, '0');
+  }
+
+  // 10 · Cost.
+  const cost = document.getElementById('cost');
+  if (cost) {
+    const r = cost.querySelector('#c-r'), nEl = cost.querySelector('#c-n'), rows = cost.querySelector('#c-rows'), out = cost.querySelector('#c-out');
+    const draw = () => {
+      const n = +r.value; nEl.textContent = n.toLocaleString('en-US');
+      const smart = [n * .15 * .7 * .002 * 30, 3 * .05 * 30, 2 * .05 * 30], naive = [n * .002 * 30, 10 * .05 * 30, 20 * .05 * 30];
+      const R = [['scoring, rules first + cache', smart[0], 'teal'], ['scoring every new role', naive[0], ''], ['forms: mappings, then computer use', smart[1], 'teal'], ['computer use on every form', naive[1], ''], ['searches: scripted pages, model if they change', smart[2], 'teal'], ['computer use for every search', naive[2], '']];
+      const mx = Math.max(...R.map(x => x[1]));
+      rows.innerHTML = R.map(([l, v, c]) => `<div class="hb-row"><div class="hb-label">${l}</div><div class="hb-track"><div class="hb-bar ${c}" style="--f:${Math.max(v / mx, .01)}"></div><span class="hb-val">$${v.toFixed(2)}</span></div></div>`).join('');
+      const s = smart[0] + smart[1] + smart[2], b = naive[0] + naive[1] + naive[2];
+      out.innerHTML = `With the three habits: <b>about $${s.toFixed(0)} a month</b>. Without them: $${b.toFixed(0)}. The laptop does the rest for free.`;
+    };
+    r.addEventListener('input', draw); draw();
+  }
+
+  // 11 · Local vs cloud.
+  const port = document.getElementById('port');
+  if (port) {
+    const rows = [['schedule', 'launchd / cron / Task Scheduler', 'EventBridge Scheduler'], ['the run', 'one Python process + a lock file', 'Step Functions, hourly, with a Map per source'],
+                  ['jobs & dedupe', 'seen.db + run_cache.db (SQLite)', 'RDS Postgres, a cache table instead of Redis'], ['tracking', 'applications.db (SQLite)', 'RDS Postgres, per user'],
+                  ['scoring', 'a model API, cached in SQLite', 'Bedrock, cached in Postgres'], ['applying', 'Playwright in my own browser profile', 'AgentCore browser sessions, one per user'],
+                  ['logins', 'a signed-in profile + OS keychain', 'per-user vaults, and a lot of trust'], ['email', 'SMTP to myself', 'SES'], ['the app', 'localhost', 'App Runner + Next.js']];
+    const box = port.querySelector('#port-rows'), out = port.querySelector('#port-out'), btns = [...port.querySelectorAll('[data-w]')];
+    box.innerHTML = rows.map(([k, l]) => `<div><b>${k}</b><span>${l}</span></div>`).join('');
+    const spans = [...box.querySelectorAll('span')];
+    let run = 0;
+    const msg = {local: '<b>Free while idle, private by default,</b> and the applications come from my own browser.', aws: 'Needed only for other people: <b>always on, isolated per user,</b> and it must share each role among users instead of flooding employers.'};
+    const show = async w => {
+      const me = ++run;
+      box.classList.toggle('aws', w === 'aws');
+      for (let i = 0; i < rows.length; i++) {
+        spans[i].classList.add('fade'); await sleep(90); if (me !== run) return;
+        spans[i].textContent = rows[i][w === 'aws' ? 2 : 1]; spans[i].classList.remove('fade');
+      }
+      out.innerHTML = msg[w];
+    };
+    btns.forEach(b => b.addEventListener('click', () => { press(btns, b); show(b.dataset.w); }));
+    out.innerHTML = msg.local;
+  }
+
+  // 14 · Hard problems.
+  const hard = document.getElementById('hard');
+  if (hard) {
+    const C = [
+      ['find', 'A feed changes shape', 'A renamed field, and an adapter silently returns zero jobs.', ['Contract tests on recorded feeds.', 'An alert when a source returns far fewer jobs than its 14-day normal.'], 'free'],
+      ['find', 'No posting date', 'Career pages often don’t say when a job went up.', ['Use the time I first saw it, and label it that way.', 'Prefer the company’s ATS feed when it has one.'], 'free'],
+      ['find', 'Updated isn’t posted', 'An old job edited today looks brand new.', ['Use first-published or created times, never "updated".', 'The fingerprint catches it if I’ve seen it.'], 'free'],
+      ['find', 'A company switches ATS', 'Every one of its jobs suddenly has a new ID.', ['Fingerprints match across sources.', 'Setup re-detects each company’s ATS monthly from its careers URL.'], 'free'],
+      ['find', 'Rate limits', 'Too many requests to one host.', ['One request at a time per host, with a pause.', 'Back off on 429 and honour Retry-After.'], 'free'],
+      ['find', 'Location chaos', '"Remote (US)", "Hybrid – SEA", "Anywhere*".', ['Normalise to a city plus a remote scope.', 'Unknown locations go to review, never auto.'], 'free'],
+      ['dedupe', 'One job, five IDs', 'The same role on its ATS, two boards and a career page.', ['Two keys: the source ID and a fingerprint of company, title and place.'], 'one index'],
+      ['dedupe', 'Same title, different teams', 'Three "Software Engineer II" roles at one company.', ['Add team and requisition ID to the fingerprint when the feed has them.', 'If they still collide, the job URL decides.'], 'free'],
+      ['dedupe', 'Reposts', 'A role reposted every month to look fresh.', ['Fingerprint, plus a 30-day window per company and role family.'], 'free'],
+      ['dedupe', 'Applied outside the tool', 'Referrals and applications I made by hand.', ['One click, "I applied", in the app.', 'The inbox check finds confirmations it didn’t send.'], 'free'],
+      ['match', 'Titles lie', '"Member of Technical Staff" could be any level.', ['A title map, plus the years of experience in the description.', 'Ambiguous levels go to review.'], 'free'],
+      ['match', 'The model is confidently wrong', 'A 0.9 for a role that needs a clearance I don’t have.', ['Hard rules run first and can’t be overridden: clearance, visa, location.', 'The score must quote the lines it relied on.'], 'a few tokens'],
+      ['match', 'Scoring costs creep up', 'More sources mean more descriptions to read.', ['Rules first, a cache keyed by résumé and description, and only new descriptions scored.'], 'cents'],
+      ['match', 'Which résumé?', 'My backend and ML résumés fit different roles.', ['The scorer picks; review shows the choice; the tracker records it.'], 'free'],
+      ['apply', 'A form changes', 'The mapping can’t fill a required field.', ['Fall back to computer use in review mode; flag the mapping.'], 'a model call per new form'],
+      ['apply', 'Questions it can’t answer', 'Salary, essays, anything not in my profile.', ['Stop with a draft from my résumé; I approve or rewrite.'], 'free'],
+      ['apply', 'Résumé parsing', 'The form reads my PDF and fills fields wrongly.', ['After upload, re-read every field and correct it from the profile.', 'The screenshot shows the final state.'], 'free'],
+      ['apply', 'A crash mid-submit', 'Did it go through or not?', ['Intent before the click; check before any retry.'], 'free'],
+      ['apply', 'A silent failure', 'The page says thanks; no email ever comes.', ['"Unverified" after an hour; never counted as applied.'], 'free'],
+      ['apply', 'Multi-page wizards', 'Workday flows run six pages or more.', ['A checkpoint per page; resume from the last one.'], 'free'],
+      ['apply', 'The job closes', 'Between finding it and applying.', ['Detect "no longer accepting" and skip with a reason.'], 'free'],
+      ['fair', 'Flooding one employer', 'Ten roles at one company, all "good fits".', ['At most 2 per company in 30 days, best first.'], 'some matches wait'],
+      ['fair', 'Terms of service', 'LinkedIn and Google prohibit automated access.', ['My own account only, human pace, a few dozen pages a day.', 'Public feeds first; robots.txt respected on career pages.'], 'risk to my own account'],
+      ['fair', 'Messaging too many people', 'Outreach that turns into spam.', ['One person per role, 5 notes a day, one follow-up at most.'], 'free'],
+      ['fair', 'The wrong person', 'A note to someone with nothing to do with the role.', ['Rank: post author, then the named team’s manager, then the org’s recruiter.', 'No match above the bar means no note.'], 'free'],
+      ['fair', 'CAPTCHAs', 'A site asking "are you human?"', ['Never solved or bypassed: it stops and asks me.'], 'a click now and then'],
+      ['fair', 'Telling the truth', 'An agent can make things up.', ['Answers only from my profile, a never-list, and review the first time at each company.'], 'free'],
+      ['ops', 'Skipped days', 'I don’t run it for three days.', ['Every run reads since the last successful run, not since yesterday.'], 'free'],
+      ['ops', 'Stopped halfway', 'I close the laptop mid-run.', ['Stage checkpoints; the next run resumes where this one stopped.'], 'free'],
+      ['ops', 'Two runs at once', 'The hourly lane overlaps the daily run.', ['A lock file with a process id; the second run waits or exits.'], 'free'],
+      ['ops', 'Sessions expire', 'A site logs the agent out.', ['Detect the login page; ask me to sign in again; carry on elsewhere.'], 'free'],
+      ['ops', 'Backups', 'A damaged file loses my history.', ['A nightly SQLite backup of applications.db; seen.db can be rebuilt.'], 'a few MB'],
+      ['sec', 'Personal data on disk', 'Résumés, answers and screenshots.', ['One data folder in my user account, disk encryption on, no cloud sync.', 'Export and wipe are explicit commands.'], 'free'],
+      ['sec', 'Secrets', 'Keys and logins leaking into git or logs.', ['.env for keys only, and git-ignored; sessions in the browser profile; passwords in the keychain.'], 'free'],
+      ['sec', 'A full-access inbox', 'The agent can read and send email.', ['A separate address that only ever holds job mail; my personal inbox is never connected.'], 'one more account'],
+      ['sec', 'What the model sees', 'Sending personal data to an API.', ['Only résumé text and descriptions go to the scorer.', 'The agent’s browser profile has only the application open, so screenshots show nothing else.'], 'free'],
+    ];
+    const box = hard.querySelector('#hard-cards');
+    const names = {find: 'finding', dedupe: 'duplicates', match: 'matching', apply: 'applying', fair: 'fairness', ops: 'running it', sec: 'privacy'};
+    const hn = hard.querySelector('#hard-n'); if (hn) hn.textContent = C.length;
+    tabs(hard, 'cat', cat => { box.innerHTML = C.filter(c => cat === 'all' || c[0] === cat).map(([c, t, br, how, cost]) => `<div class="cd"><span class="tag">${names[c]}</span><h3>${t}</h3><p class="br">${br}</p><ul>${how.map(h => `<li>${h}</li>`).join('')}</ul><p class="cost-l">${cost}</p></div>`).join(''); }, 'all');
+  }
+})();
+</script>
+</body>
+</html>
