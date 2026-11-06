@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Is an Agent? — Ambrose Tuscano</title>
+<meta name="description" content="Systems on Glass episode 2: an AI agent isn't a smarter chatbot. It's a model in a loop: think, act with a tool, observe, check, repeat, with a goal, a budget and a human for anything you can't undo.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="What Is an Agent?">
+<meta property="og:description" content="Systems on Glass episode 2: an AI agent isn't a smarter chatbot. It's a model in a loop: think, act with a tool, observe, check, repeat, with a goal, a budget and a human for anything you can't undo.">
+<meta property="og:image" content="https://tascano.github.io/images/what-is-an-agent-poster-1280.webp">
+<meta name="theme-color" content="#fdb515">
+<link rel="canonical" href="https://tascano.github.io/series/what-is-an-agent.html">
+<link rel="icon" href="../favicon.ico?v=3" sizes="any">
+<script>
+  // Same key as the main page, so the reader's light/dark choice carries over.
+  try { const t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+:root{
+  --accent:#fdb515;
+  --accent-ink:#9a6700;          /* the brand gold, deepened for small text on white (4.9:1) */
+  --accent-wash:rgba(253,181,21,.14);
+  --bg:#fff;
+  --text:#111;
+  --text-secondary:#333;
+  --text-muted:#555;
+  --card-bg:#fafafa;
+  --card-border:#eee;
+  --skill-bg:#f3f3f3;
+  --code-bg:#15171b;
+  --code-border:#15171b;
+  --demand:#C26A00;
+  --capacity:#00826F;
+  --capacity-wash:rgba(0,130,111,.10);
+  --demand-wash:rgba(194,106,0,.10);
+  --mute:#8a8a8a;
+  --track:#dcdcdc;
+  --buffer:#d4d4d4;
+  --buffer-ink:#111;
+  --rec-ink:#fff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+[data-theme="dark"]{
+  --accent-ink:#fdb515;
+  --accent-wash:rgba(253,181,21,.12);
+  --bg:#0f0f0f;
+  --text:#e8e8e8;
+  --text-secondary:#d0d0d0;
+  --text-muted:#a0a0a0;
+  --card-bg:#1a1a1a;
+  --card-border:#2a2a2a;
+  --skill-bg:#262626;
+  --code-bg:#161616;
+  --code-border:#2a2a2a;
+  --demand:#C27E00;
+  --capacity:#22A08B;
+  --capacity-wash:rgba(34,160,139,.14);
+  --demand-wash:rgba(194,126,0,.14);
+  --mute:#737373;
+  --track:#383838;
+  --buffer:#4d4d4d;
+  --buffer-ink:#fff;
+  --rec-ink:#111;
+}
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.7;color:var(--text);background:var(--bg);transition:background .3s ease,color .3s ease;}
+a{color:var(--accent-ink);text-underline-offset:3px;text-decoration-thickness:1px;}
+a:hover{color:var(--text);}
+::selection{background:var(--accent);color:#111;}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px;}
+.scroll-progress{position:fixed;top:0;left:0;width:0;height:4px;background:var(--accent);z-index:1000;}
+.theme-toggle{position:fixed;top:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--card-bg);border:2px solid var(--card-border);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:999;transition:transform .3s ease,border-color .3s ease;}
+.theme-toggle:hover{transform:scale(1.1);border-color:var(--accent);}
+.theme-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+
+/* top bar, like the main page header */
+.topbar{display:flex;align-items:center;gap:12px;padding:28px 0 18px;border-bottom:1px solid var(--card-border);}
+.topbar img{width:44px;height:44px;border-radius:8px;object-fit:cover;}
+.topbar a{text-decoration:none;color:var(--text);font-weight:700;font-size:18px;letter-spacing:.2px;}
+.topbar .last{color:var(--accent);}
+.topbar .home{margin-left:auto;margin-right:64px;font-size:14px;font-weight:600;color:var(--accent-ink);}
+
+/* hero */
+.hero{padding:44px 0 6px;}
+.kicker{display:inline-block;font:700 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:7px 11px;margin-bottom:18px;}
+.hero h1{font-size:clamp(36px,7.4vw,56px);line-height:1.06;letter-spacing:-.015em;margin:0 0 10px;font-weight:800;}
+.hero .alt{font-size:18px;font-style:italic;color:var(--text-muted);margin:0 0 20px;}
+.hero .dek{font-size:19.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 22px;}
+.byline{display:flex;flex-wrap:wrap;gap:6px 16px;font:14px var(--mono);color:var(--text-muted);margin-bottom:30px;}
+.byline b{color:var(--text);}
+
+/* section titles: the main page's dot + gold line */
+.section-title{display:flex;align-items:center;gap:12px;margin:72px 0 6px;}
+.section-title .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.section-title .section-line{flex:1;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+.section-title .n{font:700 13px var(--mono);color:var(--accent-ink);}
+h2{font-size:clamp(25px,4.8vw,32px);line-height:1.2;letter-spacing:-.01em;margin:0 0 18px;font-weight:800;}
+h3{font-size:20px;margin:36px 0 10px;font-weight:700;}
+p{margin:0 0 20px;}
+strong{font-weight:700;}
+.lede{font-size:19.5px;}
+code{font-family:var(--mono);font-size:.86em;background:var(--skill-bg);border-radius:4px;padding:.12em .36em;white-space:nowrap;}
+ul.plain,ol.plain{padding-left:22px;margin:0 0 22px;}
+ul.plain li,ol.plain li{margin-bottom:9px;}
+.note{font-size:15px;color:var(--text-muted);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 26px;}
+
+/* cards */
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:20px 22px;margin:26px 0 32px;}
+.tldr{border-left:4px solid var(--accent);}
+footer{border-top:1px solid var(--card-border);margin-top:30px;padding:30px 0 70px;}
+footer p{font-size:15px;color:var(--text-muted);}
+.bye-fig{margin:0 0 22px;}
+.bye-photo{display:block;width:100%;max-width:420px;height:auto;border-radius:16px;border:1px solid var(--card-border);background:#fff;}
+
+@media (max-width:640px){
+  body{font-size:16.5px;}
+  .theme-toggle{top:14px;right:14px;width:44px;height:44px;font-size:18px;}
+  .topbar .home{margin-right:52px;}
+  .hero{padding-top:30px;}
+  .journey,.charts{grid-template-columns:1fr;}
+  .bits{grid-template-columns:repeat(8,minmax(0,1fr));}
+  .code pre{font-size:12.5px;}
+}
+@media (max-width:420px){ .topbar .home{display:none;} }
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  .cursor{animation:none;}
+}
+.watch{margin:0 0 26px;}
+.intro-video{border-radius:12px;overflow:hidden;border:1px solid var(--card-border);background:#000;box-shadow:0 10px 30px rgba(0,0,0,.12);transition:border-color .3s ease,box-shadow .3s ease;}
+.intro-video:hover{border-color:var(--accent);box-shadow:0 10px 30px rgba(253,181,21,.2);}
+.intro-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000;}
+.play-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;cursor:pointer;background:#000;}
+.play-facade img{display:block;width:100%;height:100%;object-fit:cover;}
+.play-btn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.play-btn svg{width:76px;height:76px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.35));transition:transform .2s ease;}
+.play-btn circle{fill:var(--accent);}
+.play-btn path{fill:#111;}
+.play-facade:hover .play-btn svg,.play-facade:focus-visible .play-btn svg{transform:scale(1.08);}
+.play-facade:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+.play-len{position:absolute;right:10px;bottom:10px;padding:2px 7px;border-radius:4px;font-size:13px;font-weight:600;color:#fff;background:rgba(0,0,0,.7);}
+.intro-note{font-size:14px;color:var(--text-muted);margin:10px 0 0;}
+
+.ai-note{border-left:4px solid var(--accent);background:var(--accent-wash);border-radius:10px;padding:12px 16px;margin:0 0 26px;font-size:15.5px;}
+.ai-note .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text);margin-bottom:6px;}
+.ai-note p{margin:0;}
+/* video series */
+.series-head{border-left:4px solid var(--accent);}
+.series-head p{margin:0 0 10px;}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:14px 0 4px;}
+.week div{border:1px solid var(--card-border);border-radius:8px;padding:8px 4px;text-align:center;font:600 12px/1.3 var(--mono);background:var(--bg);}
+.week b{display:block;font-size:13px;color:var(--text);}
+.week .sd{border-top:3px solid var(--accent);}
+.week .ag{border-top:3px solid var(--text-muted);}
+.week .sc{border-top:3px solid #C8102E;}
+.legend{font-size:14px;color:var(--text-muted);margin:8px 0 0;}
+.episodes{display:grid;gap:18px;margin:10px 0 30px;}
+a.ep{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;text-decoration:none;color:inherit;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px;transition:border-color .2s ease,transform .2s ease;}
+a.ep:hover{border-color:var(--accent);transform:translateY(-2px);}
+a.ep img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block;}
+a.ep .t{font-weight:800;font-size:19px;line-height:1.25;color:var(--accent-ink);margin:2px 0 4px;}
+a.ep .m{font:13px var(--mono);color:var(--text-muted);margin-bottom:6px;}
+a.ep p{margin:0;font-size:15.5px;line-height:1.55;color:var(--text-secondary);}
+.soon{font-size:15px;color:var(--text-muted);border:1px dashed var(--card-border);border-radius:12px;padding:14px 16px;}
+.refs li{margin-bottom:10px;}
+.refs .why{color:var(--text-muted);font-size:15px;}
+.takeaways li{margin-bottom:10px;}
+.math{font:600 16px/1.6 var(--mono);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 22px;overflow-x:auto;}
+@media (max-width:640px){ a.ep{grid-template-columns:1fr;} .week{grid-template-columns:repeat(4,minmax(0,1fr));} }
+
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "BlogPosting",
+ "headline": "What Is an Agent?",
+ "description": "Systems on Glass episode 2: an AI agent isn't a smarter chatbot. It's a model in a loop: think, act with a tool, observe, check, repeat, with a goal, a budget and a human for anything you can't undo.",
+ "url": "https://tascano.github.io/series/what-is-an-agent.html",
+ "datePublished": "2026-11-07",
+ "inLanguage": "en",
+ "image": "https://tascano.github.io/images/what-is-an-agent-poster-1280.webp",
+ "isPartOf": {
+  "@type": "CreativeWorkSeries",
+  "name": "Systems on Glass",
+  "url": "https://tascano.github.io/series/"
+ },
+ "author": {
+  "@type": "Person",
+  "@id": "https://tascano.github.io/#person",
+  "name": "Ambrose Tuscano",
+  "url": "https://tascano.github.io/"
+ },
+ "video": {
+  "@type": "VideoObject",
+  "name": "What Is an Agent? (Systems on Glass, episode 2)",
+  "description": "Systems on Glass episode 2: an AI agent isn't a smarter chatbot. It's a model in a loop: think, act with a tool, observe, check, repeat, with a goal, a budget and a human for anything you can't undo.",
+  "thumbnailUrl": "https://tascano.github.io/images/what-is-an-agent-poster-1280.webp",
+  "contentUrl": "https://tascano.github.io/videos/what-is-an-agent.mp4",
+  "uploadDate": "2026-11-07",
+  "duration": "PT2M23S"
+ }
+}
+</script>
+</head>
+<body>
+<div class="scroll-progress" aria-hidden="true"></div>
+<button class="theme-toggle" type="button" aria-label="Toggle dark mode">🌙</button>
+<div class="wrap">
+<nav class="topbar" aria-label="Site">
+  <img src="../images/avatar.webp?v=3" alt="" width="44" height="44">
+  <a href="../">Ambrose <span class="last">Tuscano</span></a>
+  <a class="home" href="./">All videos</a>
+</nav>
+<header class="hero">
+  <span class="kicker">Systems on Glass · Episode 2 · AI agents</span>
+  <h1>What Is an Agent?</h1>
+  <p class="alt">or: a model in a loop, with tools</p>
+  <section class="watch" id="watch" aria-label="The episode">
+    <div class="intro-video">
+      <button class="play-facade" type="button" data-src="../videos/what-is-an-agent.mp4" data-src-small="../videos/what-is-an-agent-720p.mp4"
+        aria-label="Play What Is an Agent? (about two and a half minutes)">
+        <img src="../images/what-is-an-agent-poster-960.webp" srcset="../images/what-is-an-agent-poster-640.webp 640w, ../images/what-is-an-agent-poster-960.webp 960w, ../images/what-is-an-agent-poster-1280.webp 1280w" sizes="(max-width: 760px) 100vw, 716px" width="1280" height="720" decoding="async"
+          alt="What Is an Agent?: Systems on Glass episode 2 title card">
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
+        <span class="play-len" aria-hidden="true">2:23</span>
+      </button>
+    </div>
+    <p class="intro-note">About two and a half minutes, generated by Claude as part of my AI-automation side project. The narration is an AI clone of my own voice.</p>
+  </section>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>2 min read</span></div>
+</header>
+
+<article>
+<div class="ai-note" role="note">
+  <div class="q">Made with AI, for fun</div>
+  <p>Systems on Glass is an AI-automation side project of mine. Every episode is generated by Claude (Anthropic's AI, working through Claude Code in my own video studio): the script, the animations and 3D scenes, the edit, and the narration in an AI clone of my voice. I choose the topics, bring the stories from my own work, and review each episode before it goes up. Not affiliated with Anthropic.</p>
+</div>
+<p class="lede">I typed a few sentences into my terminal: add a drawing feature to my video studio, test it, and merge it. By evening there was new code, every test passing, and a merged pull request. A chatbot can't do that. So what is an agent, actually?</p>
+
+<h2>The short version</h2>
+<ul class="plain takeaways">
+  <li><strong>Not a smarter chatbot.</strong> The model inside can be exactly the same. What changes is everything around it.</li>
+  <li><strong>Who runs the loop?</strong> With a chatbot, you do: copy the code, run it, paste back the error. With an agent, the model does.</li>
+  <li><strong>The loop:</strong> think about the goal, act by calling a tool, observe the real result, check. Not done? Go round again. Researchers named it ReAct in 2022: reason, then act.</li>
+  <li><strong>Tools are the hands.</strong> The model can't run anything itself. It asks for a tool, your code runs it and hands back the result. No tools, no agent.</li>
+  <li><strong>What stops it:</strong> a clear goal, a budget (steps or dollars), and a human for anything you can't undo.</li>
+</ul>
+
+<div class="math" aria-label="The agent loop">
+loop: think → act (call a tool) → observe (the real result) → check<br>
+until: done · or the budget runs out · or it needs a human
+</div>
+
+<p>My favourite moment from building this series: the agent rendered a 3D scene, looked at the frame, spotted a ghost rectangle in one corner, and fixed the cause instead of hiding it. That's the point of the loop: judge the real result, not what you hoped for. And it asks me before every paid render.</p>
+
+<h2>Further reading</h2>
+<ul class="plain refs">
+  <li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Building effective AI agents</a> <span class="why">— Anthropic (2024): workflows vs agents, and why agents are "typically just LLMs using tools based on environmental feedback in a loop".</span></li>
+  <li><a href="https://arxiv.org/abs/2210.03629" target="_blank" rel="noopener">ReAct: Synergizing Reasoning and Acting in Language Models</a> <span class="why">— Yao et al. (2022), the paper behind think-then-act.</span></li>
+  <li><a href="https://www.anthropic.com/engineering/writing-tools-for-agents" target="_blank" rel="noopener">Writing effective tools for AI agents</a> <span class="why">— Anthropic, on designing the "hands".</span></li>
+  <li><a href="https://lilianweng.github.io/posts/2023-06-23-agent/" target="_blank" rel="noopener">LLM Powered Autonomous Agents</a> <span class="why">— Lilian Weng's overview: planning, memory and tool use.</span></li>
+  <li><a href="https://code.claude.com/docs/en/overview" target="_blank" rel="noopener">Claude Code</a> <span class="why">— the agent I used to build this series (docs).</span></li>
+  <li><a href="../notes/teammate-in-my-terminal.html">The Teammate in My Terminal</a> <span class="why">— my post on the setup: rules, skills, allow lists, hooks, and keeping merge for myself.</span></li>
+</ul>
+
+<p class="note">Next episode: <strong>Caching</strong>, and how seventeen calls got cheap. <a href="./">All episodes →</a></p>
+</article>
+</div>
+<footer>
+<div class="wrap">
+<p>Systems on Glass is a personal, just-for-fun AI-automation project: the episodes, these pages' write-ups and the narration (an AI clone of my own voice) are generated with Claude through Claude Code, from my brief and my stories, and reviewed by me. Stories from work are told as general patterns, at the level of detail I've already written about publicly; nothing here describes a current or former employer's internal systems. Not affiliated with Anthropic.</p>
+<p>More: <a href="./">all episodes</a> · <a href="../#blog">the blog</a> · <a href="../#intro">my 3-minute intro</a></p>
+</div>
+</footer>
+<script>
+(() => {
+  const html = document.documentElement, toggle = document.querySelector('.theme-toggle');
+  const setIcon = () => { toggle.textContent = html.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'; };
+  setIcon();
+  toggle.addEventListener('click', () => {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    setIcon();
+  });
+  const bar = document.querySelector('.scroll-progress');
+  addEventListener('scroll', () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+  }, {passive: true});
+  // The video: load the player only when someone presses play (phones and slow connections get 720p).
+  document.querySelectorAll('.play-facade').forEach(facade => {
+    facade.addEventListener('click', () => {
+      const player = document.createElement('video');
+      const conn = navigator.connection || {};
+      const small = window.matchMedia('(max-width: 900px)').matches || conn.saveData || /(^|-)(2g|3g)$/.test(conn.effectiveType || '');
+      player.src = (small && facade.dataset.srcSmall) || facade.dataset.src;
+      player.controls = true; player.playsInline = true; player.autoplay = true;
+      player.setAttribute('aria-label', facade.getAttribute('aria-label'));
+      facade.replaceWith(player);
+      player.play().catch(() => {});
+      player.focus();
+    }, {once: true});
+  });
+})();
+</script>
+</body>
+</html>
