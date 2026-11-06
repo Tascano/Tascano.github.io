@@ -734,7 +734,7 @@ html{scroll-padding-top:16px;}
   <p class="alt">or: the job hunter I built for myself, running on my laptop</p>
   
   <p class="dek">It started with one wish: be among the first people to apply when a role opens. First I built a small site to find roles fast and apply by hand. Then, one piece at a time, I handed the rest to AI. Today it's JobHunt: I type one command on my laptop, and an agent finds new roles across ATS feeds, job boards and search engines, makes sure I never apply to the same one twice, scores them against my résumé, fills in applications in my own browser, reads replies in its own inbox, and finds the person to message. This is what it does, how, and why.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>20 min read</span></div>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>23 min read</span></div>
 </header>
 
 <div class="card origin" role="note">
@@ -786,7 +786,7 @@ html{scroll-padding-top:16px;}
 <div class="q" id="pmap-t">The five things I care about, and where they show up</div>
 <div class="pgroups">
   <div><b>Freshness</b><a href="#s-sources">where new roles come from</a><a href="#s-search">search tricks</a><a href="#s-fresh">how fast I see them</a><a href="#s-origin">why it started</a></div>
-  <div><b>Correctness</b><a href="#s-dedupe">never twice</a><a href="#s-match">matching</a><a href="#s-rel">is it really for me?</a><a href="#s-flows">every flow</a></div>
+  <div><b>Correctness</b><a href="#s-dedupe">never twice</a><a href="#s-match">matching</a><a href="#s-rel">is it really for me?</a><a href="#s-answers">where answers come from</a><a href="#s-flows">every flow</a></div>
   <div><b>Reliability</b><a href="#s-apply">how the agent applies</a><a href="#s-fail">pull any plug</a><a href="#s-secrets">logins &amp; what it skips</a></div>
   <div><b>Respect</b><a href="#s-fair">job boards &amp; employers</a><a href="#s-outreach">reaching the right person</a></div>
   <div><b>End to end</b><a href="#s-inbox">its own inbox</a><a href="#s-day">the end of my day</a><a href="#s-models">cheap vs good models</a><a href="#s-cost">ten dollars a month</a><a href="#s-hard">every hard problem</a></div>
@@ -1160,27 +1160,75 @@ CREATE TABLE found (run_id TEXT, source_key TEXT, fingerprint TEXT, raw_json TEX
   </div>
 </div>
 
-<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">profile.yaml · the only source of answers</span></div><pre><code>name: Ambrose Tuscano
-email: ${PROFILE_EMAIL}            # from .env, never committed
-work_authorization: { US: authorized, needs_sponsorship: ask_me }
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">profile.yaml · facts, written once (section 06·b)</span></div><pre><code>name: Ambrose Tuscano
+email: ${JOBS_INBOX}               # the agent's own address
+work_authorization: { US: authorized }
+over_18: yes                       # eligibility, not a birth date
 notice_period: 2 weeks
 resumes: { backend: resumes/backend.pdf, ml: resumes/ml-platform.pdf }
-answers:
+facts:
   years_python: 6
   willing_to_relocate: [Seattle, Vancouver, remote]
-voluntary_disclosures: decline     # EEO questions: "prefer not to say"
-never: [salary_expectation, cover_letter_claims_not_in_resume]   # always stop and ask</code></pre></div>
+voluntary_disclosures: decline     # gender, race, veteran, disability: "prefer not to say"
+never_type: [date_of_birth, ssn, bank_details, passport_number]   # skip and flag the job</code></pre></div>
 
 <ol class="steps">
   <li><b>Intent before action.</b> The row is written as <code>applying</code> before the browser touches the form. If anything dies, the next run sees the intent and checks the site and my inbox before it ever tries again.</li>
   <li><b>Known forms by rules.</b> Greenhouse, Lever and Ashby forms have stable field names; a small mapping fills them in under ten seconds with no model call.</li>
   <li><b>Unknown forms by computer use.</b> The model gets the screenshot, the accessibility tree and my profile, proposes one action at a time, and every action is logged. It may only click inside the application page.</li>
-  <li><b>Free-text questions</b> ("why this company?") are drafted from my résumé and the job description, and always held for review the first time I apply to a company.</li>
+  <li><b>Free-text questions</b> ("why this company?", "what are you proud of?") are written from my story bank and the job, as the next section shows.</li>
   <li><b>Proof:</b> a screenshot before submit, the confirmation page after, and the confirmation email matched by company. No confirmation within an hour means the tracker says "unverified", not "applied".</li>
 </ol>
 
 <aside class="field"><span class="tag">From my work · Amazon Ads</span><p>I built Step Functions workflows that evaluated ads at more than 5,000 transactions a second. What made retries safe there makes them safe here: write down what you're about to do, before you do it.</p></aside>
-<div class="section-title" id="s-skills"><span class="dot"></span><span class="n">06·b</span><span class="section-line"></span></div>
+<div class="section-title" id="s-answers"><span class="dot"></span><span class="n">06·b</span><span class="section-line"></span><span class="pill">correctness</span></div>
+<h2>Where its answers come from, and how it learns</h2>
+
+<p>Every form asks something new: "Are you 18 or older?", "How did you hear about us?", "What are you most proud of?". The agent never invents an answer. It draws from three things I wrote once, remembers every question it has met, and asks me only when it meets something it truly can't answer. Pick a question to see what happens:</p>
+
+<div class="widget" id="ans">
+  <div class="widget-title">Interactive · eight questions, eight decisions</div>
+  <div class="btns" role="group" aria-label="Pick a question">
+    <button class="btn" type="button" data-q="0" aria-pressed="true">Are you 18 or older?</button>
+    <button class="btn" type="button" data-q="1">Right to work in the US? (new wording)</button>
+    <button class="btn" type="button" data-q="2">How did you hear about us?</button>
+    <button class="btn" type="button" data-q="3">Date of birth</button>
+    <button class="btn" type="button" data-q="4">Why do you want to work here?</button>
+    <button class="btn" type="button" data-q="5">What are you most proud of?</button>
+    <button class="btn" type="button" data-q="6">Expected salary</button>
+    <button class="btn" type="button" data-q="7">Gender, race, veteran status</button>
+  </div>
+  <div class="bl-card" id="ans-card" aria-live="polite"></div>
+</div>
+
+<ol class="steps">
+  <li><b>Three sources, all written by me.</b> <code>profile.yaml</code> holds facts (work authorization, notice period, eligibility). My résumés hold the history. <code>stories.yaml</code> holds a handful of stories with real numbers, the raw material for every free-text answer.</li>
+  <li><b>An answer bank remembers every question.</b> Each question it meets is stored with the answer it gave. A new wording ("Do you have the right to work in the United States?") is matched to a saved one by meaning: a small model compares them, and only a confident match reuses the answer.</li>
+  <li><b>It asks me once, then never again.</b> A factual question with no saved answer goes on a short "questions for me" list on the end-of-day page, and that one application waits. I answer once; the answer becomes a fact; the application goes out on the next run, and so does every future form that asks.</li>
+  <li><b>Free-text answers are written, not copied.</b> The best model gets the job description, the company's own about or engineering page, and the one or two stories from my bank that fit the role. It writes in plain first person, within the field's limit, and every claim must trace to a story or my résumé. The first time it meets a new kind of question, the draft waits for my approval; after that it writes on its own, with my approved answers as examples.</li>
+  <li><b>It learns from my edits.</b> When I change a draft, the edited version becomes the new example for that kind of question. It also notes which answers went out with applications that got a reply, though with so few data points that's a hint, not a science.</li>
+  <li><b>Some things it never learns.</b> Date of birth, Social Security number, bank details and passport numbers are never stored and never typed. A real application almost never needs them before an offer, so a form that asks is skipped and flagged as possibly not real.</li>
+  <li><b>"Learning" means saved answers, not training.</b> No model is fine-tuned on my data. Everything lives in my data folder; only the text a draft needs is sent to the model API.</li>
+</ol>
+
+<div class="code"><div class="code-bar"><span class="term-dot"></span><span class="term-dot"></span><span class="term-dot"></span><span class="code-name">stories.yaml and the answer bank</span></div><pre><code># stories.yaml: real stories, real numbers, written once
+- id: brandsafety-throughput
+  where: Amazon Ads
+  story: Tripled a brand-safety pipeline from 17M to 52M products a day; a 45-day backfill finished in under 14
+  fits: [data engineering, backend, performance]
+- id: free-capacity
+  where: Microsoft, Azure Resource Graph
+  story: Helped a five-region scale-out that roughly doubled capacity with no extra cloud spend
+  fits: [platform, cloud, infrastructure]
+
+-- applications.db: every question it has met
+CREATE TABLE answers (question TEXT PRIMARY KEY,     -- normalised wording
+  kind TEXT,            -- fact | free_text | voluntary | never
+  answer TEXT, source TEXT,                         -- profile | story:brandsafety-throughput | me
+  approved INTEGER, uses INTEGER, last_used TEXT);
+CREATE TABLE answer_aliases (wording TEXT PRIMARY KEY, question TEXT REFERENCES answers);</code></pre></div>
+
+<div class="section-title" id="s-skills"><span class="dot"></span><span class="n">06·c</span><span class="section-line"></span></div>
 <h2>The agent's skills</h2>
 
 <p>The agent isn't one big prompt. It's eight small skills, each a folder with instructions and a script, which the runner calls in order and I can test on their own.</p>
@@ -1194,7 +1242,7 @@ verify/    confirmation page and inbox check                      → applied | 
 track/     applications.db, replies from email, the local board   → statuses
 outreach/  the four people searches, a three-sentence note, caps    → the right person, messaged</code></pre></div>
 
-<div class="section-title" id="s-models"><span class="dot"></span><span class="n">06·c</span><span class="section-line"></span><span class="pill">cost</span></div>
+<div class="section-title" id="s-models"><span class="dot"></span><span class="n">06·d</span><span class="section-line"></span><span class="pill">cost</span></div>
 <h2>Cheap models find, a good model applies</h2>
 
 <p>Most of the work is reading pages and sorting them, which a small, cheap model does well. Only the parts that act in my name get the strongest model I have.</p>
@@ -1656,7 +1704,8 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
         <p class="mk-small">The agent drafts nothing and sends nothing here. It only tells you who's waiting.</p>`),
       eod: browser('localhost:8765 · end of day', `
         <p class="mk-h">Thursday, 6 November</p>
-        <div class="mk-grid"><div class="mk-stat"><small>applied today</small><b>7</b></div><div class="mk-stat"><small>to respond</small><b>3</b></div><div class="mk-stat"><small>interviews this week</small><b>2</b></div><div class="mk-stat"><small>applied this month</small><b>118</b></div></div>
+        <div class="mk-grid"><div class="mk-stat"><small>applied today</small><b>7</b></div><div class="mk-stat"><small>to respond</small><b>3</b></div><div class="mk-stat"><small>interviews this week</small><b>2</b></div><div class="mk-stat"><small>questions for me</small><b>1</b></div></div>
+        <div class="mk-card"><b>A question for you</b>"How did you hear about us?" (Fabrikam). Answer once, and it's saved for every form that asks.</div>
         <div class="mk-lab">Coming up</div>
         <table class="mk-table"><tr><td>Fri 10:00</td><td>Tailspin · recruiter screen</td><td>30 min</td></tr><tr><td>Mon 14:30</td><td>Wingtip · technical interview</td><td>60 min</td></tr></table>
         <div class="mk-lab">Applied today</div>
@@ -1954,7 +2003,9 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       ['match', 'Scoring costs creep up', 'More sources mean more descriptions to read.', ['Rules first, a cache keyed by résumé and description, and only new descriptions scored.'], 'cents'],
       ['match', 'Which résumé?', 'My backend and ML résumés fit different roles.', ['The scorer picks; review shows the choice; the tracker records it.'], 'free'],
       ['apply', 'A form changes', 'The mapping can’t fill a required field.', ['Fall back to computer use in review mode; flag the mapping.'], 'a model call per new form'],
-      ['apply', 'Questions it can’t answer', 'Salary, essays, anything not in my profile.', ['Stop with a draft from my résumé; I approve or rewrite.'], 'free'],
+      ['apply', 'A question it’s never seen', '"How did you hear about us?" on a form for the first time.', ['Hold that application; ask me once on the end-of-day page; save the answer as a fact.'], 'one answer, once'],
+      ['apply', 'New wording, same question', '"Right to work in the US?" vs "legally authorized to work in the US?"', ['A small model matches by meaning; only confident matches reuse an answer; the wording is saved as an alias.'], 'a small-model call'],
+      ['sec', 'Sensitive questions', 'Date of birth, SSN, bank details on an application.', ['Never stored, never typed; the job is skipped and flagged.'], 'free'],
       ['apply', 'Résumé parsing', 'The form reads my PDF and fills fields wrongly.', ['After upload, re-read every field and correct it from the profile.', 'The screenshot shows the final state.'], 'free'],
       ['apply', 'A crash mid-submit', 'Did it go through or not?', ['Intent before the click; check before any retry.'], 'free'],
       ['apply', 'A silent failure', 'The page says thanks; no email ever comes.', ['"Unverified" after an hour; never counted as applied.'], 'free'],
@@ -2064,6 +2115,22 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
       const t = D[k].reduce((a, b) => a + b, 0);
       out.innerHTML = k === 'before' ? `About <b>${Math.round(t / 6) / 10} hours a day</b>, most of it doing the same thing on different sites.` : `About <b>${t} minutes</b>. The 15 minutes of replying to people didn't shrink, and shouldn't.`;
     }, 'before');
+  }
+
+  // 06·b · The answer bank.
+  const ans = document.getElementById('ans');
+  if (ans) {
+    const Q = [
+      ['"Are you 18 or older?"', [['answer from', '<code>profile.yaml</code>: <code>over_18: yes</code>. An eligibility fact, not a birth date.'], ['what it does', 'Ticks "Yes". No model call.'], ['saved?', 'Already a fact. I wrote it once.']]],
+      ['"Do you have the right to work in the United States?"', [['answer from', 'The answer bank: this wording is new, but a small model matches it to the saved "Are you legally authorized to work in the US?"'], ['what it does', 'Reuses the saved answer, because the match is confident.'], ['saved?', 'Yes: the new wording is stored as an alias, so next time it\'s an exact match.']]],
+      ['"How did you hear about us?"', [['answer from', 'Nowhere yet: it isn\'t in my profile or the bank.'], ['what it does', 'Holds that one application and adds the question to "questions for me" on the end-of-day page.'], ['saved?', 'I answer once ("the company\'s careers page"); it becomes a fact, the held application goes out on the next run, and the question never comes back to me.']]],
+      ['"Date of birth"', [['answer from', 'Never: it\'s on the never-type list with SSN, bank details and passport numbers.'], ['what it does', 'Skips the job and flags it. Real applications almost never need this before an offer.'], ['saved?', 'Never stored, never typed.']]],
+      ['"Why do you want to work here?"', [['answer from', 'The job description, the company\'s own about or engineering page, and the story from my bank that fits the role.'], ['what it does', 'The best model writes 80 to 150 words in plain first person; every claim must trace to a story or my résumé. The first answer of this kind waited for my approval; now it writes on its own.'], ['saved?', 'Yes, with the application. It\'s company-specific, so it\'s never reused word for word, but approved answers become examples for the next one.']]],
+      ['"What are you most proud of?"', [['answer from', '<code>stories.yaml</code>: for a data role, the brand-safety pipeline (17M to 52M products a day); for a platform role, the five-region scale-out with no extra spend.'], ['what it does', 'Adapts the story to the role and the field\'s length.'], ['saved?', 'Yes. The same story is reused across companies with a new first line, and my edits become the new version.']]],
+      ['"Expected salary"', [['answer from', 'My profile\'s range for that country, if I\'ve set one. Never guessed.'], ['what it does', 'Fills the range; if there isn\'t one for that country, it asks me once.'], ['saved?', 'Yes, per country.']]],
+      ['"Gender, race, veteran status, disability"', [['answer from', 'A standing rule: <code>voluntary_disclosures: decline</code>.'], ['what it does', 'Chooses "I don\'t wish to answer" or the form\'s equivalent.'], ['saved?', 'It\'s a rule, not data: nothing about me is stored.']]],
+    ];
+    tabs(ans, 'q', i => { ans.querySelector('#ans-card').innerHTML = card(...Q[+i]); }, '0');
   }
 })();
 </script>
