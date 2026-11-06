@@ -714,8 +714,21 @@ html{scroll-padding-top:16px;}
 
 .interrupt.jokes ul{margin:6px 0 0;padding-left:18px;}
 .interrupt.jokes li{margin:6px 0;}
+
+.dsh{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.dsh .pn{border:1px solid var(--card-border);border-radius:10px;padding:10px 12px;background:var(--card-bg);display:flex;flex-direction:column;gap:6px;}
+.dsh .pn.wide{grid-column:span 3;}
+.dsh .pn.hot{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent);}
+.dsh h4{margin:0;font:700 11.5px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);}
+.dsh p{margin:0;font-size:14px;line-height:1.45;}
+.dsh small{font:11.5px var(--mono);color:var(--accent-ink);margin-top:auto;}
+.dsh .trk{display:flex;flex-wrap:wrap;gap:6px;}
+.dsh .trk span{border:1px solid var(--card-border);border-radius:999px;padding:3px 10px;font-size:13px;}
+@media (max-width:700px){.dsh{grid-template-columns:1fr;}.dsh .pn.wide{grid-column:span 1;}}
+.dsh .pn.span2{grid-column:span 2;}
+@media (max-width:700px){.dsh .pn.span2{grid-column:span 1;}}
 </style>
-<script type="application/ld+json" id="ld-post">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "First in Line", "description": "How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.", "datePublished": "2026-11-06", "dateModified": "2026-11-06", "url": "https://tascano.github.io/notes/first-in-line.html", "image": "https://tascano.github.io/images/og-image.jpg", "author": {"@id": "https://tascano.github.io/#person"}, "keywords": ["AI agents", "computer use", "Playwright", "SQLite", "deduplication", "job search automation", "Google search operators", "ATS APIs", "Greenhouse", "Lever", "Ashby", "LinkedIn", "outreach", "local-first"]}</script>
+<script type="application/ld+json" id="ld-post">{"@context": "https://schema.org", "@type": "BlogPosting", "headline": "First in Line", "description": "How I built JobHunt, a job hunter that runs on my laptop once a day: it finds roles minutes to hours after they&#x27;re posted across ATS feeds and job boards, dedupes them with three SQLite stores, scores them, and applies with a computer-use agent in my own browser, within caps that respect job-board terms and employers.", "datePublished": "2026-11-06", "dateModified": "2026-11-06", "url": "https://tascano.github.io/notes/first-in-line.html", "image": "https://tascano.github.io/images/og-image.jpg", "author": {"@id": "https://tascano.github.io/#person"}, "keywords": ["AI agents", "computer use", "Playwright", "SQLite", "deduplication", "job search automation", "Google search operators", "ATS APIs", "Greenhouse", "Lever", "Ashby", "LinkedIn", "outreach", "local-first", "Streamlit dashboard"]}</script>
 </head>
 <body>
 <div class="scroll-progress" aria-hidden="true"></div>
@@ -734,7 +747,7 @@ html{scroll-padding-top:16px;}
   <p class="alt">or: the job hunter I built for myself, running on my laptop</p>
   
   <p class="dek">It started with one wish: be among the first people to apply when a role opens. First I built a small site to find roles fast and apply by hand. Then, one piece at a time, I handed the rest to AI. Today it's JobHunt: I type one command on my laptop, and an agent finds new roles across ATS feeds, job boards and search engines, makes sure I never apply to the same one twice, scores them against my résumé, fills in applications in my own browser, reads replies in its own inbox, and finds the person to message. This is what it does, how, and why.</p>
-  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>23 min read</span></div>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>25 min read</span></div>
 </header>
 
 <div class="card origin" role="note">
@@ -789,7 +802,7 @@ html{scroll-padding-top:16px;}
   <div><b>Correctness</b><a href="#s-dedupe">never twice</a><a href="#s-match">matching</a><a href="#s-rel">is it really for me?</a><a href="#s-answers">where answers come from</a><a href="#s-flows">every flow</a></div>
   <div><b>Reliability</b><a href="#s-apply">how the agent applies</a><a href="#s-fail">pull any plug</a><a href="#s-secrets">logins &amp; what it skips</a></div>
   <div><b>Respect</b><a href="#s-fair">job boards &amp; employers</a><a href="#s-outreach">reaching the right person</a></div>
-  <div><b>End to end</b><a href="#s-inbox">its own inbox</a><a href="#s-day">the end of my day</a><a href="#s-models">cheap vs good models</a><a href="#s-cost">ten dollars a month</a><a href="#s-hard">every hard problem</a></div>
+  <div><b>End to end</b><a href="#s-inbox">its own inbox</a><a href="#s-day">the end of my day</a><a href="#s-dash">my dashboard</a><a href="#s-models">cheap vs good models</a><a href="#s-cost">ten dollars a month</a><a href="#s-hard">every hard problem</a></div>
 </div>
 </nav>
 
@@ -1354,6 +1367,35 @@ now work on Azure Resource Graph. Thanks for sharing the role!</code></pre></div
 </div>
 
 <p>The "End of day" tab in the screens above is that page. Its rule is simple: <b>the agent tells me what needs a reply; it never sends one.</b> Recruiters and managers who write back get a person.</p>
+
+<div class="section-title" id="s-dash"><span class="dot"></span><span class="n">08·c</span><span class="section-line"></span><span class="pill">visibility</span></div>
+<h2>My own dashboard</h2>
+
+<p>An agent that works while I don't is only useful if I can see everything it did. So JobHunt has its own dashboard: a small Streamlit app on <code>localhost</code> (the same tool I built the public search site with) that reads the three SQLite files. It's the one place I go to know where my job hunt stands, and the only place I ever act.</p>
+
+<div class="widget" id="dsh">
+  <div class="widget-title">Mockup · the dashboard, one panel per question I'd otherwise ask</div>
+  <div class="mk-browser"><div class="mk-bar"><i></i><i></i><i></i><span>localhost:8501 · JobHunt</span></div><div class="mk-body">
+  <div class="dsh">
+    <div class="pn hot"><h4>Waiting on you</h4><p>"Open to an on-call rotation?" · 3 roles <span class="mk-tbtn">Yes</span> <span class="mk-tbtn">No</span></p><small>answers: what's blocked on me?</small></div>
+    <div class="pn hot"><h4>To respond</h4><p>Tailspin recruiter · Northwind manager · Wingtip assessment (due Fri)</p><small>answers: who's waiting for a person?</small></div>
+    <div class="pn"><h4>Coming up</h4><p>Fri 10:00 Tailspin screen · Mon 14:30 Wingtip technical</p><small>answers: what's on my calendar?</small></div>
+    <div class="pn wide"><h4>Tracker</h4><div class="trk"><span>queued <b>3</b></span><span>applied <b>118</b></span><span>replied <b>14</b></span><span>interview <b>5</b></span><span>offer <b>0</b></span><span>closed <b>31</b></span></div><small>answers: where does every application stand?</small></div>
+    <div class="pn"><h4>Today's run</h4><p>1,240 found → 310 new → 46 relevant → 10 queued → 7 applied</p><small>answers: what did it do while I wasn't looking?</small></div>
+    <div class="pn"><h4>Skipped, and why</h4><p>212 not US · 48 not engineering · 9 frontend only · 3 Workday · 1 CAPTCHA</p><small>answers: is a filter wrong?</small></div>
+    <div class="pn"><h4>What's working</h4><p>replies by source: feeds 12% · LinkedIn 7% · by focus: backend 13% · data 9%</p><small>answers: where should it look harder?</small></div>
+    <div class="pn"><h4>Health</h4><p>sources 312/314 · sessions ok · Google rested today · spend this month $6.20</p><small>answers: is anything broken or costly?</small></div>
+    <div class="pn span2"><h4>Answer bank</h4><p>63 questions · 210 wordings · 4 stories · last edit: "proud of" (Tue)</p><small>answers: what does it know about me?</small></div>
+  </div></div></div>
+</div>
+
+<ol class="steps">
+  <li><b>Built on what the run already writes.</b> Every panel is a query over <code>seen.db</code>, <code>applications.db</code> and the run cache. No new data, no second source of truth, and nothing to keep in sync.</li>
+  <li><b>Read-mostly, by design.</b> The dashboard only writes three things: my answers to waiting questions, my edits to drafts, and status changes I make by hand. Each goes through the same small module the agent uses, so the two never disagree.</li>
+  <li><b>Answering here is acting.</b> A Yes on "waiting on you" saves the fact and kicks off the parked applications straight away (06·b). Editing a draft updates the answer bank (06·b). Moving a card updates the tracker.</li>
+  <li><b>Every number links to its rows.</b> "48 not engineering" opens the 48 jobs with the reason each was dropped, which is how I catch a filter that's too strict before it costs me a good role.</li>
+  <li><b>It tells me what not to do:</b> nothing in "To respond" is ever answered by the agent, and the dashboard says so on the panel. Replies to people are the one job that stays mine.</li>
+</ol>
 
 <div class="section-title" id="s-fair"><span class="dot"></span><span class="n">09</span><span class="section-line"></span><span class="pill">respect</span></div>
 <h2>Playing fair with job boards and employers</h2>
