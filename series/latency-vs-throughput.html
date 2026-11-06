@@ -248,6 +248,8 @@ a.ep p{margin:0;font-size:15.5px;line-height:1.55;color:var(--text-secondary);}
   <li><strong>Averages lie.</strong> One ad request fanned out to 17 calls. If each is slow 1% of the time, roughly 1 request in 6 hits a slow one, and users feel the slowest call. Measure p99, not the mean.</li>
 </ul>
 
+<p class="note">As in <a href="../notes/scaling-ad-relevance-apis.html">my post about this API</a>, every number about that system (a million a second, 20 ms, 17 calls, 3× for Prime Day) is illustrative: deliberately rounded, inflated or deflated, not the real figures. The maths holds for any numbers.</p>
+
 <div class="math" aria-label="The numbers from the episode">
 in flight = 1,000,000 / s × 0.02 s = 20,000 requests<br>
 slow at least once = 1 − 0.99<sup>17</sup> ≈ 16% ≈ 1 in 6<br>
