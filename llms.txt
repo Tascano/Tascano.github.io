@@ -35,6 +35,7 @@ Long-form technical posts, each with interactive diagrams and a narrated video:
 - [Episode 1: Latency vs Throughput](https://tascano.github.io/series/latency-vs-throughput.html): two problems, two fixes; Little's law, queueing delay at high utilisation, Prime Day headroom, tail latency under fan-out; with further reading
 - [Episode 2: What Is an Agent?](https://tascano.github.io/series/what-is-an-agent.html): an agent is a model in a loop (think, act with a tool, observe, check); tools as hands; goal, budget and human-in-the-loop as stopping conditions; with further reading
 - [Episode 3: Caching](https://tascano.github.io/series/caching.html): hits and misses, cache-aside and read-through, write-through/behind/around, hit-rate maths, lazy versus eager (weekly precompute), HTTP caching, LRU/LFU/TTL and Belady, learned caching, invalidation, herds and coalescing; then AI caching: KV cache, prompt caching, response and semantic caches, agent-side content-keyed caches; with further reading
+- [Episode 4: Context Is RAM](https://tascano.github.io/series/context-is-ram.html): the context window as RAM; lost in the middle (Liu et al.), context rot (Chroma), token cost per step; what Anthropic, OpenAI, Google, xAI and Microsoft Research say about long context and where to put the question; four memory moves (load late, compact, write it down, fork); with further reading
 
 ## Contact
 
