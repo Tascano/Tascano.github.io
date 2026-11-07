@@ -30,14 +30,16 @@ that Nissan and Amazon Ads; M.S. CS at UMBC). Treat them as technical: show comm
 ## Making videos and posts
 Videos come from the owner's video studio repo (`Tascano/video-studio`, skill `video-studio`), not from here:
 - Posts with a video: `workflows/blog-with-video.md` in the studio.
-- Series episodes: the studio's explainer engine. Publish with
-  `python -m studio.publish web <video> --slug <slug> --site <this repo> --alt "..." [--poster thumbnail.jpg]`,
-  which writes the 1080p and 720p files and the three posters here and prints the player markup. It re-encodes
-  heavy masters so files stay well under GitHub's 100 MB limit (aim for ~50 MB or less per video).
+- Series episodes (from episode 6 on): the page shows only the vertical Short; the full 1440p video is on YouTube.
+  Publish with `python -m studio.publish short <short.mp4> --slug <slug> --site <this repo> --alt "..." [--youtube <link>]`,
+  which writes `videos/<slug>-short.mp4` and portrait posters and prints the portrait player. Add landscape posters
+  (`images/<slug>-poster-{640,1280}.webp`, from the thumbnail) for the hub card and og:image. Episodes 1–5 keep
+  their 1080p/720p players (`python -m studio.publish web`); don't redo them.
 
 ### Adding a Systems on Glass episode
 1. Run the publish command above with the episode's slug.
-2. Add `series/<slug>.html`, copied from the latest episode page.
+2. Add `series/<slug>.html`, copied from the latest episode page (episode 6 on: the `.intro-video.vertical` player).
+   When the owner sends the YouTube link, add it to the page's note and the `VideoObject`.
    - Contents: the player, the "Made with AI, for fun" note, a lede, "The short version" (3–5 bullets), the numbers
      in a `.math` box, at most one short story paragraph, "Further reading" with one-line reasons, and a next-episode
      note. About a 2-minute read.
@@ -62,11 +64,13 @@ First person, conversational and precise, with dry humour ("Some tests you're me
 bold lead-ins, numbered lists, a "Cost:" for each trade-off. Posts open on a real story with a number. Titles are
 short and curious ("The File That Wouldn't Die", "A Million Questions a Second").
 
-## Before you merge
+## Before you push
 1. Serve locally (`python3 -m http.server 8000`) and check every changed page with Playwright: desktop 1440 light,
    desktop dark, phone 390 wide (no horizontal overflow), and reduced motion where there are animations.
-2. Every change goes through a branch and a pull request. The owner merges, or explicitly asks for the merge.
-3. After merging, confirm the deploy: the *pages build and deployment* run in Actions must succeed and the new
+2. **Work on `main`:** commit straight to `main` and push (`git pull --rebase origin main`, commit,
+   `git push origin main`). No new branches and no pull requests; the branches that already exist stay as history.
+   Since a push to `main` deploys, push only after step 1 passes.
+3. After pushing, confirm the deploy: the *pages build and deployment* run in Actions must succeed and the new
    URLs must return 200. In November 2026, deploys twice failed on GitHub's side ("Deployment failed, try again
    later") with the build fine. The fix is **Re-run all jobs** on that run in the Actions tab, which needs the
    owner, since cloud sessions can't re-run Actions jobs. Report it rather than pushing empty commits.
