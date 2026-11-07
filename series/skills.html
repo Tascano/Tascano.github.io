@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Skills — Ambrose Tuscano</title>
+<meta name="description" content="Systems on Glass episode 11: my AI agent carries 206,000 characters of how-to and reads 893 at startup. How skills work, from my own video-studio skill: the label, the steps, the tools, why the description is the trigger, the open standard, and the catch.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Skills">
+<meta property="og:description" content="Systems on Glass episode 11: my AI agent carries 206,000 characters of how-to and reads 893 at startup. How skills work, from my own video-studio skill: the label, the steps, the tools, why the description is the trigger, the open standard, and the catch.">
+<meta property="og:image" content="https://tascano.github.io/images/skills-poster-1280.webp">
+<meta name="theme-color" content="#fdb515">
+<link rel="canonical" href="https://tascano.github.io/series/skills.html">
+<link rel="icon" href="../favicon.ico?v=3" sizes="any">
+<script>
+  // Same key as the main page, so the reader's light/dark choice carries over.
+  try { const t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+:root{
+  --accent:#fdb515;
+  --accent-ink:#9a6700;          /* the brand gold, deepened for small text on white (4.9:1) */
+  --accent-wash:rgba(253,181,21,.14);
+  --bg:#fff;
+  --text:#111;
+  --text-secondary:#333;
+  --text-muted:#555;
+  --card-bg:#fafafa;
+  --card-border:#eee;
+  --skill-bg:#f3f3f3;
+  --code-bg:#15171b;
+  --code-border:#15171b;
+  --demand:#C26A00;
+  --capacity:#00826F;
+  --capacity-wash:rgba(0,130,111,.10);
+  --demand-wash:rgba(194,106,0,.10);
+  --mute:#8a8a8a;
+  --track:#dcdcdc;
+  --buffer:#d4d4d4;
+  --buffer-ink:#111;
+  --rec-ink:#fff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+[data-theme="dark"]{
+  --accent-ink:#fdb515;
+  --accent-wash:rgba(253,181,21,.12);
+  --bg:#0f0f0f;
+  --text:#e8e8e8;
+  --text-secondary:#d0d0d0;
+  --text-muted:#a0a0a0;
+  --card-bg:#1a1a1a;
+  --card-border:#2a2a2a;
+  --skill-bg:#262626;
+  --code-bg:#161616;
+  --code-border:#2a2a2a;
+  --demand:#C27E00;
+  --capacity:#22A08B;
+  --capacity-wash:rgba(34,160,139,.14);
+  --demand-wash:rgba(194,126,0,.14);
+  --mute:#737373;
+  --track:#383838;
+  --buffer:#4d4d4d;
+  --buffer-ink:#fff;
+  --rec-ink:#111;
+}
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.7;color:var(--text);background:var(--bg);transition:background .3s ease,color .3s ease;}
+a{color:var(--accent-ink);text-underline-offset:3px;text-decoration-thickness:1px;}
+a:hover{color:var(--text);}
+::selection{background:var(--accent);color:#111;}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px;}
+.scroll-progress{position:fixed;top:0;left:0;width:0;height:4px;background:var(--accent);z-index:1000;}
+.theme-toggle{position:fixed;top:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--card-bg);border:2px solid var(--card-border);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:999;transition:transform .3s ease,border-color .3s ease;}
+.theme-toggle:hover{transform:scale(1.1);border-color:var(--accent);}
+.theme-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+
+/* top bar, like the main page header */
+.topbar{display:flex;align-items:center;gap:12px;padding:28px 0 18px;border-bottom:1px solid var(--card-border);}
+.topbar img{width:44px;height:44px;border-radius:8px;object-fit:cover;}
+.topbar a{text-decoration:none;color:var(--text);font-weight:700;font-size:18px;letter-spacing:.2px;}
+.topbar .last{color:var(--accent);}
+.topbar .home{margin-left:auto;margin-right:64px;font-size:14px;font-weight:600;color:var(--accent-ink);}
+
+/* hero */
+.hero{padding:44px 0 6px;}
+.kicker{display:inline-block;font:700 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:7px 11px;margin-bottom:18px;}
+.hero h1{font-size:clamp(36px,7.4vw,56px);line-height:1.06;letter-spacing:-.015em;margin:0 0 10px;font-weight:800;}
+.hero .alt{font-size:18px;font-style:italic;color:var(--text-muted);margin:0 0 20px;}
+.hero .dek{font-size:19.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 22px;}
+.byline{display:flex;flex-wrap:wrap;gap:6px 16px;font:14px var(--mono);color:var(--text-muted);margin-bottom:30px;}
+.byline b{color:var(--text);}
+
+/* section titles: the main page's dot + gold line */
+.section-title{display:flex;align-items:center;gap:12px;margin:72px 0 6px;}
+.section-title .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.section-title .section-line{flex:1;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+.section-title .n{font:700 13px var(--mono);color:var(--accent-ink);}
+h2{font-size:clamp(25px,4.8vw,32px);line-height:1.2;letter-spacing:-.01em;margin:0 0 18px;font-weight:800;}
+h3{font-size:20px;margin:36px 0 10px;font-weight:700;}
+p{margin:0 0 20px;}
+strong{font-weight:700;}
+.lede{font-size:19.5px;}
+code{font-family:var(--mono);font-size:.86em;background:var(--skill-bg);border-radius:4px;padding:.12em .36em;white-space:nowrap;}
+ul.plain,ol.plain{padding-left:22px;margin:0 0 22px;}
+ul.plain li,ol.plain li{margin-bottom:9px;}
+.note{font-size:15px;color:var(--text-muted);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 26px;}
+
+/* cards */
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:20px 22px;margin:26px 0 32px;}
+.tldr{border-left:4px solid var(--accent);}
+footer{border-top:1px solid var(--card-border);margin-top:30px;padding:30px 0 70px;}
+footer p{font-size:15px;color:var(--text-muted);}
+.bye-fig{margin:0 0 22px;}
+.bye-photo{display:block;width:100%;max-width:420px;height:auto;border-radius:16px;border:1px solid var(--card-border);background:#fff;}
+
+@media (max-width:640px){
+  body{font-size:16.5px;}
+  .theme-toggle{top:14px;right:14px;width:44px;height:44px;font-size:18px;}
+  .topbar .home{margin-right:52px;}
+  .hero{padding-top:30px;}
+  .journey,.charts{grid-template-columns:1fr;}
+  .bits{grid-template-columns:repeat(8,minmax(0,1fr));}
+  .code pre{font-size:12.5px;}
+}
+@media (max-width:420px){ .topbar .home{display:none;} }
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  .cursor{animation:none;}
+}
+.watch{margin:0 0 26px;}
+.intro-video{border-radius:12px;overflow:hidden;border:1px solid var(--card-border);background:#000;box-shadow:0 10px 30px rgba(0,0,0,.12);transition:border-color .3s ease,box-shadow .3s ease;}
+.intro-video:hover{border-color:var(--accent);box-shadow:0 10px 30px rgba(253,181,21,.2);}
+.intro-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000;}
+.play-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;cursor:pointer;background:#000;}
+.play-facade img{display:block;width:100%;height:100%;object-fit:cover;}
+.play-btn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.play-btn svg{width:76px;height:76px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.35));transition:transform .2s ease;}
+.play-btn circle{fill:var(--accent);}
+.play-btn path{fill:#111;}
+.play-facade:hover .play-btn svg,.play-facade:focus-visible .play-btn svg{transform:scale(1.08);}
+.play-facade:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+.play-len{position:absolute;right:10px;bottom:10px;padding:2px 7px;border-radius:4px;font-size:13px;font-weight:600;color:#fff;background:rgba(0,0,0,.7);}
+.intro-note{font-size:14px;color:var(--text-muted);margin:10px 0 0;}
+
+.ai-note{border-left:4px solid var(--accent);background:var(--accent-wash);border-radius:10px;padding:12px 16px;margin:0 0 26px;font-size:15.5px;}
+.ai-note .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text);margin-bottom:6px;}
+.ai-note p{margin:0;}
+/* video series */
+.series-head{border-left:4px solid var(--accent);}
+.series-head p{margin:0 0 10px;}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:14px 0 4px;}
+.week div{border:1px solid var(--card-border);border-radius:8px;padding:8px 4px;text-align:center;font:600 12px/1.3 var(--mono);background:var(--bg);}
+.week b{display:block;font-size:13px;color:var(--text);}
+.week .sd{border-top:3px solid var(--accent);}
+.week .ag{border-top:3px solid var(--text-muted);}
+.week .sc{border-top:3px solid #C8102E;}
+.legend{font-size:14px;color:var(--text-muted);margin:8px 0 0;}
+.episodes{display:grid;gap:18px;margin:10px 0 30px;}
+a.ep{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;text-decoration:none;color:inherit;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px;transition:border-color .2s ease,transform .2s ease;}
+a.ep:hover{border-color:var(--accent);transform:translateY(-2px);}
+a.ep img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block;}
+a.ep .t{font-weight:800;font-size:19px;line-height:1.25;color:var(--accent-ink);margin:2px 0 4px;}
+a.ep .m{font:13px var(--mono);color:var(--text-muted);margin-bottom:6px;}
+a.ep p{margin:0;font-size:15.5px;line-height:1.55;color:var(--text-secondary);}
+.soon{font-size:15px;color:var(--text-muted);border:1px dashed var(--card-border);border-radius:12px;padding:14px 16px;}
+.refs li{margin-bottom:10px;}
+.refs .why{color:var(--text-muted);font-size:15px;}
+.takeaways li{margin-bottom:10px;}
+.math{font:600 16px/1.6 var(--mono);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 22px;overflow-x:auto;}
+@media (max-width:640px){ a.ep{grid-template-columns:1fr;} .week{grid-template-columns:repeat(4,minmax(0,1fr));} }
+
+/* The Short (portrait): from episode 6 the page plays the vertical Short; the full video is on YouTube */
+.intro-video.vertical{max-width:360px;margin:0 auto;}
+.intro-video.vertical .play-facade,.intro-video.vertical video{aspect-ratio:9/16;}
+.watch .intro-note{text-align:center;}
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "BlogPosting",
+ "headline": "Skills",
+ "description": "How agent skills work: a folder with a SKILL.md, loaded in three levels (the label at startup, the steps when a task fits, files and scripts only when needed).",
+ "url": "https://tascano.github.io/series/skills.html",
+ "datePublished": "2026-11-07",
+ "inLanguage": "en",
+ "image": "https://tascano.github.io/images/skills-poster-1280.webp",
+ "isPartOf": {
+  "@type": "CreativeWorkSeries",
+  "name": "Systems on Glass",
+  "url": "https://tascano.github.io/series/"
+ },
+ "author": {
+  "@type": "Person",
+  "@id": "https://tascano.github.io/#person",
+  "name": "Ambrose Tuscano",
+  "url": "https://tascano.github.io/"
+ },
+ "video": {
+  "@type": "VideoObject",
+  "name": "Skills (Systems on Glass, episode 11, the short)",
+  "description": "How agent skills work: a folder with a SKILL.md, loaded in three levels (the label at startup, the steps when a task fits, files and scripts only when needed).",
+  "thumbnailUrl": "https://tascano.github.io/images/skills-short-poster-720.webp",
+  "contentUrl": "https://tascano.github.io/videos/skills-short.mp4",
+  "uploadDate": "2026-11-07",
+  "duration": "PT52S"
+ }
+}
+</script>
+</head>
+<body>
+<div class="scroll-progress" aria-hidden="true"></div>
+<button class="theme-toggle" type="button" aria-label="Toggle dark mode">🌙</button>
+<div class="wrap">
+<nav class="topbar" aria-label="Site">
+  <img src="../images/avatar.webp?v=3" alt="" width="44" height="44">
+  <a href="../">Ambrose <span class="last">Tuscano</span></a>
+  <a class="home" href="./">All videos</a>
+</nav>
+<header class="hero">
+  <span class="kicker">Systems on Glass · Episode 11 · AI agents</span>
+  <h1>Skills</h1>
+  <p class="alt">or: a whole manual, one page at a time</p>
+  <section class="watch" id="watch" aria-label="The short video for this episode">
+    <div class="intro-video vertical">
+      <button class="play-facade" type="button" data-src="../videos/skills-short.mp4" data-src-small="../videos/skills-short.mp4"
+        aria-label="Play the 52-second short">
+        <img src="../images/skills-short-poster-540.webp" srcset="../images/skills-short-poster-360.webp 360w, ../images/skills-short-poster-540.webp 540w, ../images/skills-short-poster-720.webp 720w" sizes="(max-width: 760px) 70vw, 360px" width="540" height="960" loading="lazy" decoding="async"
+          alt="Skills: my AI agent carries 205,859 characters of how-to and reads 893 at startup, in flat animation and 3D">
+        <span class="play-btn" aria-hidden="true"><svg viewBox="0 0 68 68"><circle cx="34" cy="34" r="34"/><path d="M27 21.5v25L47 34z"/></svg></span>
+        <span class="play-len" aria-hidden="true">0:52</span>
+      </button>
+    </div>
+    <p class="intro-note">The 52-second version. The full video is coming to YouTube; the link goes here when it's up. The narration is an AI clone of my voice.</p>
+  </section>
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>2 min read</span></div>
+</header>
+
+<article>
+<div class="ai-note" role="note">
+  <div class="q">Made with AI, for fun</div>
+  <p>Systems on Glass is an AI-automation side project of mine. Every episode is generated by Claude (Anthropic's AI, working through Claude Code in my own video studio): the script, the animation and 3D scenes, the edit, and the narration in an AI clone of my voice. I choose the topics, bring the stories from my own work, and review each episode before it goes up. Not affiliated with Anthropic.</p>
+</div>
+<p class="lede">The agent that makes this series knows how to make every video I make: the styles, the voice, the checks, the publishing. That's 205,859 characters of how-to in 34 files. When a session starts, it reads 893 of them.</p>
+
+<h2>The short version</h2>
+<ul class="plain takeaways">
+  <li><strong>A skill is a folder.</strong> A <code>SKILL.md</code> with a name, a description and the steps, plus whatever the steps need: guides, references, scripts. Anthropic's engineers compare it to an onboarding guide for a new hire.</li>
+  <li><strong>Level one, the label.</strong> At startup the agent loads only the name and description of every installed skill. For my studio, 893 characters. Unlike <code>CLAUDE.md</code> (<a href="agent-memory.html">episode 9</a>), a skill's body loads only when it's used.</li>
+  <li><strong>Level two, the steps; level three, the tools.</strong> <code>SKILL.md</code> loads when a task fits (mine: check setup, interview me, research what's current, offer three styles, estimate first). Each step points to files it opens only when needed, and scripts run without being read into context.</li>
+  <li><strong>The label is the trigger.</strong> The agent only sees the description, so write it with the words you'd actually say ("I want to create a video", "make a reel").</li>
+  <li><strong>It keeps learning, and it travels.</strong> My skill has 48 commits since October; today's added "research what's current". Since December 2025 skills are an open standard (agentskills.io). The catch: a skill is code you let in, so install only from trusted sources.</li>
+</ul>
+
+<div class="math" aria-label="The numbers from the episode">
+my video-studio skill: 34 files · 205,859 characters · loaded at startup: 893 (the description)<br>
+"make a video": + SKILL.md, 19,353 · a step needs a guide: + 11,222 · the rest waits
+</div>
+
+<p class="note">The numbers come from the skill that made this episode, measured on November 7, 2026.</p>
+
+<h2>Further reading</h2>
+<ul class="plain refs">
+  <li><a href="https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills" target="_blank" rel="noopener">Equipping agents for the real world with Agent Skills</a> <span class="why">— Anthropic's engineers on progressive disclosure, scripts and security (October 2025).</span></li>
+  <li><a href="https://agentskills.io/" target="_blank" rel="noopener">Agent Skills, the open standard</a> <span class="why">— the format any agent can read (December 2025).</span></li>
+  <li><a href="https://code.claude.com/docs/en/skills" target="_blank" rel="noopener">Extend Claude with skills</a> <span class="why">— the Claude Code docs: where skills live, frontmatter, and how they differ from CLAUDE.md.</span></li>
+</ul>
+
+<p class="note">Next episode: <strong>Idempotency</strong>. Previously: <a href="retries-backoff-jitter.html">Retries, Backoff and Jitter</a>. <a href="./">All episodes →</a></p>
+</article>
+
+</div>
+<footer>
+<div class="wrap">
+<p>Systems on Glass is a personal, just-for-fun AI-automation project: the episodes, these pages' write-ups and the narration (an AI clone of my own voice) are generated with Claude through Claude Code, from my brief and my stories, and reviewed by me. Stories from work are told as general patterns, at the level of detail I've already written about publicly; nothing here describes a current or former employer's internal systems. Not affiliated with Anthropic.</p>
+<p>More: <a href="./">all episodes</a> · <a href="../#blog">the blog</a> · <a href="../#intro">my 3-minute intro</a></p>
+</div>
+</footer>
+<script>
+(() => {
+  const html = document.documentElement, toggle = document.querySelector('.theme-toggle');
+  const setIcon = () => { toggle.textContent = html.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'; };
+  setIcon();
+  toggle.addEventListener('click', () => {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    setIcon();
+  });
+  const bar = document.querySelector('.scroll-progress');
+  addEventListener('scroll', () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+  }, {passive: true});
+  // The video: load the player only when someone presses play (phones and slow connections get 720p).
+  document.querySelectorAll('.play-facade').forEach(facade => {
+    facade.addEventListener('click', () => {
+      const player = document.createElement('video');
+      const conn = navigator.connection || {};
+      const small = window.matchMedia('(max-width: 900px)').matches || conn.saveData || /(^|-)(2g|3g)$/.test(conn.effectiveType || '');
+      player.src = (small && facade.dataset.srcSmall) || facade.dataset.src;
+      player.controls = true; player.playsInline = true; player.autoplay = true;
+      player.setAttribute('aria-label', facade.getAttribute('aria-label'));
+      facade.replaceWith(player);
+      player.play().catch(() => {});
+      player.focus();
+    }, {once: true});
+  });
+})();
+</script>
+</body>
+</html>

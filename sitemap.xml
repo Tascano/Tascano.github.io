@@ -41,6 +41,11 @@
 		<priority>0.70</priority>
 	</url>
 	<url>
+		<loc>https://tascano.github.io/series/skills.html</loc>
+		<lastmod>2026-11-07</lastmod>
+		<priority>0.70</priority>
+	</url>
+	<url>
 		<loc>https://tascano.github.io/series/retries-backoff-jitter.html</loc>
 		<lastmod>2026-11-07</lastmod>
 		<priority>0.70</priority>
