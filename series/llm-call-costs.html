@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What an LLM Call Costs — Ambrose Tuscano</title>
+<meta name="description" content="Systems on Glass episode 7: what one call to a language model costs. Tokens in and out on two meters, why output costs about five times input, a receipt for one call, why an agent's bill is mostly re-reading, and four ways to pay less: cache, batch, smaller models, shorter answers.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="What an LLM Call Costs">
+<meta property="og:description" content="Systems on Glass episode 7: what one call to a language model costs. Tokens in and out on two meters, why output costs about five times input, a receipt for one call, why an agent's bill is mostly re-reading, and four ways to pay less: cache, batch, smaller models, shorter answers.">
+<meta property="og:image" content="https://tascano.github.io/images/llm-call-costs-poster-1280.webp">
+<meta name="theme-color" content="#fdb515">
+<link rel="canonical" href="https://tascano.github.io/series/llm-call-costs.html">
+<link rel="icon" href="../favicon.ico?v=3" sizes="any">
+<script>
+  // Same key as the main page, so the reader's light/dark choice carries over.
+  try { const t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+</script>
+<style>
+:root{
+  --accent:#fdb515;
+  --accent-ink:#9a6700;          /* the brand gold, deepened for small text on white (4.9:1) */
+  --accent-wash:rgba(253,181,21,.14);
+  --bg:#fff;
+  --text:#111;
+  --text-secondary:#333;
+  --text-muted:#555;
+  --card-bg:#fafafa;
+  --card-border:#eee;
+  --skill-bg:#f3f3f3;
+  --code-bg:#15171b;
+  --code-border:#15171b;
+  --demand:#C26A00;
+  --capacity:#00826F;
+  --capacity-wash:rgba(0,130,111,.10);
+  --demand-wash:rgba(194,106,0,.10);
+  --mute:#8a8a8a;
+  --track:#dcdcdc;
+  --buffer:#d4d4d4;
+  --buffer-ink:#111;
+  --rec-ink:#fff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+[data-theme="dark"]{
+  --accent-ink:#fdb515;
+  --accent-wash:rgba(253,181,21,.12);
+  --bg:#0f0f0f;
+  --text:#e8e8e8;
+  --text-secondary:#d0d0d0;
+  --text-muted:#a0a0a0;
+  --card-bg:#1a1a1a;
+  --card-border:#2a2a2a;
+  --skill-bg:#262626;
+  --code-bg:#161616;
+  --code-border:#2a2a2a;
+  --demand:#C27E00;
+  --capacity:#22A08B;
+  --capacity-wash:rgba(34,160,139,.14);
+  --demand-wash:rgba(194,126,0,.14);
+  --mute:#737373;
+  --track:#383838;
+  --buffer:#4d4d4d;
+  --buffer-ink:#fff;
+  --rec-ink:#111;
+}
+*{box-sizing:border-box;}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:17px;line-height:1.7;color:var(--text);background:var(--bg);transition:background .3s ease,color .3s ease;}
+a{color:var(--accent-ink);text-underline-offset:3px;text-decoration-thickness:1px;}
+a:hover{color:var(--text);}
+::selection{background:var(--accent);color:#111;}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px;}
+.scroll-progress{position:fixed;top:0;left:0;width:0;height:4px;background:var(--accent);z-index:1000;}
+.theme-toggle{position:fixed;top:20px;right:20px;width:50px;height:50px;border-radius:50%;background:var(--card-bg);border:2px solid var(--card-border);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:999;transition:transform .3s ease,border-color .3s ease;}
+.theme-toggle:hover{transform:scale(1.1);border-color:var(--accent);}
+.theme-toggle:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+
+/* top bar, like the main page header */
+.topbar{display:flex;align-items:center;gap:12px;padding:28px 0 18px;border-bottom:1px solid var(--card-border);}
+.topbar img{width:44px;height:44px;border-radius:8px;object-fit:cover;}
+.topbar a{text-decoration:none;color:var(--text);font-weight:700;font-size:18px;letter-spacing:.2px;}
+.topbar .last{color:var(--accent);}
+.topbar .home{margin-left:auto;margin-right:64px;font-size:14px;font-weight:600;color:var(--accent-ink);}
+
+/* hero */
+.hero{padding:44px 0 6px;}
+.kicker{display:inline-block;font:700 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent-ink);background:var(--accent-wash);border-radius:999px;padding:7px 11px;margin-bottom:18px;}
+.hero h1{font-size:clamp(36px,7.4vw,56px);line-height:1.06;letter-spacing:-.015em;margin:0 0 10px;font-weight:800;}
+.hero .alt{font-size:18px;font-style:italic;color:var(--text-muted);margin:0 0 20px;}
+.hero .dek{font-size:19.5px;line-height:1.55;color:var(--text-secondary);margin:0 0 22px;}
+.byline{display:flex;flex-wrap:wrap;gap:6px 16px;font:14px var(--mono);color:var(--text-muted);margin-bottom:30px;}
+.byline b{color:var(--text);}
+
+/* section titles: the main page's dot + gold line */
+.section-title{display:flex;align-items:center;gap:12px;margin:72px 0 6px;}
+.section-title .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.section-title .section-line{flex:1;height:2px;background:linear-gradient(90deg,var(--accent),transparent);}
+.section-title .n{font:700 13px var(--mono);color:var(--accent-ink);}
+h2{font-size:clamp(25px,4.8vw,32px);line-height:1.2;letter-spacing:-.01em;margin:0 0 18px;font-weight:800;}
+h3{font-size:20px;margin:36px 0 10px;font-weight:700;}
+p{margin:0 0 20px;}
+strong{font-weight:700;}
+.lede{font-size:19.5px;}
+code{font-family:var(--mono);font-size:.86em;background:var(--skill-bg);border-radius:4px;padding:.12em .36em;white-space:nowrap;}
+ul.plain,ol.plain{padding-left:22px;margin:0 0 22px;}
+ul.plain li,ol.plain li{margin-bottom:9px;}
+.note{font-size:15px;color:var(--text-muted);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 26px;}
+
+/* cards */
+.card{background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:20px 22px;margin:26px 0 32px;}
+.tldr{border-left:4px solid var(--accent);}
+footer{border-top:1px solid var(--card-border);margin-top:30px;padding:30px 0 70px;}
+footer p{font-size:15px;color:var(--text-muted);}
+.bye-fig{margin:0 0 22px;}
+.bye-photo{display:block;width:100%;max-width:420px;height:auto;border-radius:16px;border:1px solid var(--card-border);background:#fff;}
+
+@media (max-width:640px){
+  body{font-size:16.5px;}
+  .theme-toggle{top:14px;right:14px;width:44px;height:44px;font-size:18px;}
+  .topbar .home{margin-right:52px;}
+  .hero{padding-top:30px;}
+  .journey,.charts{grid-template-columns:1fr;}
+  .bits{grid-template-columns:repeat(8,minmax(0,1fr));}
+  .code pre{font-size:12.5px;}
+}
+@media (max-width:420px){ .topbar .home{display:none;} }
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  .cursor{animation:none;}
+}
+.watch{margin:0 0 26px;}
+.intro-video{border-radius:12px;overflow:hidden;border:1px solid var(--card-border);background:#000;box-shadow:0 10px 30px rgba(0,0,0,.12);transition:border-color .3s ease,box-shadow .3s ease;}
+.intro-video:hover{border-color:var(--accent);box-shadow:0 10px 30px rgba(253,181,21,.2);}
+.intro-video video{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#000;}
+.play-facade{position:relative;display:block;width:100%;aspect-ratio:16/9;padding:0;border:0;cursor:pointer;background:#000;}
+.play-facade img{display:block;width:100%;height:100%;object-fit:cover;}
+.play-btn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.play-btn svg{width:76px;height:76px;filter:drop-shadow(0 4px 14px rgba(0,0,0,.35));transition:transform .2s ease;}
+.play-btn circle{fill:var(--accent);}
+.play-btn path{fill:#111;}
+.play-facade:hover .play-btn svg,.play-facade:focus-visible .play-btn svg{transform:scale(1.08);}
+.play-facade:focus-visible{outline:3px solid var(--accent);outline-offset:3px;}
+.play-len{position:absolute;right:10px;bottom:10px;padding:2px 7px;border-radius:4px;font-size:13px;font-weight:600;color:#fff;background:rgba(0,0,0,.7);}
+.intro-note{font-size:14px;color:var(--text-muted);margin:10px 0 0;}
+
+.ai-note{border-left:4px solid var(--accent);background:var(--accent-wash);border-radius:10px;padding:12px 16px;margin:0 0 26px;font-size:15.5px;}
+.ai-note .q{font:700 12px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--text);margin-bottom:6px;}
+.ai-note p{margin:0;}
+/* video series */
+.series-head{border-left:4px solid var(--accent);}
+.series-head p{margin:0 0 10px;}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin:14px 0 4px;}
+.week div{border:1px solid var(--card-border);border-radius:8px;padding:8px 4px;text-align:center;font:600 12px/1.3 var(--mono);background:var(--bg);}
+.week b{display:block;font-size:13px;color:var(--text);}
+.week .sd{border-top:3px solid var(--accent);}
+.week .ag{border-top:3px solid var(--text-muted);}
+.week .sc{border-top:3px solid #C8102E;}
+.legend{font-size:14px;color:var(--text-muted);margin:8px 0 0;}
+.episodes{display:grid;gap:18px;margin:10px 0 30px;}
+a.ep{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;text-decoration:none;color:inherit;background:var(--card-bg);border:1px solid var(--card-border);border-radius:12px;padding:14px;transition:border-color .2s ease,transform .2s ease;}
+a.ep:hover{border-color:var(--accent);transform:translateY(-2px);}
+a.ep img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;border-radius:8px;display:block;}
+a.ep .t{font-weight:800;font-size:19px;line-height:1.25;color:var(--accent-ink);margin:2px 0 4px;}
+a.ep .m{font:13px var(--mono);color:var(--text-muted);margin-bottom:6px;}
+a.ep p{margin:0;font-size:15.5px;line-height:1.55;color:var(--text-secondary);}
+.soon{font-size:15px;color:var(--text-muted);border:1px dashed var(--card-border);border-radius:12px;padding:14px 16px;}
+.refs li{margin-bottom:10px;}
+.refs .why{color:var(--text-muted);font-size:15px;}
+.takeaways li{margin-bottom:10px;}
+.math{font:600 16px/1.6 var(--mono);background:var(--card-bg);border:1px solid var(--card-border);border-radius:10px;padding:12px 16px;margin:0 0 22px;overflow-x:auto;}
+@media (max-width:640px){ a.ep{grid-template-columns:1fr;} .week{grid-template-columns:repeat(4,minmax(0,1fr));} }
+
+/* The Short (portrait): from episode 6 the page plays the vertical Short; the full video is on YouTube */
+.intro-video.vertical{max-width:360px;margin:0 auto;}
+.intro-video.vertical .play-facade,.intro-video.vertical video{aspect-ratio:9/16;}
+.watch .intro-note{text-align:center;}
+</style>
+<script type="application/ld+json">
+{
+ "@context": "https://schema.org",
+ "@type": "BlogPosting",
+ "headline": "What an LLM Call Costs",
+ "description": "What one LLM call costs: two meters, output at five times input, a receipt for one call, why an agent's bill is mostly re-reading, and four ways to pay less.",
+ "url": "https://tascano.github.io/series/llm-call-costs.html",
+ "datePublished": "2026-11-07",
+ "inLanguage": "en",
+ "image": "https://tascano.github.io/images/llm-call-costs-poster-1280.webp",
+ "isPartOf": {
+  "@type": "CreativeWorkSeries",
+  "name": "Systems on Glass",
+  "url": "https://tascano.github.io/series/"
+ },
+ "author": {
+  "@type": "Person",
+  "@id": "https://tascano.github.io/#person",
+  "name": "Ambrose Tuscano",
+  "url": "https://tascano.github.io/"
+ },
+ "video": {
+  "@type": "VideoObject",
+  "name": "What an LLM Call Costs (Systems on Glass, episode 7, the short)",
+  "description": "What one LLM call costs: two meters, output at five times input, a receipt for one call, why an agent's bill is mostly re-reading, and four ways to pay less.",
+  "thumbnailUrl": "https://tascano.github.io/images/llm-call-costs-short-poster-720.webp",
+  "contentUrl": "https://tascano.github.io/videos/llm-call-costs-short.mp4",
+  "uploadDate": "2026-11-07",
+  "duration": "PT@SDUR_ISO@"
+ }
+}
+</script>
+</head>
+<body>
+<div class="scroll-progress" aria-hidden="true"></div>
+<button class="theme-toggle" type="button" aria-label="Toggle dark mode">🌙</button>
+<div class="wrap">
+<nav class="topbar" aria-label="Site">
+  <img src="../images/avatar.webp?v=3" alt="" width="44" height="44">
+  <a href="../">Ambrose <span class="last">Tuscano</span></a>
+  <a class="home" href="./">All videos</a>
+</nav>
+<header class="hero">
+  <span class="kicker">Systems on Glass · Episode 7 · AI at scale</span>
+  <h1>What an LLM Call Costs</h1>
+  <p class="alt">or: read the receipt</p>
+@PLAYER@
+  <div class="byline"><span><b>Ambrose Tuscano</b></span><span>November 2026</span><span>2 min read</span></div>
+</header>
+
+<article>
+<div class="ai-note" role="note">
+  <div class="q">Made with AI, for fun</div>
+  <p>Systems on Glass is an AI-automation side project of mine. Every episode is generated by Claude (Anthropic's AI, working through Claude Code in my own video studio): the script, the animations and 3D scenes, the edit, and the narration in an AI clone of my voice. I choose the topics, bring the stories from my own work, and review each episode before it goes up. Not affiliated with Anthropic or OpenAI.</p>
+</div>
+<p class="lede">The voice in my last episode cost fifty-two cents. I know because my studio prints the bill before it spends anything: 29 lines, 5,219 characters, $0.52. Most people using AI only see the bill at the end of the month. So this episode prints one.</p>
+
+<h2>The short version</h2>
+<ul class="plain takeaways">
+  <li><strong>Two meters.</strong> Every call is billed for tokens in (instructions, files, the whole chat so far) and tokens out (the answer), at different rates. A rough rule: 1,000 tokens is about 750 English words, and every model counts its own way.</li>
+  <li><strong>Output costs about five times input.</strong> On Anthropic's list, Claude Opus 5.5 is $4 per million tokens in and $20 out; OpenAI's flagship is $10 in and $50 out (November 2026). The prompt is read in one pass; the answer is written one token at a time.</li>
+  <li><strong>In one call, the answer is the bill.</strong> 2,000 tokens in and 800 out comes to 2.4 cents: the answer is 29% of the tokens and 67% of the bill.</li>
+  <li><strong>In an agent, re-reading is the bill.</strong> Every turn re-sends the whole conversation. Thirty turns of a modest agent sends 1.17 million tokens in and only 15,000 out: $4.98, with re-reading at 94%.</li>
+  <li><strong>Pay less.</strong> Cache what repeats (a cache hit on Opus 5.5 is $0.20 per million, a twentieth: the same session drops to $0.86), batch what can wait (50% off at both labs), send easy work to a small model (Haiku 5.5 writes for a fortieth of Opus), ask for shorter answers, and log tokens per feature.</li>
+</ul>
+
+<div class="math" aria-label="The numbers from the episode">
+One call: 2,000 × $4/M + 800 × $20/M = $0.008 + $0.016 = $0.024<br>
+Agent, 30 turns (10,000 tokens to start, +2,000 a turn, 500 out a turn): 1,170,000 in = $4.68 · 15,000 out = $0.30 · total $4.98<br>
+Cached: 1,102,000 hits × $0.20/M + 68,000 writes × $5/M + $0.30 = $0.86 (−83%)
+</div>
+
+<p class="note">The call and the agent session are illustrative arithmetic on Anthropic's November 2026 list prices for Claude Opus 5.5; prices change, so check the live pages. The $0.52 is my studio's real estimate for episode 6's narration.</p>
+
+<h2>Further reading</h2>
+<ul class="plain refs">
+  <li><a href="https://platform.claude.com/docs/en/about-claude/pricing" target="_blank" rel="noopener">Anthropic: Pricing</a> <span class="why">— per-model input, output, cache and batch prices.</span></li>
+  <li><a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching" target="_blank" rel="noopener">Anthropic: Prompt caching</a> <span class="why">— how a repeated prefix is kept warm, and what writes and hits cost.</span></li>
+  <li><a href="https://platform.openai.com/docs/pricing" target="_blank" rel="noopener">OpenAI: API pricing</a> <span class="why">— the same two-meter shape on another lab's list.</span></li>
+  <li><a href="https://platform.openai.com/docs/guides/batch" target="_blank" rel="noopener">OpenAI: Batch API</a> <span class="why">— 50% off for jobs that can wait up to 24 hours.</span></li>
+  <li><a href="context-is-ram.html">Context Is RAM</a> <span class="why">— episode 4: why a smaller context is also a better one.</span></li>
+</ul>
+
+<p class="note">Next episode: <strong>Queues</strong>, and how a million messages leave on time at 7 AM. Previously: <a href="prompt-like-a-spec.html">Prompt Like a Spec</a>. <a href="./">All episodes →</a></p>
+</article>
+
+</div>
+<footer>
+<div class="wrap">
+<p>Systems on Glass is a personal, just-for-fun AI-automation project: the episodes, these pages' write-ups and the narration (an AI clone of my own voice) are generated with Claude through Claude Code, from my brief and my stories, and reviewed by me. Stories from work are told as general patterns, at the level of detail I've already written about publicly; nothing here describes a current or former employer's internal systems. Not affiliated with Anthropic.</p>
+<p>More: <a href="./">all episodes</a> · <a href="../#blog">the blog</a> · <a href="../#intro">my 3-minute intro</a></p>
+</div>
+</footer>
+<script>
+(() => {
+  const html = document.documentElement, toggle = document.querySelector('.theme-toggle');
+  const setIcon = () => { toggle.textContent = html.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙'; };
+  setIcon();
+  toggle.addEventListener('click', () => {
+    const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    try { localStorage.setItem('theme', next); } catch (e) {}
+    setIcon();
+  });
+  const bar = document.querySelector('.scroll-progress');
+  addEventListener('scroll', () => {
+    const h = document.documentElement.scrollHeight - innerHeight;
+    bar.style.width = (h > 0 ? scrollY / h * 100 : 0) + '%';
+  }, {passive: true});
+  // The video: load the player only when someone presses play (phones and slow connections get 720p).
+  document.querySelectorAll('.play-facade').forEach(facade => {
+    facade.addEventListener('click', () => {
+      const player = document.createElement('video');
+      const conn = navigator.connection || {};
+      const small = window.matchMedia('(max-width: 900px)').matches || conn.saveData || /(^|-)(2g|3g)$/.test(conn.effectiveType || '');
+      player.src = (small && facade.dataset.srcSmall) || facade.dataset.src;
+      player.controls = true; player.playsInline = true; player.autoplay = true;
+      player.setAttribute('aria-label', facade.getAttribute('aria-label'));
+      facade.replaceWith(player);
+      player.play().catch(() => {});
+      player.focus();
+    }, {once: true});
+  });
+})();
+</script>
+</body>
+</html>
