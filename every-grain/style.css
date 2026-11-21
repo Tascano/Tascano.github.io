@@ -122,3 +122,9 @@ footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--card-border);
 .sectitle h2{flex-shrink:1;min-width:0;overflow-wrap:anywhere}
 .sectitle .line{min-width:12px}
 .pagehead,.partbanner,.card,.onpage{min-width:0;overflow-wrap:anywhere}
+
+figure.pic{margin:1.6em 0;max-width:720px}
+figure.pic img{display:block;width:100%;height:auto;border-radius:8px;border:1px solid var(--card-border);background:var(--skill-bg)}
+figure.pic figcaption{font-size:14px;line-height:1.5;color:var(--text-secondary);margin-top:8px}
+figure.pic .credit{display:block;font-size:12px;color:var(--text-muted);margin-top:2px}
+figure.pic .credit a{color:var(--text-muted)}
