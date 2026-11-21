@@ -1,0 +1,124 @@
+/* Every Grain site — styled after tascano.github.io (yellow accent, system font, light/dark) */
+:root{
+  --max-width:900px;
+  --accent:#fdb515;
+  --accent-ink:#9a6700;
+  --bg:#fff;
+  --text:#111;
+  --text-secondary:#333;
+  --text-muted:#555;
+  --card-bg:#fafafa;
+  --card-border:#eee;
+  --skill-bg:#f3f3f3;
+}
+[data-theme="dark"]{
+  --accent-ink:#fdb515;
+  --bg:#0f0f0f;
+  --text:#e8e8e8;
+  --text-secondary:#d0d0d0;
+  --text-muted:#a0a0a0;
+  --card-bg:#1a1a1a;
+  --card-border:#2a2a2a;
+  --skill-bg:#262626;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.5;color:var(--text);background:var(--bg);transition:background .3s ease,color .3s ease}
+a{color:var(--accent-ink)}
+.scroll-progress{position:fixed;top:0;left:0;width:0;height:4px;background:var(--accent);z-index:1000;transition:width .1s ease}
+.theme-toggle{position:fixed;top:20px;right:20px;background:var(--card-bg);border:2px solid var(--card-border);border-radius:50%;width:50px;height:50px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;transition:all .3s ease;z-index:999}
+.theme-toggle:hover{transform:scale(1.1);border-color:var(--accent)}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:40px}
+.topnav{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-right:64px;margin-bottom:22px}
+.brand{font-weight:800;font-size:20px;text-decoration:none;color:var(--text)}
+.first{color:var(--text)} .last{color:var(--accent)}
+.navlinks{display:flex;gap:18px;font-size:14px}
+.navlinks a{color:var(--text-secondary);text-decoration:none;font-weight:600;transition:color .2s}
+.navlinks a:hover{color:var(--accent-ink)}
+.crumb{font-size:13px;color:var(--text-muted);margin-bottom:14px}
+.crumb a{color:var(--text-muted);text-decoration:none}.crumb a:hover{color:var(--accent-ink)}
+.crumb span{margin:0 4px}
+h1{margin:0;font-size:38px;letter-spacing:.2px;line-height:1.15}
+.hero h1{font-size:52px}
+.subtitle{font-size:16px;font-weight:600;color:var(--text-secondary);margin-top:8px}
+.muted,.meta{font-size:13px;color:var(--text-muted)}
+.kicker{text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--accent-ink);margin-bottom:6px;font-size:12px}
+.pagehead{margin:8px 0 26px;padding-bottom:18px;border-bottom:1px solid var(--card-border);animation:fadeInUp .7s ease both}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.hero{padding:10px 0 18px;animation:fadeInUp .8s ease both}
+.resume-row{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:14px}
+.resume-link{color:var(--accent-ink);text-decoration:none;font-weight:700;font-size:14px;transition:transform .2s ease;display:inline-block}
+.resume-link:hover{transform:translateX(5px)}
+.searchrow{display:flex;align-items:center;gap:12px;margin:18px 0 8px}
+#filter{flex:1;padding:10px 14px;border-radius:8px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text);font:inherit;font-size:14px}
+#filter:focus{outline:2px solid var(--accent);border-color:var(--accent)}
+.sectitle{display:flex;align-items:center;gap:10px;margin:34px 0 16px}
+.sectitle h2{font-size:20px;flex-shrink:0;color:var(--text);margin:0}
+.sectitle h2 a{color:inherit;text-decoration:none}.sectitle h2 a:hover{color:var(--accent-ink)}
+.line{flex-grow:1;height:1px;background:linear-gradient(to right,var(--accent),transparent)}
+.part{margin-bottom:22px}
+.part h3{font-size:15px;color:var(--text-secondary);margin:0 0 10px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{padding:14px;border-radius:8px;border:1px solid var(--card-border);background:var(--card-bg);transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease}
+.card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(253,181,21,.15);border-color:var(--accent)}
+a.card-link{display:flex;flex-direction:column;gap:4px;text-decoration:none;color:inherit}
+.role{font-weight:600;color:var(--text)}
+.ctitle{font-size:14px;color:var(--text-secondary)}
+.accent{color:var(--accent)}
+.intro{margin-top:18px}.intro:hover,.partcard:hover{transform:none;box-shadow:none;border-color:var(--card-border)}
+.intro h3{font-size:15px;margin-bottom:6px}.intro p{font-size:14px;color:var(--text-secondary);line-height:1.55}
+.partcard{margin-bottom:16px}.partcard h3{font-size:17px;margin-bottom:8px}
+.partopener p{font-size:14px;color:var(--text-secondary);line-height:1.55}
+.chlist{list-style:none;margin-top:12px;display:grid;gap:4px}
+.chlist a{display:flex;gap:10px;align-items:baseline;text-decoration:none;color:var(--text);font-size:14px;padding:4px 6px;border-radius:6px}
+.chlist a:hover{background:var(--skill-bg);color:var(--accent-ink)}
+.chlist .num{color:var(--accent);font-weight:700;min-width:1.6em}
+.partbanner{margin:0 0 26px;padding:14px 18px;border-left:4px solid var(--accent);background:var(--card-bg);border-radius:0 8px 8px 0}
+.partbanner .meta{font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent-ink);margin-bottom:6px}
+.partbanner p{font-size:15px;color:var(--text-secondary);line-height:1.6}
+.onpage{margin:0 0 26px;border:1px solid var(--card-border);background:var(--card-bg);border-radius:8px;padding:10px 14px;font-size:14px}
+.onpage summary{cursor:pointer;font-weight:700}
+.onpage ul{margin:10px 0 2px 18px;columns:2;column-gap:28px}
+.onpage li{margin-bottom:4px;break-inside:avoid}.onpage a{text-decoration:none;color:var(--text-secondary)}.onpage a:hover{color:var(--accent-ink)}
+/* reading text */
+.prose{max-width:720px;font-size:17.5px;line-height:1.75;color:var(--text-secondary)}
+.prose p{margin:0 0 1.05em}
+.prose h2{font-size:26px;margin:2em 0 .6em;color:var(--text);line-height:1.25;padding-bottom:.25em;border-bottom:1px solid var(--card-border)}
+.prose h3{font-size:21px;margin:1.7em 0 .5em;color:var(--text);line-height:1.3}
+.prose h4{font-size:18px;margin:1.5em 0 .4em;color:var(--text)}
+.prose h5,.prose h6{font-size:16px;margin:1.3em 0 .3em;color:var(--text)}
+.prose ul,.prose ol{margin:0 0 1.05em 1.4em}.prose li{margin-bottom:.35em}
+.prose blockquote{margin:1.2em 0;padding:.7em 1.1em;border-left:4px solid var(--accent);background:var(--card-bg);border-radius:0 8px 8px 0;color:var(--text-secondary)}
+.prose blockquote p:last-child{margin-bottom:0}
+.prose strong{color:var(--text)}
+.prose hr{border:0;height:1px;background:linear-gradient(to right,var(--accent),transparent);margin:2em 0}
+.prose img{max-width:100%;height:auto}
+.prose code{background:var(--skill-bg);padding:1px 5px;border-radius:4px;font-size:.88em}
+.prose pre{background:var(--skill-bg);padding:12px;border-radius:8px;overflow-x:auto;margin-bottom:1em}
+.prose a{word-break:break-word}
+.tablewrap{overflow-x:auto;margin:0 0 1.3em}
+.prose table{border-collapse:collapse;font-size:14.5px;line-height:1.45;min-width:100%}
+.prose th,.prose td{border:1px solid var(--card-border);padding:6px 9px;text-align:left;vertical-align:top}
+.prose th{background:var(--skill-bg);color:var(--text)}
+.cite{font-size:.72em;color:var(--text-muted);white-space:normal;opacity:.85}
+.pager{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:48px 0 8px;max-width:720px}
+.pg.card{display:flex;flex-direction:column;gap:4px;text-decoration:none;color:inherit}
+.pg.next{text-align:right}.pg.empty{visibility:hidden}
+footer{margin-top:44px;padding-top:18px;border-top:1px solid var(--card-border);font-size:12.5px;color:var(--text-muted)}
+@media (max-width:700px){
+  .wrap{padding:22px 16px}
+  h1{font-size:30px}.hero h1{font-size:40px}
+  .prose{font-size:17px}
+  .prose h2{font-size:22px}
+  .onpage ul{columns:1}
+  .pager{grid-template-columns:1fr}
+  .theme-toggle{top:12px;right:12px;width:42px;height:42px}
+}
+@media print{.theme-toggle,.scroll-progress,.topnav,.pager{display:none}.wrap{padding:0}}
+/* never let long strings push the page wider than the screen */
+.prose{overflow-wrap:anywhere;min-width:0}
+.prose code{word-break:break-all;white-space:pre-wrap}
+.prose pre{max-width:100%}
+.sectitle h2{flex-shrink:1;min-width:0;overflow-wrap:anywhere}
+.sectitle .line{min-width:12px}
+.pagehead,.partbanner,.card,.onpage{min-width:0;overflow-wrap:anywhere}
