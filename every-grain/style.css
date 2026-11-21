@@ -1,4 +1,4 @@
-/* Every Grain site — styled after tascano.github.io (yellow accent, system font, light/dark) */
+/* Sopara, Bassein, Virar site — styled after tascano.github.io (yellow accent, system font, light/dark) */
 :root{
   --max-width:900px;
   --accent:#fdb515;
@@ -128,3 +128,6 @@ figure.pic img{display:block;width:100%;height:auto;border-radius:8px;border:1px
 figure.pic figcaption{font-size:14px;line-height:1.5;color:var(--text-secondary);margin-top:8px}
 figure.pic .credit{display:block;font-size:12px;color:var(--text-muted);margin-top:2px}
 figure.pic .credit a{color:var(--text-muted)}
+
+.hero h1.name{font-size:46px;line-height:1.1}
+@media (max-width:700px){.hero h1.name{font-size:34px}}
